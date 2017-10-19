@@ -37,12 +37,14 @@ w[0,:,:] = init_guess(n,m)
 mm = m + m
 #rr = numpy.ndarray((3, mm, mm))
 #rr.fill(-1)
+rci = solver.rci()
+rci.k = 777
+solver.set_rci(rci)
 
 while True:
     solver.move()
     rci = solver.rci()
     job = rci.job
-    print(job)
     nx = rci.nx
     ny = rci.ny
     kx = rci.kx
@@ -78,6 +80,10 @@ while True:
                 if kx != ky:
                     v = w[ky, i, solver.ind[:nx]]
                     w[ky, i, :nx] = v
+    elif job == COMPUTE_YMXD:
+        for i in range(nx):
+            s = -solver.rr[rci.k, rci.i + i, rci.j + i]
+            w[ky, :, jy + i] += s*w[kx, :, jx + i]
     elif job == COMPUTE_XY:
         if nx < 1 or ny < 1:
             continue
@@ -95,11 +101,6 @@ while True:
                 w[kx, :, jx : jx + nx].transpose(), 
                 w[ky, :, jy : jy + ny]) + \
             beta*solver.rr[k, i : i + nx, j : j + ny]
-#        solver.rr[k, j : j + ny, i : i + nx] = \
-#            alpha*numpy.dot( \
-#                w[ky, :, jy : jy + ny].transpose(), 
-#                w[kx, :, jx : jx + nx]) + \
-#            beta*solver.rr[k, j : j + ny, i : i + nx]
         print(solver.rr[k,:,:])
     elif job == COMPUTE_XQ or job == TRANSFORM:
 #        print(nx, kx, jx)
@@ -115,16 +116,6 @@ while True:
         j = rci.j
         k = rci.k
  #       print(i, j, k)
-#        if job == TRANSFORM:
-#            w[ky, :, jy : jy + ny] = \
-#                numpy.dot(w[kx, :, jx : jx + nx], \
-#                    solver.rr[k, j : j + ny, i : i + nx].transpose())
-#            w[kx, :, jx : jx + ny] = w[ky, :, jy : jy + ny]
-#        else:
-#            w[ky, :, jy : jy + ny] = \
-#                alpha*numpy.dot(w[kx, :, jx : jx + nx], \
-#                    solver.rr[k, j : j + ny, i : i + nx].transpose()) + \
-#                beta*w[ky, :, jy : jy + ny]
         if job == TRANSFORM:
             w[ky, :, jy : jy + ny] = \
                 numpy.dot(w[kx, :, jx : jx + nx], \
@@ -139,8 +130,9 @@ while True:
 print(solver.lmd)
 print(solver.rr[1,:m,:m])
 print(w[0,:,:])
-print(w[4,:,:])
+#print(w[4,:,:])
 print(w[3,:,:])
 #print(w[6,:,:])
 print(solver.rr[0,:m,:m])
 print(solver.rr[1,:m,:m])
+print(solver.rr[2,:m,:m])

@@ -4,8 +4,9 @@ RAL EIGensolver for real symmetric and Hermitian problems.
 Engine.
 '''
 
+import copy
 import numpy
-import scipy
+import scipy.linalg as la
 
 APPLY_A = 1
 APPLY_P = 2
@@ -109,6 +110,7 @@ class Options:
         self.block_size = 16
         self.min_opA = True
         self.min_opB = True
+        self.err_est = 0
 
 class Engine:
     def __init__(self, options = Options(), problem = 's', data_type = 'r'):
@@ -123,12 +125,14 @@ class Engine:
         mm = m + m
         self.__block_size = int(m)
         self.lmd = numpy.ndarray((m,), dtype = numpy.float64)
+        self.res = numpy.ndarray((m,), dtype = numpy.float64)
         self.rr = numpy.ndarray((3, mm, mm), dtype = self.__data_type)
         self.rr.fill(0)
         self.ind = numpy.ndarray((m,), dtype = numpy.int32)
         self.__lmd = numpy.ndarray((mm,), dtype = numpy.float64)
         self.__min_opA = options.min_opA
         self.__min_opB = options.min_opB and problem != 's'
+        self.__err_est = options.err_est
         self.__kY = 1
         self.__kZ = 2
         self.__kW = 3
@@ -157,11 +161,15 @@ class Engine:
     def blocks(self):
         return self.__blocks
     def rci(self):
-        return self.__rci
+        return copy.deepcopy(self.__rci)
+    def set_rci(self, rci):
+        self.__rci = copy.deepcopy(rci)
     def reset_rci(self):
         self.__rci.job = 0
     def move(self):
+        m = self.__block_size
         if self.__rci.job == 0:
+            print(self.__rci.k)
             self.__stage = 0
             self.__step = 0
             self.__firstX = 0
@@ -169,7 +177,7 @@ class Engine:
             self.__sizeY = 0
             self.__sizeZ = 0
         while True:
-            #print('step %d' % self.__step)
+            print('step %d' % self.__step)
             if self.__step == 0:
                 self.__step = COMPUTE_BX
             elif self.__step == COMPUTE_BX:
@@ -236,11 +244,10 @@ class Engine:
                 self.__step = TRANSFORM_X
                 k = self.__sizeX
                 try:
-                    self.lmd, self.rr[1, 0 : k, 0 : k] = \
-                        scipy.linalg.eigh \
-                        (self.rr[1, 0 : k, 0 : k], self.rr[0, 0 : k, 0 : k], \
-                         turbo = False, \
-                         overwrite_a = True, overwrite_b = True)
+                    a = self.rr[1, 0 : k, 0 : k]
+                    b = self.rr[0, 0 : k, 0 : k]
+                    self.lmd[0:k], self.rr[1, 0 : k, 0 : k] = \
+                        la.eigh(a, b, overwrite_a = True, overwrite_b = True)
                     self.__lmd[0:k] = self.lmd[0:k]
                 except:
                     self.__step = FAIL
@@ -316,7 +323,8 @@ class Engine:
                     self.__rci.i = 0
                     return
             elif self.__step == COMPUTE_XAX:
-                self.__step = QUIT
+                print('here')
+                self.__step = COMPUTE_RESIDUALS
                 self.__rci.job = COMPUTE_XY
                 self.__rci.nx = self.__sizeX
                 if self.__problem != 'p':
@@ -333,6 +341,52 @@ class Engine:
                 self.__rci.alpha = 1.0
                 self.__rci.beta = 0.0
                 return
-            elif self.__step == QUIT:
-                self.__rci.job = -1
+            elif self.__step == COMPUTE_RESIDUALS:
+                self.__step = COMPUTE_RR
+                for i in range(self.__sizeX):
+                    ix = self.__firstX + i
+                    s = self.rr[0, i, i]
+                    t = self.rr[1, i, i]
+                    t = t/s
+                    self.lmd[ix] = t
+                    self.rr[0, ix, m + ix] = t
+                self.__sizeY = self.__sizeX
+                self.__rci.job = COMPUTE_YMXD
+                self.__rci.nx = self.__sizeX
+                self.__rci.jx = self.__firstX
+                if self.__problem != 'g':
+                    self.__rci.kx = 0
+                else:
+                    self.__rci.kx = self.__kBX
+                self.__rci.ky = self.__kW
+                self.__rci.jy = self.__firstX
+                self.__rci.i = self.__firstX
+                self.__rci.j = self.__firstX + m
+                self.__rci.k = 0
+                return
+            elif self.__step == COMPUTE_RR:
+                self.__step = QUIT
+                self.__rci.nx = self.__sizeX
+                self.__rci.ny = self.__sizeX
+                if self.__problem == 'p':
+                    self.__rci.kx = self.__kY
+                    self.__rci.jx = 0
+                    self.__rci.jy = 0
+                else:
+                    self.__rci.kx = self.__kW
+                    self.__rci.jx = self.__firstX
+                    self.__rci.jy = self.__firstX
+                self.__rci.ky = self.__kW
+                self.__rci.i = self.__firstX
+                self.__rci.j = self.__firstX
+                self.__rci.k = 2
+                if self.__err_est == 0:
+                    self.__rci.alpha = 1.0
+                    self.__rci.beta = 0.0
+                    self.__rci.job = COMPUTE_XY
+                else:
+                    self.__rci.job = COMPUTE_DOTS
+                return
+            elif self.__step < 0:
+                self.__rci.job = self.__step
                 return
