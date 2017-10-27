@@ -3,19 +3,23 @@ Implementation of the abstract class Vectors based on numpy.ndarray
 
 '''
 
+import numbers
 import numpy
-#from vectors import *
 
 class NDArrayVectors: #(Vectors):
-    def __init__(self, arg):
+    def __init__(self, arg, arg2 = 1):
         if isinstance(arg, NDArrayVectors):
             self.__data = arg.__data.copy()
         elif isinstance(arg, numpy.ndarray):
             self.__data = arg
+        elif isinstance(arg, numbers.Number):
+            self.__data = numpy.ndarray((arg, arg2))
         else:
             raise error('wrong argument %s in constructor' % repr(type(arg)))
         n, m = self.__data.shape
         self.__selected = (0, m)
+    def dimension(self):
+        return self.__data.shape[0]
     def data_type(self):
         return self.__data.dtype
     def new_vectors(self, nv):
@@ -62,7 +66,7 @@ class NDArrayVectors: #(Vectors):
         j, m = other.__selected
         other.__data[:, j : j + n] = self.__data[:, i : i + n]
     def dot(self, other):
-        if isinstance(other, complex):
+        if isinstance(other.data(), complex):
             return numpy.dot(other.data().conj().T, self.data())
         else:
             return numpy.dot(other.data().T, self.data())
@@ -70,7 +74,7 @@ class NDArrayVectors: #(Vectors):
         n = self.__selected[1]
         v = numpy.ndarray((n,), dtype = self.__data.dtype)
         for i in range(n):
-            if isinstance(other, complex):
+            if isinstance(other.data(i), complex):
                 s =  numpy.dot(other.data(i).conj().T, self.data(i))
             else:
                 s = numpy.dot(other.data(i).T, self.data(i))
@@ -82,10 +86,10 @@ class NDArrayVectors: #(Vectors):
     def scale(self, s):
         f, n = self.__selected;
         for i in range(n):
-            self.__data[:, i] *= s[i]
+            if s[i] != 0.0:
+                self.__data[:, i] /= s[i]
     def add(self, other, s):
         f, n = self.__selected;
         for i in range(n):
             self.__data[:, i] += s[i]*other.data(i)
 
-#Vectors.register(NDArrayVectors)
