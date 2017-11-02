@@ -39,14 +39,14 @@ class NDArrayVectors: #(Vectors):
             a[:i, i : 2*i] = a[:i, :i]
             a[i : 2*i, i : 2*i] = -a[:i, :i]
             i *= 2
-        j = i
-        while 2*i < n:
-            a[i : 2*i, :i] = a[:i, :i]
-            i *= 2
-        while i < n and j < m:
-            a[i,j] = 1.0
-            i += 1
-            j += 1
+        k = i
+        j = 2*i
+        while j <= n:
+            a[i : j, :i] = a[:i, :i]
+            i, j = j, 2*j
+        j = i/2
+        a[ : j, k : m] = a[ : j, :(m - k)]
+        a[j : i, k : m] = -a[j : i, :(m - k)]
         return NDArrayVectors(a)
     def selected(self):
         return self.__selected
