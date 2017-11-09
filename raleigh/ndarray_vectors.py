@@ -41,10 +41,14 @@ class NDArrayVectors: #(Vectors):
             i *= 2
         k = i
         j = 2*i
+        if j > n:
+            for i in range(k, m):
+                a[i, i] = 1.0
+            return NDArrayVectors(a)
         while j <= n:
             a[i : j, :i] = a[:i, :i]
             i, j = j, 2*j
-        j = i/2
+        j = i//2
         a[ : j, k : m] = a[ : j, :(m - k)]
         a[j : i, k : m] = -a[j : i, :(m - k)]
         return NDArrayVectors(a)
