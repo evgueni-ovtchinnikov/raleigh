@@ -22,6 +22,8 @@ class NDArrayVectors: #(Vectors):
         return self.__data.shape[0]
     def data_type(self):
         return self.__data.dtype
+    def is_complex(self):
+        return isinstance(self.__data[0,0], complex)
     def new_vectors(self, nv):
         n, m = self.__data.shape
         data = numpy.ndarray((n, nv), dtype = self.__data.dtype)
@@ -70,7 +72,7 @@ class NDArrayVectors: #(Vectors):
         j, m = other.__selected
         other.__data[:, j : j + n] = self.__data[:, i : i + n]
     def dot(self, other):
-        if isinstance(other.data(), complex):
+        if other.is_complex():
             return numpy.dot(other.data().conj().T, self.data())
         else:
             return numpy.dot(other.data().T, self.data())
@@ -78,7 +80,7 @@ class NDArrayVectors: #(Vectors):
         n = self.__selected[1]
         v = numpy.ndarray((n,), dtype = self.__data.dtype)
         for i in range(n):
-            if isinstance(other.data(i), complex):
+            if other.is_complex():
                 s =  numpy.dot(other.data(i).conj().T, self.data(i))
             else:
                 s = numpy.dot(other.data(i).T, self.data(i))

@@ -6,7 +6,14 @@ RAL EIGensolver for real symmetric and Hermitian problems.
 from raleigh.ndarray_vectors import NDArrayVectors
 import numbers
 import numpy
-import scipy.linalg as la
+import numpy.linalg as nla
+import scipy.linalg as sla
+
+def conjugate(a):
+    if isinstance(a[0,0], complex):
+        return a.conj().T
+    else:
+        return a.T
 
 class Options:
     def __init__(self):
@@ -125,7 +132,7 @@ class Solver:
         print(XAX)
         print('XBX:')
         print(XBX)
-        lmd, q = la.eigh(XAX, XBX, overwrite_a = True, overwrite_b = True)
+        lmd, q = sla.eigh(XAX, XBX, overwrite_a = True, overwrite_b = True)
         print('lmd:')
         print(lmd)
         print('q:')
@@ -182,16 +189,27 @@ class Solver:
             XBY = Z.dot(X)
             YBY = Z.dot(Y)
         print(s)
-        if isinstance(XBY, complex):
-            YBX = XBY.conj().T
-        else:
-            YBX = XBY.T
-        G = numpy.concatenate((XBX, YBX))
+        YBX = conjugate(XBY)
+        GB = numpy.concatenate((XBX, YBX))
         H = numpy.concatenate((XBY, YBY))
-        G = numpy.concatenate((G, H), axis = 1)
+        GB = numpy.concatenate((GB, H), axis = 1)
         print('Gram matrix for (X,Y):')
-        print(G)
-##        L = numpy.linalg.cholesky(G)
+        print(GB)
+        if pro:
+            A(Z, AYZ)
+            XAY = AYZ.dot(BX)
+            YAY = AYZ.dot(Z)
+        else:
+            A(Y, AYZ)
+            XAY = AYZ.dot(X)
+            YAY = AYZ.dot(Y)
+        YAX = conjugate(XAY)
+        GA = numpy.concatenate((XAX, YAX))
+        H = numpy.concatenate((XAY, YAY))
+        GA = numpy.concatenate((GA, H), axis = 1)
+        lmd, Q = sla.eigh(GA, GB)
+        print(lmd)
+##        L = nla.cholesky(G)
 ##        print('L:')
 ##        print(L)
 
