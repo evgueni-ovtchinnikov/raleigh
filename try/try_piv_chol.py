@@ -10,10 +10,10 @@ def op(x):
     n = x.shape[0]
     y = x.copy()
     for i in range(n):
-        y[i] = (2**i) * x[i]
+        y[i] = (10**i) * x[i]
     return y/sla.norm(y)
 
-n = 20
+n = 6
 x = numpy.ones((n,n)) #/math.sqrt(n)
 for j in range(n - 1):
     x[:, j + 1] = op(x[:, j])
@@ -32,7 +32,9 @@ A = numpy.dot(x.transpose(), x)
 
 U = A.copy()
 ind, failed, last_piv = piv_chol(U, 0, 1e-4)
-#print(U)
+k = n - failed
+V = U[:k, :k]
+print(V)
 print('pivot order: ', ind)
 print('failed rows: %d' % failed)
 print('last_pivot squared: %e' % last_piv)
@@ -40,10 +42,13 @@ print('last_pivot squared: %e' % last_piv)
 UTU = numpy.dot(U.transpose(), U)
 #print(UTU)
 #print(A[ind,:][:,ind])
-print('factorization error: %e' % sla.norm(UTU - A[ind,:][:,ind]))
+print('full factorization error: %e' % sla.norm(UTU - A[ind,:][:,ind]))
 
 y = x[:, ind[:n - failed]]
 B = numpy.dot(y.transpose(), y)
+VTV = numpy.dot(V.transpose(), V)
+print('factorization error: %e' % sla.norm(VTV - B))
+
 lmd, v = sla.eigh(B)
 print(lmd)
 print('condition number: %e' % (lmd[-1]/lmd[0]))
