@@ -4,6 +4,7 @@ RAL EIGensolver for real symmetric and Hermitian problems.
 '''
 
 from raleigh.ndarray_vectors import NDArrayVectors
+from raleigh.piv_chol import piv_chol
 import numbers
 import numpy
 import numpy.linalg as nla
@@ -195,6 +196,22 @@ class Solver:
         GB = numpy.concatenate((GB, H), axis = 1)
         print('Gram matrix for (X,Y):')
         print(GB)
+        U = GB
+        nxy = GB.shape[0]
+        nx = X.nvec()
+        ind, failed, last_piv = piv_chol(U, nx, 1e-4)
+        print(ind)
+        print(failed)
+        nxy -= failed
+        U = U[:nxy, :nxy]
+        indy = ind[nx: nxy]
+        for i in range(nxy - nx):
+            indy[i] -= nx
+        Y.copy(W, indy)
+        W.copy(Y)
+        if not std:
+            Z.copy(W, indy)
+            W.copy(Z)
         if pro:
             A(Z, AYZ)
             XAY = AYZ.dot(BX)
@@ -207,7 +224,8 @@ class Solver:
         GA = numpy.concatenate((XAX, YAX))
         H = numpy.concatenate((XAY, YAY))
         GA = numpy.concatenate((GA, H), axis = 1)
-        lmd, Q = sla.eigh(GA, GB)
+        GA = numpy.dot(U.T, numpy.dot(GA, U))
+        lmd, Q = sla.eigh(GA)
         print(lmd)
 ##        L = nla.cholesky(G)
 ##        print('L:')

@@ -54,6 +54,8 @@ class NDArrayVectors: #(Vectors):
         a[ : j, k : m] = a[ : j, :(m - k)]
         a[j : i, k : m] = -a[j : i, :(m - k)]
         return NDArrayVectors(a)
+    def nvec(self):
+        return self.__selected[1] - self.__selected[0]
     def selected(self):
         return self.__selected
     def select(self, first, nv):
@@ -67,10 +69,13 @@ class NDArrayVectors: #(Vectors):
             return self.__data[:, f : f + n]
         else:
             return self.__data[:, f + i]
-    def copy(self, other):
+    def copy(self, other, ind = None):
         i, n = self.__selected
         j, m = other.__selected
-        other.__data[:, j : j + n] = self.__data[:, i : i + n]
+        if ind is None:
+            other.__data[:, j : j + n] = self.__data[:, i : i + n]
+        else:
+            other.__data[:, j : j + len(ind)] = self.__data[:, ind]
     def dot(self, other):
         if other.is_complex():
             return numpy.dot(other.data().conj().T, self.data())
