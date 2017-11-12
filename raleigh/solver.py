@@ -24,7 +24,8 @@ class Options:
         self.err_est = 0
 
 class Problem:
-    def __init__(self, arg, A, B = None, prod = None):
+    def __init__(self, v, A, B = None, prod = None):
+        self.__vector = v
         self.__A = A
         self.__B = B
         if B is None:
@@ -34,10 +35,10 @@ class Problem:
                 self.__type = 'gen'
             else:
                 self.__type = 'pro'
-        if isinstance(arg, (numbers.Number, numpy.ndarray)):
-            self.__vector = NDArrayVectors(arg)
-        else:
-            self.__vector = arg
+#        if isinstance(arg, (numbers.Number, numpy.ndarray)):
+#            self.__vector = NDArrayVectors(arg)
+#        else:
+#            self.__vector = arg
     def A(self):
         return self.__A
     def B(self):
@@ -57,13 +58,39 @@ class Problem:
 ##        self.__type = t
 
 class Solver:
-    def __init__(self, problem, options = Options()):
+    def __init__(self, problem, options = Options(), which = (-1,-1)):
         vector = problem.vector()
         self.__problem = problem
         self.__data_type = vector.data_type()
+
+        left = int(which[0])
+        right = int(which[1])
+        if left == 0 and right == 0:
+            raise ValueError('wrong nuber of needed eigenpairs')
+
         m = int(options.block_size)
+        if m < 0:
+            if left < 0 or right < 0:
+                m = 16
+            else:
+                m = left + right
+        if m < 2:
+            raise ValueError('block size must be at least 2')
         mm = m + m
         self.__block_size = m
+
+        if left == 0:
+            self.__leftX = 0
+        elif right == 0:
+            self.__leftX = m
+        elif left > 0 and right > 0:
+            q = m*(left/(left + 1.0*right))
+            self.__leftX = max(1, int(round(q)))
+        else:
+            self.__leftX = m//2
+        self.__rightX = m - self.__leftX
+        print(self.__leftX, self.__rightX)
+            
         self.lmd = numpy.ndarray((m,), dtype = numpy.float64)
         self.res = numpy.ndarray((m,), dtype = numpy.float64)
         self.__ind = numpy.ndarray((m,), dtype = numpy.int32)
@@ -129,15 +156,15 @@ class Solver:
             A(X, AX)
             XAX = AX.dot(X)
         XBX = BX.dot(X)
-        print('XAX:')
-        print(XAX)
-        print('XBX:')
-        print(XBX)
+#        print('XAX:')
+#        print(XAX)
+#        print('XBX:')
+#        print(XBX)
         lmd, q = sla.eigh(XAX, XBX, overwrite_a = True, overwrite_b = True)
         print('lmd:')
         print(lmd)
-        print('q:')
-        print(q)
+#        print('q:')
+#        print(q)
         X.mult(q, Z)
         Z.copy(X)
         AX.mult(q, Z)
@@ -168,12 +195,12 @@ class Solver:
             W.add(BX, -lmd)
         else:
             W.add(X, -lmd)
-        print('AX:')
-        print(AX.data())
-        print('BX:')
-        print(BX.data())
-        print('residual:')
-        print(W.data())
+#        print('AX:')
+#        print(AX.data())
+#        print('BX:')
+#        print(BX.data())
+#        print('residual:')
+#        print(W.data())
         W.copy(Y)
         if std:
             s = numpy.sqrt(Y.dots(Y))
@@ -189,7 +216,7 @@ class Solver:
             s = numpy.sqrt(Z.dots(Y))
             XBY = Z.dot(X)
             YBY = Z.dot(Y)
-        print(s)
+#        print(s)
         YBX = conjugate(XBY)
         GB = numpy.concatenate((XBX, YBX))
         H = numpy.concatenate((XBY, YBY))

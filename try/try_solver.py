@@ -16,10 +16,10 @@ def opB(x, y):
 ##        y[i,:] = 2*x[i,:]
 
 opt = Options()
-opt.block_size = 2
+opt.block_size = 4
 n = 8
 v = NDArrayVectors(numpy.ndarray((n,1)))
 problem = Problem(v, opA, opB, 'product')
 #problem = Problem(n, opA)
-solver = Solver(problem, opt)
+solver = Solver(problem, opt, (6,1))
 solver.solve()
