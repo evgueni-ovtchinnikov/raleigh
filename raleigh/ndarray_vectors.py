@@ -6,6 +6,8 @@ Implementation of the abstract class Vectors based on numpy.ndarray
 import numbers
 import numpy
 
+ORDER = 'C'
+
 class NDArrayVectors: #(Vectors):
     def __init__(self, arg, arg2 = 1):
         if isinstance(arg, NDArrayVectors):
@@ -13,9 +15,10 @@ class NDArrayVectors: #(Vectors):
         elif isinstance(arg, numpy.ndarray):
             self.__data = arg
         elif isinstance(arg, numbers.Number):
-            self.__data = numpy.ndarray((arg, arg2))
+            self.__data = numpy.zeros((arg, arg2), order = ORDER)
         else:
-            raise error('wrong argument %s in constructor' % repr(type(arg)))
+            raise ValueError \
+            ('wrong argument %s in constructor' % repr(type(arg)))
         n, m = self.__data.shape
         self.__selected = (0, m)
     def dimension(self):
@@ -26,14 +29,14 @@ class NDArrayVectors: #(Vectors):
         return isinstance(self.__data[0,0], complex)
     def new_vectors(self, nv):
         n, m = self.__data.shape
-        data = numpy.ndarray((n, nv), dtype = self.__data.dtype)
+        data = numpy.zeros((n, nv), dtype = self.__data.dtype, order = ORDER)
         return NDArrayVectors(data)
     def new_orthogonal_vectors(self, m):
         n, k = self.__data.shape
         if n < m:
             print('Warning: number of vectors too large, reducing')
             m = n
-        a = numpy.zeros((n, m))
+        a = numpy.zeros((n, m), order = ORDER)
         a[0,0] = 1.0
         i = 1
         while 2*i < m:
@@ -55,7 +58,7 @@ class NDArrayVectors: #(Vectors):
         a[j : i, k : m] = -a[j : i, :(m - k)]
         return NDArrayVectors(a)
     def nvec(self):
-        return self.__selected[1] - self.__selected[0]
+        return self.__selected[1]
     def selected(self):
         return self.__selected
     def select(self, first, nv):
@@ -92,14 +95,25 @@ class NDArrayVectors: #(Vectors):
             v[i] = s
         return v
     def mult(self, q, output):
+        if output.data().flags['C_CONTIGUOUS']:
+            #print('using optimized dot')
+            numpy.dot(self.data(), q, out = output.data())
+            return
+        print('using non-optimized dot')
         f, n = output.__selected;
         output.__data[:, f : f + n] = numpy.dot(self.data(), q)
+    def axpy(self, q, output):
+        f, n = output.__selected;
+        output.__data[:, f : f + n] += numpy.dot(self.data(), q)
     def scale(self, s):
         f, n = self.__selected;
         for i in range(n):
             if s[i] != 0.0:
                 self.__data[:, i] /= s[i]
     def add(self, other, s):
+        if numpy.isscalar(s):
+            self.__data += s*other.data()
+            return
         f, n = self.__selected;
         for i in range(n):
             self.__data[:, i] += s[i]*other.data(i)

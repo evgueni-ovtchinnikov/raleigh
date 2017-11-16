@@ -18,7 +18,7 @@ def opB(x, y):
 opt = Options()
 opt.block_size = 4
 n = 8
-v = NDArrayVectors(numpy.ndarray((n,1)))
+v = NDArrayVectors(numpy.ndarray((n,1), order = 'C'))
 problem = Problem(v, opA, opB, 'product')
 #problem = Problem(n, opA)
 solver = Solver(problem, opt, (6,1))
