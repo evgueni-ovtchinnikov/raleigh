@@ -61,7 +61,7 @@ class NDArrayVectors: #(Vectors):
         return self.__selected[1]
     def selected(self):
         return self.__selected
-    def select(self, first, nv):
+    def select(self, nv, first = 0):
         self.__selected = (first, nv)
     def fill(self, array):
         f, n = self.__selected;
@@ -96,6 +96,7 @@ class NDArrayVectors: #(Vectors):
         return v
     def mult(self, q, output):
         f, n = output.__selected;
+        n = q.shape[1]
         if output.__data[f : f + n, :].flags['C_CONTIGUOUS']:
             #print('using optimized dot')
             numpy.dot(q.T, self.data(), out = output.__data[f : f + n, :])

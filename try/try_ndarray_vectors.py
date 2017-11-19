@@ -71,14 +71,14 @@ from raleigh.ndarray_vectors_opt import NDArrayVectors
 #    a[j : i, k : m] = -a[j : i, :(m - k)]
 #    return a
 
-#n = 9
-#m = 4
-##array = new_orthogonal_vectors(n, m)
-##print(array)
-#v = NDArrayVectors(numpy.zeros((n, 1), order = 'C'))
-#try_vectors.test(v, m)
-
-n = 50000
-m = 1000
+n = 9
+m = 4
+#array = new_orthogonal_vectors(n, m)
+#print(array)
 v = NDArrayVectors(numpy.zeros((1, n), order = 'C'))
-try_vectors.ptest(v, m)
+try_vectors.test(v, m)
+
+#n = 50000
+#m = 1000
+#v = NDArrayVectors(numpy.zeros((1, n), order = 'C'))
+#try_vectors.ptest(v, m)

@@ -17,7 +17,7 @@ def test(x, n):
     print(q)
     #return
     w = v.new_vectors(n)
-    v.select(1, 2)
+    v.select(2, 1)
     s = v.selected()
     print(s)
     v.copy(w)
@@ -37,7 +37,7 @@ def test(x, n):
     v.mult(q, w)
     print('v*q:')
     print(w.data())
-    v.select(0, n)
+    v.select(n, 0)
     print('v:')
     print(v.data())
     v.add(w, s)
