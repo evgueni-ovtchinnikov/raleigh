@@ -43,6 +43,10 @@ def test(x, n):
     v.add(w, s)
     print('v:')
     print(v.data())
+    v.append(w)
+    v.select_all()
+    print('v:')
+    print(v.data())
 
 def ptest(x, m):
     v = x.new_orthogonal_vectors(m)

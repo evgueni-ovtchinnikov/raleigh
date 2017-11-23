@@ -21,6 +21,8 @@ class NDArrayVectors: #(Vectors):
             ('wrong argument %s in constructor' % repr(type(arg)))
         m, n = self.__data.shape
         self.__selected = (0, m)
+    def append(self, other):
+        self.__data = numpy.concatenate((self.__data, other.data()))
     def dimension(self):
         return self.__data.shape[1]
     def data_type(self):
@@ -62,7 +64,10 @@ class NDArrayVectors: #(Vectors):
     def selected(self):
         return self.__selected
     def select(self, nv, first = 0):
+        assert nv <= self.__data.shape[0] and first >= 0
         self.__selected = (first, nv)
+    def select_all(self):
+        self.select(self.__data.shape[0])
     def fill(self, array):
         f, n = self.__selected;
         self.__data[f : f + n, :] = array

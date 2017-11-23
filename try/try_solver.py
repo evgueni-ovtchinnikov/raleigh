@@ -18,5 +18,6 @@ opt.block_size = 5
 n = 20
 v = NDArrayVectors(numpy.ndarray((0,n), order = 'C'))
 problem = raleigh.solver.Problem(v, opA, opB, 'product')
-solver = raleigh.solver.Solver(problem, opt, (6,1))
+solver = raleigh.solver.Solver(problem, v, opt, (6,1))
 solver.solve()
+print(v.nvec())

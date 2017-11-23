@@ -25,6 +25,7 @@ class Options:
 #        self.min_opA = True
 #        self.min_opB = True
         self.err_est = 0
+        self.res_tol = 1e-2
         self.max_iter = 10
 
 class Problem:
@@ -58,7 +59,8 @@ class Problem:
 ##        self.__type = t
 
 class Solver:
-    def __init__(self, problem, options = Options(), which = (-1,-1)):
+    def __init__ \
+    (self, problem, eigenvectors, options = Options(), which = (-1,-1)):
         vector = problem.vector()
         self.__problem = problem
         self.__data_type = vector.data_type()
@@ -90,15 +92,19 @@ class Solver:
             self.__leftX = m//2
         self.__rightX = m - self.__leftX
         print(self.__leftX, self.__rightX)
-            
+
+        self.__err_est = options.err_est
+        self.__res_tol = options.res_tol
+        self.__max_iter = options.max_iter
+        self.__lcon = 0
+        self.__rcon = 0
+        self.__Xc = eigenvectors
         self.lmd = numpy.ndarray((m,), dtype = numpy.float64)
         self.res = numpy.ndarray((m,), dtype = numpy.float64)
         self.__ind = numpy.ndarray((m,), dtype = numpy.int32)
         self.__lmd = numpy.ndarray((mm,), dtype = numpy.float64)
 #        self.__min_opA = options.min_opA
 #        self.__min_opB = options.min_opB and problem.type() != 's'
-        self.__err_est = options.err_est
-        self.__max_iter = options.max_iter
         self.__X = vector.new_orthogonal_vectors(m)
         self.__Y = vector.new_vectors(m)
         self.__Z = vector.new_vectors(m)
@@ -106,6 +112,7 @@ class Solver:
         self.__AX = vector.new_vectors(m)
         self.__AY = vector.new_vectors(m)
         if problem.type() != 's':
+            self.__BXc = eigenvectors.new_vectors(0)
             self.__BX = vector.new_vectors(m)
             self.__BY = vector.new_vectors(m)
         else:
@@ -120,7 +127,7 @@ class Solver:
 
         problem = self.__problem
         problem_type = problem.type()
-        vector = problem.vector()
+        #vector = problem.vector()
         std = (problem_type == 's')
         gen = (problem_type == 'g')
         pro = (problem_type == 'p')
@@ -129,7 +136,8 @@ class Solver:
         P = self.__P
 #        minA = self.__min_opA
 #        minB = self.__min_opB
-#        m = self.__block_size
+        m = self.__block_size
+        Xc = self.__Xc
         X = self.__X
         Y = self.__Y
         Z = self.__Z
@@ -142,6 +150,9 @@ class Solver:
         BZ = None
         leftX = self.__leftX
         rightX = self.__rightX
+        ix = 0
+        nx = self.__block_size
+        res_tol = self.__res_tol
 
 #        print('X:')
 #        print(X.data())
@@ -180,19 +191,54 @@ class Solver:
             lmd = da/db
             print('lmd:')
             print(lmd)
+            W.select(nx, ix)
             AX.copy(W)
             if gen:
                 W.add(BX, -lmd)
             else:
                 W.add(X, -lmd)
             s = W.dots(W)
+            self.res = numpy.sqrt(s)
             print('residual norms:')
-            print(numpy.sqrt(s))
+            print(self.res)
     
-    ## TODO: estimate errors, 
-    ##       move converged X to Xc, 
-    ##       select Xs, AXs, BXs and Ws accordingly
-            nx = X.nvec()
+            ## TODO: estimate errors, 
+            lcon = 0
+            for i in range(leftX):
+                j = self.__lcon + ix + i
+                if self.res[i] < res_tol:
+                    print('left eigenvector %d converged' % j)
+                    lcon += 1
+                else:
+                    break
+            rcon = 0
+            for i in range(rightX):
+                j = self.__rcon + m - ix - nx + i
+                if self.res[ix + nx - i - 1] < res_tol:
+                    print('right eigenvector %d converged' % j)
+                    rcon += 1
+                else:
+                    break
+            ##       move converged X to Xc,
+            if lcon > 0:
+                X.select(lcon, ix)
+                Xc.append(X)
+                Xc.select_all()
+            if rcon > 0:
+                X.select(rcon, ix + nx)
+                Xc.append(X)
+                Xc.select_all()
+            ##       select Xs, AXs, BXs and Ws accordingly
+            #nx = X.nvec()
+            ix += lcon
+            nx -= lcon + rcon
+            X.select(nx, ix)
+            AX.select(nx, ix)
+            if not std:
+                BX.select(nx, ix)
+            XAX = XAX[ix : ix + nx, ix : ix + nx]
+            XBX = XBX[ix : ix + nx, ix : ix + nx]
+
             W.copy(Y)
             if std:
                 s = numpy.sqrt(Y.dots(Y))
@@ -280,7 +326,8 @@ class Solver:
 #            I = BX.dot(X)
 #            print(I.diagonal())
     
-    #        nx_new = leftX + rightX
+            nx_new = leftX + rightX
+            ix_new = 0
     #        nz = nxy - nx_new
     #        if minA:
             AX.mult(QXX, W)
@@ -289,6 +336,7 @@ class Solver:
             AY.mult(QYZ, Z)
             AZ = AY
             AX.mult(QXZ, AZ)
+            AX.select(nx_new, ix_new)
             W.copy(AX)
             AZ.add(Z, 1.0)
     #        if minB:
@@ -299,6 +347,7 @@ class Solver:
                 BY.mult(QYZ, Z)
                 BZ = BY
                 BX.mult(QXZ, BZ)
+                BX.select(nx_new, ix_new)
                 W.copy(BX)
                 BZ.add(Z, 1.0)
             else:
@@ -307,9 +356,12 @@ class Solver:
             Y.mult(QYX, Z)
             W.add(Z, 1.0)
             X.mult(QXZ, Z) # Z = X*QXZ
+            X.select(nx_new, ix_new)
             W.copy(X)      # X = W
             Y.mult(QYZ, W) # Z += Y*QYZ
             Z.add(W, 1.0)
+            nx = nx_new
+            ix = ix_new
 
 #        A(X, AX)
         if pro:
