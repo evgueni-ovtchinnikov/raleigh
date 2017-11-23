@@ -3,9 +3,7 @@ RAL EIGensolver for real symmetric and Hermitian problems.
 
 '''
 
-from raleigh.ndarray_vectors_opt import NDArrayVectors
 from raleigh.piv_chol import piv_chol
-#import numbers
 import numpy
 import numpy.linalg as nla
 import scipy.linalg as sla
@@ -68,7 +66,7 @@ class Solver:
         left = int(which[0])
         right = int(which[1])
         if left == 0 and right == 0:
-            raise ValueError('wrong nuber of needed eigenpairs')
+            raise ValueError('wrong number of needed eigenpairs')
 
         m = int(options.block_size)
         if m < 0:
