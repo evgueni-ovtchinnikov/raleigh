@@ -63,12 +63,16 @@ class Solver:
     (self, problem, eigenvectors, options = Options(), which = (-1,-1)):
         vector = problem.vector()
         self.__problem = problem
+        problem_type = problem.type()
+        std = (problem_type == 's')
         self.__data_type = vector.data_type()
 
         left = int(which[0])
         right = int(which[1])
         if left == 0 and right == 0:
             raise ValueError('wrong number of needed eigenpairs')
+        self.__left = left
+        self.__right = right
 
         m = int(options.block_size)
         if m < 0:
@@ -93,14 +97,17 @@ class Solver:
         self.__rightX = m - self.__leftX
         print(self.__leftX, self.__rightX)
 
+        self.eigenvalues = numpy.ndarray((0,), dtype = numpy.float64)
+        self.lmd = numpy.ndarray((m,), dtype = numpy.float64)
+        self.res = numpy.ndarray((m,), dtype = numpy.float64)
         self.__err_est = options.err_est
         self.__res_tol = options.res_tol
         self.__max_iter = options.max_iter
         self.__lcon = 0
         self.__rcon = 0
         self.__Xc = eigenvectors
-        self.lmd = numpy.ndarray((m,), dtype = numpy.float64)
-        self.res = numpy.ndarray((m,), dtype = numpy.float64)
+        if not std:
+            self.__BXc = eigenvectors.clone()
         self.__ind = numpy.ndarray((m,), dtype = numpy.int32)
         self.__lmd = numpy.ndarray((mm,), dtype = numpy.float64)
 #        self.__min_opA = options.min_opA
@@ -137,7 +144,12 @@ class Solver:
 #        minA = self.__min_opA
 #        minB = self.__min_opB
         m = self.__block_size
+        left = self.__left
+        right = self.__right
         Xc = self.__Xc
+        if not std:
+            BXc = self.__BXc
+        lmd = self.lmd
         X = self.__X
         Y = self.__Y
         Z = self.__Z
@@ -167,15 +179,15 @@ class Solver:
             A(X, AX)
             XAX = AX.dot(X)
         XBX = BX.dot(X)
-        lmd, q = sla.eigh(XAX, XBX, overwrite_a = True, overwrite_b = True)
+        lmd, Q = sla.eigh(XAX, XBX, overwrite_a = True, overwrite_b = True)
         print('lmd:')
         print(lmd)
-        X.mult(q, W)
+        X.mult(Q, W)
         W.copy(X)
-        AX.mult(q, W)
+        AX.mult(Q, W)
         W.copy(AX)
         if not std:
-            BX.mult(q, Z)
+            BX.mult(Q, Z)
             Z.copy(BX)
 
 ## TODO: the main loop starts here
@@ -191,12 +203,33 @@ class Solver:
             lmd = da/db
             print('lmd:')
             print(lmd)
+            
+            # compute residuals
+            # std: A X - X lmd
+            # gen: A X - B X lmd
+            # pro: A B X - X lmd
             W.select(nx, ix)
             AX.copy(W)
             if gen:
                 W.add(BX, -lmd)
             else:
                 W.add(X, -lmd)
+
+            if Xc.nvec() > 0:
+                # orthogonalize W to Xc
+                # std: W := W - Xc Xc* W
+                # gen: W := W - BXc Xc* W
+                # pro: W := W - Xc BXc* W
+                if pro:
+                    Q = W.dot(BXc)
+                else:
+                    Q = W.dot(Xc)
+                Y.select(W.nvec())
+                if gen:
+                    BXc.mult(Q, Y)
+                else:
+                    Xc.mult(Q, Y)
+                W.add(Y, -1.0)
             s = W.dots(W)
             self.res = numpy.sqrt(s)
             print('residual norms:')
@@ -211,6 +244,7 @@ class Solver:
                     lcon += 1
                 else:
                     break
+            self.__lcon += lcon
             rcon = 0
             for i in range(rightX):
                 j = self.__rcon + m - ix - nx + i
@@ -219,16 +253,31 @@ class Solver:
                     rcon += 1
                 else:
                     break
+            self.__rcon += rcon
             ##       move converged X to Xc,
             if lcon > 0:
+                self.eigenvalues = numpy.concatenate \
+                    ((self.eigenvalues, lmd[ix : ix + lcon]))
+                #print(self.eigenvalues)
                 X.select(lcon, ix)
                 Xc.append(X)
-                Xc.select_all()
+                if not std:
+                    BX.select(lcon, ix)
+                    BXc.append(BX)
             if rcon > 0:
-                X.select(rcon, ix + nx)
+                jx = ix + nx
+                self.eigenvalues = numpy.concatenate \
+                    ((self.eigenvalues, lmd[jx - rcon : jx]))
+                X.select(rcon, jx - rcon)
                 Xc.append(X)
-                Xc.select_all()
-            ##       select Xs, AXs, BXs and Ws accordingly
+                if not std:
+                    BX.select(rcon, jx - rcon)
+                    BXc.append(BX)
+            if self.__lcon >= left and self.__rcon >= right:
+                break
+            #print(Xc.dimension(), Xc.nvec())
+            #print(BXc.dimension(), BXc.nvec())
+            ##       select Xs, AXs, BXs accordingly
             #nx = X.nvec()
             ix += lcon
             nx -= lcon + rcon
@@ -240,6 +289,21 @@ class Solver:
             XBX = XBX[ix : ix + nx, ix : ix + nx]
 
             W.copy(Y)
+
+            if Xc.nvec() > 0 and (P is not None or gen):
+                # orthogonalize Y to Xc
+                # std: W := W - Xc Xc* W (not needed if P is None)
+                # gen: W := W - Xc BXc* W
+                # pro: W := W - Xc BXc* W (not needed if P is None)
+                if not std:
+                    Q = Y.dot(BXc)
+                else:
+                    Q = Y.dot(Xc)
+                W.select(Y.nvec())
+                Xc.mult(Q, W)
+                Y.add(W, -1.0)
+
+            # compute (B-)Gram matrix for (X,Y)
             if std:
                 s = numpy.sqrt(Y.dots(Y))
                 Y.scale(s)
@@ -247,6 +311,7 @@ class Solver:
                 XBY = Y.dot(X)
                 YBY = Y.dot(Y)
             else:
+                BY.select(Y.nvec())
                 B(Y, BY)
                 s = numpy.sqrt(BY.dots(Y))
                 Y.scale(s)
@@ -261,11 +326,15 @@ class Solver:
             GB = numpy.concatenate((GB, H), axis = 1)
     #        print('Gram matrix for (X,Y):')
     #        print(GB)
+
+            # do pivoted Cholesky for GB
             U = GB
             ny = Y.nvec() # = nx
             ind, dropped, last_piv = piv_chol(U, nx, 1e-4)
             print(ind)
             print(dropped)
+            
+            # re-arrange/drop-linear-dependent search directions
             ny -= dropped
             nxy = nx + ny
             U = U[:nxy, :nxy]
@@ -280,18 +349,8 @@ class Solver:
                 BY.copy(W, indy)
                 W.copy(BY)
                 BY.select(ny)
-#                XBY = BY.dot(X)
-#                YBY = BY.dot(Y)
-#            else:
-#                XBY = Y.dot(X)
-#                YBY = Y.dot(Y)
-#            YBX = conjugate(XBY)
-#            GB = numpy.concatenate((XBX, YBX))
-#            H = numpy.concatenate((XBY, YBY))
-#            GB = numpy.concatenate((GB, H), axis = 1)
-#            err = numpy.dot(U.T, U) - GB
-#            print('UTU err:', nla.norm(err))
     
+            # compute A-Gram matrix for (X,Y)
             if pro:
                 A(BY, AY)
                 XAY = AY.dot(BX)
@@ -304,12 +363,27 @@ class Solver:
             GA = numpy.concatenate((XAX, YAX))
             H = numpy.concatenate((XAY, YAY))
             GA = numpy.concatenate((GA, H), axis = 1)
+
+            # solve Rayleigh-Ritz eigenproblem
             GA = transform(GA, U)
-            lmd, Q = sla.eigh(GA)
-            print(lmd)
+            lmdxy, Q = sla.eigh(GA)
+            print(lmdxy)
             Q = sla.solve_triangular(U, Q)
-            QX = numpy.concatenate((Q[:, :leftX], Q[:, nxy - rightX:]), axis = 1)
-            QZ = Q[:, leftX : nxy - rightX]
+
+            # TODO: select new numbers of left and right eigenpairs
+            if self.__lcon >= left:
+                leftX_new = 0
+                rightX_new = min(nxy, m)
+            elif self.__rcon >= right:
+                leftX_new = min(nxy, m)
+                rightX_new = 0
+            else:
+                leftX_new = leftX
+                rightX_new = rightX
+            QX = numpy.concatenate \
+                ((Q[:, :leftX_new], Q[:, nxy - rightX_new:]), axis = 1)
+            QZ = Q[:, leftX_new : nxy - rightX_new]
+            lmdz = lmdxy[leftX_new : nxy - rightX_new]
 #            Q = numpy.concatenate((QX, QZ), axis = 1)
             QXX = QX[:nx, :].copy()
             QYX = QX[nx:, :].copy()
@@ -326,7 +400,7 @@ class Solver:
 #            I = BX.dot(X)
 #            print(I.diagonal())
     
-            nx_new = leftX + rightX
+            nx_new = leftX_new + rightX_new
             ix_new = 0
     #        nz = nxy - nx_new
     #        if minA:
@@ -362,30 +436,32 @@ class Solver:
             Z.add(W, 1.0)
             nx = nx_new
             ix = ix_new
+            leftX = leftX_new
+            rightX = rightX_new
 
-#        A(X, AX)
-        if pro:
-            XAX = AX.dot(BX)
-        else:
-            XAX = AX.dot(X)
-        XBX = BX.dot(X)
-        da = XAX.diagonal()
-        db = XBX.diagonal()
-#        print('diag(XAX):')
-#        print(da)
-#        print('diag(XBX):')
-#        print(db)
-        lmd = da/db
-        print('lmd:')
-        print(lmd)
-        AX.copy(W)
-        if gen:
-            W.add(BX, -lmd)
-        else:
-            W.add(X, -lmd)
-        s = W.dots(W)
-        print('residual norms:')
-        print(numpy.sqrt(s))
+##        A(X, AX)
+#        if pro:
+#            XAX = AX.dot(BX)
+#        else:
+#            XAX = AX.dot(X)
+#        XBX = BX.dot(X)
+#        da = XAX.diagonal()
+#        db = XBX.diagonal()
+##        print('diag(XAX):')
+##        print(da)
+##        print('diag(XBX):')
+##        print(db)
+#        lmd = da/db
+#        print('lmd:')
+#        print(lmd)
+#        AX.copy(W)
+#        if gen:
+#            W.add(BX, -lmd)
+#        else:
+#            W.add(X, -lmd)
+#        s = W.dots(W)
+#        print('residual norms:')
+#        print(numpy.sqrt(s))
 
 #        if pro:
 #            ZAZ = AZ.dot(BZ)

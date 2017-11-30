@@ -21,14 +21,17 @@ class NDArrayVectors: #(Vectors):
             ('wrong argument %s in constructor' % repr(type(arg)))
         m, n = self.__data.shape
         self.__selected = (0, m)
-    def append(self, other):
-        self.__data = numpy.concatenate((self.__data, other.data()))
     def dimension(self):
         return self.__data.shape[1]
     def data_type(self):
         return self.__data.dtype
     def is_complex(self):
         return isinstance(self.__data[0,0], complex)
+    def clone(self):
+        return NDArrayVectors(self.__data.copy())
+    def append(self, other):
+        self.__data = numpy.concatenate((self.__data, other.data()))
+        self.select_all()
     def new_vectors(self, nv):
         m, n = self.__data.shape
         data = numpy.zeros((nv, n), dtype = self.__data.dtype, order = ORDER)

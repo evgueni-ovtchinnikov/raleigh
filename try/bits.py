@@ -107,3 +107,15 @@ Created on Thu Oct 12 16:37:46 2017
 #            self.__vector = NDArrayVectors(arg)
 #        else:
 #            self.__vector = arg
+
+#                XBY = BY.dot(X)
+#                YBY = BY.dot(Y)
+#            else:
+#                XBY = Y.dot(X)
+#                YBY = Y.dot(Y)
+#            YBX = conjugate(XBY)
+#            GB = numpy.concatenate((XBX, YBX))
+#            H = numpy.concatenate((XBY, YBY))
+#            GB = numpy.concatenate((GB, H), axis = 1)
+#            err = numpy.dot(U.T, U) - GB
+#            print('UTU err:', nla.norm(err))
