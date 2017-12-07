@@ -9,13 +9,13 @@ import numpy
 ORDER = 'C'
 
 class NDArrayVectors: #(Vectors):
-    def __init__(self, arg, arg2 = 1):
+    def __init__(self, arg, nvec = 0):
         if isinstance(arg, NDArrayVectors):
             self.__data = arg.__data.copy()
         elif isinstance(arg, numpy.ndarray):
             self.__data = arg
         elif isinstance(arg, numbers.Number):
-            self.__data = numpy.zeros((arg2, arg), order = ORDER)
+            self.__data = numpy.zeros((nvec, arg), order = ORDER)
         else:
             raise ValueError \
             ('wrong argument %s in constructor' % repr(type(arg)))

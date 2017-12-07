@@ -164,6 +164,7 @@ class Solver:
         rightX = self.__rightX
         ix = 0
         nx = self.__block_size
+        nz = 0
         res_tol = self.__res_tol
 
 #        print('X:')
@@ -289,6 +290,37 @@ class Solver:
             XBX = XBX[ix : ix + nx, ix : ix + nx]
 
             W.copy(Y)
+            
+            if nz > 0:
+                # compute the conjugation matrix
+                if pro:
+                    W.select(Y.nvec())
+                    B(Y, W)
+                    ZAY = W.dot(AZ)
+                else:
+                    ZAY = Y.dot(AZ)
+                if std:
+                    ZBY = Y.dot(Z)
+                else:
+                    ZBY = Y.dot(BZ)
+                Num = ZAY - numpy.dot(ZBY, numpy.diag(lmd))
+                ny = Y.nvec()
+                Lmd = numpy.ndarray((1, ny))
+                Mu = numpy.ndarray((nz, 1))
+                Lmd[0, :] = lmd
+                Mu[:, 0] = lmdz
+                Den = Mu - Lmd
+                Beta = Num/Den
+                
+                # conjugate search directions
+                AZ.select(ny)
+                Z.mult(Beta, AZ)
+                Y.add(AZ, -1.0)
+                if pro:
+                    BZ.mult(Beta, AZ)
+                    W.add(AZ, -1.0)
+                    BY.select(ny)
+                    W.copy(BY)
 
             if Xc.nvec() > 0 and (P is not None or gen):
                 # orthogonalize Y to Xc
@@ -311,14 +343,14 @@ class Solver:
                 YBY = Y.dot(Y)
             else:
                 BY.select(Y.nvec())
-                B(Y, BY)
+                if not pro or nz == 0:
+                    B(Y, BY)
                 s = numpy.sqrt(BY.dots(Y))
                 Y.scale(s)
                 BY.scale(s)
                 s = numpy.sqrt(BY.dots(Y))
                 XBY = BY.dot(X)
                 YBY = BY.dot(Y)
-    #        print(s)
             YBX = conjugate(XBY)
             GB = numpy.concatenate((XBX, YBX))
             H = numpy.concatenate((XBY, YBY))
@@ -331,7 +363,7 @@ class Solver:
             ny = Y.nvec() # = nx
             ind, dropped, last_piv = piv_chol(U, nx, 1e-4)
             print(ind)
-            print(dropped)
+            print('dropped %d search directions' % dropped)
             
             # re-arrange/drop-linear-dependent search directions
             ny -= dropped
@@ -440,4 +472,3 @@ class Solver:
             ix = ix_new
             leftX = leftX_new
             rightX = rightX_new
-
