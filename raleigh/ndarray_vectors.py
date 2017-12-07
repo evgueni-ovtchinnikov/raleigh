@@ -120,10 +120,10 @@ class NDArrayVectors: #(Vectors):
             if s[i] != 0.0:
                 self.__data[i, :] /= s[i]
     def add(self, other, s):
-        if numpy.isscalar(s):
-            self.__data += s*other.data()
-            return
         f, n = self.__selected;
+        if numpy.isscalar(s):
+            self.__data[f : f + n, :] += s*other.data()
+            return
         for i in range(n):
             self.__data[i, :] += s[i]*other.data(i)
 

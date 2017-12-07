@@ -209,6 +209,7 @@ class Solver:
             # gen: A X - B X lmd
             # pro: A B X - X lmd
             W.select(nx, ix)
+            Y.select(nx)
             AX.copy(W)
             if gen:
                 W.add(BX, -lmd)
@@ -224,7 +225,6 @@ class Solver:
                     Q = W.dot(BXc)
                 else:
                     Q = W.dot(Xc)
-                Y.select(W.nvec())
                 if gen:
                     BXc.mult(Q, Y)
                 else:
@@ -299,7 +299,6 @@ class Solver:
                     Q = Y.dot(BXc)
                 else:
                     Q = Y.dot(Xc)
-                W.select(Y.nvec())
                 Xc.mult(Q, W)
                 Y.add(W, -1.0)
 
@@ -342,6 +341,7 @@ class Solver:
             for i in range(ny):
                 indy[i] -= nx
             Y.copy(W, indy)
+            W.select(ny)
             W.copy(Y)
             Y.select(ny)
             AY.select(ny)
@@ -380,100 +380,64 @@ class Solver:
             else:
                 leftX_new = leftX
                 rightX_new = rightX
+
+            # compute RR coefficients for X and 'old search directions' Z
+            # by re-arranging columns of Q
             QX = numpy.concatenate \
                 ((Q[:, :leftX_new], Q[:, nxy - rightX_new:]), axis = 1)
             QZ = Q[:, leftX_new : nxy - rightX_new]
             lmdz = lmdxy[leftX_new : nxy - rightX_new]
-#            Q = numpy.concatenate((QX, QZ), axis = 1)
             QXX = QX[:nx, :].copy()
             QYX = QX[nx:, :].copy()
             QXZ = QZ[:nx, :].copy()
             QYZ = QZ[nx:, :].copy()
-    #        print(QXX.flags['C_CONTIGUOUS'])
-    #        print(QYX.flags['C_CONTIGUOUS'])
-    #        print(QXZ.flags['C_CONTIGUOUS'])
-    #        print(QYZ.flags['C_CONTIGUOUS'])
-#            QX = numpy.concatenate((QXX, QYX))
-#            G = numpy.dot(QX.T, numpy.dot(GB, QX))
-#            print(G.diagonal())
-#            #I = numpy.dot(QX.T, QX)
-#            I = BX.dot(X)
-#            print(I.diagonal())
     
+            # X and 'old search directions' Z and their A- and B-images
             nx_new = leftX_new + rightX_new
             ix_new = 0
-    #        nz = nxy - nx_new
-    #        if minA:
+            nz = nxy - nx_new
+            W.select(nx_new)
+            Z.select(nx_new)
             AX.mult(QXX, W)
             AY.mult(QYX, Z)
             W.add(Z, 1.0)
+            Z.select(nz)
             AY.mult(QYZ, Z)
             AZ = AY
+            AZ.select(nz)
             AX.mult(QXZ, AZ)
             AX.select(nx_new, ix_new)
             W.copy(AX)
             AZ.add(Z, 1.0)
-    #        if minB:
             if not std:
+                Z.select(nx_new)
                 BX.mult(QXX, W)
                 BY.mult(QYX, Z)
                 W.add(Z, 1.0)
+                Z.select(nz)
                 BY.mult(QYZ, Z)
                 BZ = BY
+                BZ.select(nz)
                 BX.mult(QXZ, BZ)
                 BX.select(nx_new, ix_new)
                 W.copy(BX)
                 BZ.add(Z, 1.0)
             else:
                 BZ = Z
+            Z.select(nx_new)
             X.mult(QXX, W) # W = X*QXX
             Y.mult(QYX, Z)
             W.add(Z, 1.0)
+            Z.select(nz)
             X.mult(QXZ, Z) # Z = X*QXZ
             X.select(nx_new, ix_new)
             W.copy(X)      # X = W
+            W.select(nz)
             Y.mult(QYZ, W) # Z += Y*QYZ
             Z.add(W, 1.0)
+
             nx = nx_new
             ix = ix_new
             leftX = leftX_new
             rightX = rightX_new
 
-##        A(X, AX)
-#        if pro:
-#            XAX = AX.dot(BX)
-#        else:
-#            XAX = AX.dot(X)
-#        XBX = BX.dot(X)
-#        da = XAX.diagonal()
-#        db = XBX.diagonal()
-##        print('diag(XAX):')
-##        print(da)
-##        print('diag(XBX):')
-##        print(db)
-#        lmd = da/db
-#        print('lmd:')
-#        print(lmd)
-#        AX.copy(W)
-#        if gen:
-#            W.add(BX, -lmd)
-#        else:
-#            W.add(X, -lmd)
-#        s = W.dots(W)
-#        print('residual norms:')
-#        print(numpy.sqrt(s))
-
-#        if pro:
-#            ZAZ = AZ.dot(BZ)
-#        else:
-#            ZAZ = AZ.dot(Z)
-#        ZBZ = BZ.dot(Z)
-#        da = ZAZ.diagonal()
-#        db = ZBZ.diagonal()
-#        print('diag(ZAZ):')
-#        print(da)
-#        print('diag(ZBZ):')
-#        print(db)
-#        lmd = da/db
-#        print('lmd:')
-#        print(lmd)

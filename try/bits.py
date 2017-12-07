@@ -119,3 +119,55 @@ Created on Thu Oct 12 16:37:46 2017
 #            GB = numpy.concatenate((GB, H), axis = 1)
 #            err = numpy.dot(U.T, U) - GB
 #            print('UTU err:', nla.norm(err))
+
+            print(QXX.flags['C_CONTIGUOUS'])
+            print(QYX.flags['C_CONTIGUOUS'])
+            print(QXZ.flags['C_CONTIGUOUS'])
+            print(QYZ.flags['C_CONTIGUOUS'])
+#            QX = numpy.concatenate((QXX, QYX))
+#            G = numpy.dot(QX.T, numpy.dot(GB, QX))
+#            print(G.diagonal())
+#            #I = numpy.dot(QX.T, QX)
+#            I = BX.dot(X)
+#            print(I.diagonal())
+
+#            Q = numpy.concatenate((QX, QZ), axis = 1)
+
+##        A(X, AX)
+#        if pro:
+#            XAX = AX.dot(BX)
+#        else:
+#            XAX = AX.dot(X)
+#        XBX = BX.dot(X)
+#        da = XAX.diagonal()
+#        db = XBX.diagonal()
+##        print('diag(XAX):')
+##        print(da)
+##        print('diag(XBX):')
+##        print(db)
+#        lmd = da/db
+#        print('lmd:')
+#        print(lmd)
+#        AX.copy(W)
+#        if gen:
+#            W.add(BX, -lmd)
+#        else:
+#            W.add(X, -lmd)
+#        s = W.dots(W)
+#        print('residual norms:')
+#        print(numpy.sqrt(s))
+
+#        if pro:
+#            ZAZ = AZ.dot(BZ)
+#        else:
+#            ZAZ = AZ.dot(Z)
+#        ZBZ = BZ.dot(Z)
+#        da = ZAZ.diagonal()
+#        db = ZBZ.diagonal()
+#        print('diag(ZAZ):')
+#        print(da)
+#        print('diag(ZBZ):')
+#        print(db)
+#        lmd = da/db
+#        print('lmd:')
+#        print(lmd)
