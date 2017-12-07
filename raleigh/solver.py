@@ -48,15 +48,6 @@ class Problem:
         return self.__type[0]
     def vector(self):
         return self.__vector
-##    def set_type(self, problem_type):
-##        t = problem_type[0]
-##        if t == 's' and B is not None:
-##            print('WARNING: B will be ignored')
-##        elif t != 's' and B is None:
-##            print('WARNING: no B defined, standard problem will be solved')
-##        if t != 's' and t != 'g' and t != 'p':
-##            print('WARNING: unknown problem type, assumed standard')
-##        self.__type = t
 
 class Solver:
     def __init__ \
@@ -110,8 +101,6 @@ class Solver:
             self.__BXc = eigenvectors.clone()
         self.__ind = numpy.ndarray((m,), dtype = numpy.int32)
         self.__lmd = numpy.ndarray((mm,), dtype = numpy.float64)
-#        self.__min_opA = options.min_opA
-#        self.__min_opB = options.min_opB and problem.type() != 's'
         self.__X = vector.new_orthogonal_vectors(m)
         self.__Y = vector.new_vectors(m)
         self.__Z = vector.new_vectors(m)
@@ -134,22 +123,18 @@ class Solver:
 
         problem = self.__problem
         problem_type = problem.type()
-        #vector = problem.vector()
         std = (problem_type == 's')
         gen = (problem_type == 'g')
         pro = (problem_type == 'p')
         A = self.__problem.A()
         B = self.__problem.B()
         P = self.__P
-#        minA = self.__min_opA
-#        minB = self.__min_opB
         m = self.__block_size
         left = self.__left
         right = self.__right
         Xc = self.__Xc
         if not std:
             BXc = self.__BXc
-        lmd = self.lmd
         X = self.__X
         Y = self.__Y
         Z = self.__Z
@@ -167,8 +152,6 @@ class Solver:
         nz = 0
         res_tol = self.__res_tol
 
-#        print('X:')
-#        print(X.data())
         if not std:
             B(X, BX)
         else:
@@ -181,8 +164,6 @@ class Solver:
             XAX = AX.dot(X)
         XBX = BX.dot(X)
         lmd, Q = sla.eigh(XAX, XBX, overwrite_a = True, overwrite_b = True)
-        print('lmd:')
-        print(lmd)
         X.mult(Q, W)
         W.copy(X)
         AX.mult(Q, W)
@@ -191,9 +172,9 @@ class Solver:
             BX.mult(Q, Z)
             Z.copy(BX)
 
-## TODO: the main loop starts here
         for iteration in range(self.__max_iter):
             print('------------- iteration %d' % iteration)
+            print('eigenvalue   residual')
             if pro:
                 XAX = AX.dot(BX)
             else:
@@ -201,9 +182,8 @@ class Solver:
             XBX = BX.dot(X)
             da = XAX.diagonal()
             db = XBX.diagonal()
-            lmd = da/db
-            print('lmd:')
-            print(lmd)
+            self.lmd = da/db
+            lmd = self.lmd
             
             # compute residuals
             # std: A X - X lmd
@@ -233,14 +213,15 @@ class Solver:
                 W.add(Y, -1.0)
             s = W.dots(W)
             self.res = numpy.sqrt(s)
-            print('residual norms:')
-            print(self.res)
+            res = self.res
+            for i in range(nx):
+                print('%e %e' % (lmd[i], res[i]))
     
             ## TODO: estimate errors, 
             lcon = 0
             for i in range(leftX):
                 j = self.__lcon + ix + i
-                if self.res[i] < res_tol:
+                if res[i] < res_tol:
                     print('left eigenvector %d converged' % j)
                     lcon += 1
                 else:
@@ -249,17 +230,17 @@ class Solver:
             rcon = 0
             for i in range(rightX):
                 j = self.__rcon + m - ix - nx + i
-                if self.res[ix + nx - i - 1] < res_tol:
+                if res[ix + nx - i - 1] < res_tol:
                     print('right eigenvector %d converged' % j)
                     rcon += 1
                 else:
                     break
             self.__rcon += rcon
-            ##       move converged X to Xc,
+
+            ## move converged X to Xc,
             if lcon > 0:
                 self.eigenvalues = numpy.concatenate \
                     ((self.eigenvalues, lmd[ix : ix + lcon]))
-                #print(self.eigenvalues)
                 X.select(lcon, ix)
                 Xc.append(X)
                 if not std:
@@ -276,10 +257,8 @@ class Solver:
                     BXc.append(BX)
             if self.__lcon >= left and self.__rcon >= right:
                 break
-            #print(Xc.dimension(), Xc.nvec())
-            #print(BXc.dimension(), BXc.nvec())
-            ##       select Xs, AXs, BXs accordingly
-            #nx = X.nvec()
+
+            ## select Xs, AXs, BXs accordingly
             ix += lcon
             nx -= lcon + rcon
             X.select(nx, ix)
@@ -289,7 +268,10 @@ class Solver:
             XAX = XAX[ix : ix + nx, ix : ix + nx]
             XBX = XBX[ix : ix + nx, ix : ix + nx]
 
-            W.copy(Y)
+            if P is None:
+                W.copy(Y)
+            else:
+                P(W, Y)
             
             if nz > 0:
                 # compute the conjugation matrix
@@ -355,15 +337,14 @@ class Solver:
             GB = numpy.concatenate((XBX, YBX))
             H = numpy.concatenate((XBY, YBY))
             GB = numpy.concatenate((GB, H), axis = 1)
-    #        print('Gram matrix for (X,Y):')
-    #        print(GB)
 
             # do pivoted Cholesky for GB
             U = GB
-            ny = Y.nvec() # = nx
+            ny = Y.nvec()
             ind, dropped, last_piv = piv_chol(U, nx, 1e-4)
-            print(ind)
-            print('dropped %d search directions' % dropped)
+            if dropped > 0:
+                #print(ind)
+                print('dropped %d search directions' % dropped)
             
             # re-arrange/drop-linear-dependent search directions
             ny -= dropped
@@ -399,7 +380,7 @@ class Solver:
             # solve Rayleigh-Ritz eigenproblem
             GA = transform(GA, U)
             lmdxy, Q = sla.eigh(GA)
-            print(lmdxy)
+            #print(lmdxy)
             Q = sla.solve_triangular(U, Q)
 
             # TODO: select new numbers of left and right eigenpairs
@@ -457,16 +438,16 @@ class Solver:
             else:
                 BZ = Z
             Z.select(nx_new)
-            X.mult(QXX, W) # W = X*QXX
+            X.mult(QXX, W)
             Y.mult(QYX, Z)
-            W.add(Z, 1.0)
+            W.add(Z, 1.0) # W = X*QXX + Y*QYX
             Z.select(nz)
-            X.mult(QXZ, Z) # Z = X*QXZ
+            X.mult(QXZ, Z)
             X.select(nx_new, ix_new)
-            W.copy(X)      # X = W
+            W.copy(X)
             W.select(nz)
-            Y.mult(QYZ, W) # Z += Y*QYZ
-            Z.add(W, 1.0)
+            Y.mult(QYZ, W)
+            Z.add(W, 1.0) # Z = X*QXZ + Y*QYZ
 
             nx = nx_new
             ix = ix_new

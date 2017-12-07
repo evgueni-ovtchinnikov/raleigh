@@ -171,3 +171,27 @@ Created on Thu Oct 12 16:37:46 2017
 #        lmd = da/db
 #        print('lmd:')
 #        print(lmd)
+
+            #print(Xc.dimension(), Xc.nvec())
+            #print(BXc.dimension(), BXc.nvec())
+
+##    def set_type(self, problem_type):
+##        t = problem_type[0]
+##        if t == 's' and B is not None:
+##            print('WARNING: B will be ignored')
+##        elif t != 's' and B is None:
+##            print('WARNING: no B defined, standard problem will be solved')
+##        if t != 's' and t != 'g' and t != 'p':
+##            print('WARNING: unknown problem type, assumed standard')
+##        self.__type = t
+
+#        self.__min_opA = options.min_opA
+#        self.__min_opB = options.min_opB and problem.type() != 's'
+
+            #print('residual norms:')
+            #print(res)
+
+#v = NDArrayVectors(numpy.ndarray((0, n)))
+
+    #        print('Gram matrix for (X,Y):')
+    #        print(GB)

@@ -17,7 +17,6 @@ opt = raleigh.solver.Options()
 opt.block_size = 5
 opt.max_iter = 23
 n = 20
-#v = NDArrayVectors(numpy.ndarray((0, n)))
 v = NDArrayVectors(n)
 problem = raleigh.solver.Problem(v, opA, opB, 'product')
 solver = raleigh.solver.Solver(problem, v, opt, (3,3))
