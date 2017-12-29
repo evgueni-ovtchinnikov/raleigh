@@ -4,6 +4,7 @@ RAL EIGensolver for real symmetric and Hermitian problems.
 '''
 
 from raleigh.piv_chol import piv_chol
+import math
 import numpy
 import numpy.linalg as nla
 import scipy.linalg as sla
@@ -101,6 +102,8 @@ class Solver:
             self.__BXc = eigenvectors.clone()
         self.__ind = numpy.ndarray((m,), dtype = numpy.int32)
         self.__lmd = numpy.ndarray((mm,), dtype = numpy.float64)
+        self.__dlmd = numpy.ndarray((m,), dtype = numpy.float64)
+        self.__dX = numpy.ndarray((m,), dtype = numpy.float64)
         self.__X = vector.new_orthogonal_vectors(m)
         self.__Y = vector.new_vectors(m)
         self.__Z = vector.new_vectors(m)
@@ -126,12 +129,16 @@ class Solver:
         std = (problem_type == 's')
         gen = (problem_type == 'g')
         pro = (problem_type == 'p')
+        lmd = self.lmd
+        res = self.res
         A = self.__problem.A()
         B = self.__problem.B()
         P = self.__P
         m = self.__block_size
         left = self.__left
         right = self.__right
+        dlmd = self.__dlmd
+        dX = self.__dX
         Xc = self.__Xc
         if not std:
             BXc = self.__BXc
@@ -163,7 +170,7 @@ class Solver:
             A(X, AX)
             XAX = AX.dot(X)
         XBX = BX.dot(X)
-        lmd, Q = sla.eigh(XAX, XBX, overwrite_a = True, overwrite_b = True)
+        lmd_in, Q = sla.eigh(XAX, XBX, overwrite_a = True, overwrite_b = True)
         X.mult(Q, W)
         W.copy(X)
         AX.mult(Q, W)
@@ -174,7 +181,6 @@ class Solver:
 
         for iteration in range(self.__max_iter):
             print('------------- iteration %d' % iteration)
-            print('eigenvalue   residual')
             if pro:
                 XAX = AX.dot(BX)
             else:
@@ -182,8 +188,12 @@ class Solver:
             XBX = BX.dot(X)
             da = XAX.diagonal()
             db = XBX.diagonal()
-            self.lmd = da/db
-            lmd = self.lmd
+            new_lmd = da/db
+            if iteration > 0:
+                print('eigenvalue shifts (estimated/actual):')
+                for i in range(nx):
+                    print(dlmd[ix + i], new_lmd[i] - lmd[ix + i], dX[ix + i])
+            lmd[ix : ix + nx] = da/db
             
             # compute residuals
             # std: A X - X lmd
@@ -193,9 +203,9 @@ class Solver:
             Y.select(nx)
             AX.copy(W)
             if gen:
-                W.add(BX, -lmd)
+                W.add(BX, -lmd[ix : ix + nx])
             else:
-                W.add(X, -lmd)
+                W.add(X, -lmd[ix : ix + nx])
 
             if Xc.nvec() > 0:
                 # orthogonalize W to Xc
@@ -212,9 +222,9 @@ class Solver:
                     Xc.mult(Q, Y)
                 W.add(Y, -1.0)
             s = W.dots(W)
-            self.res = numpy.sqrt(s)
-            res = self.res
-            for i in range(nx):
+            res[ix : ix + nx] = numpy.sqrt(s)
+            print('eigenvalue   residual')
+            for i in range(ix, ix + nx):
                 print('%e %e' % (lmd[i], res[i]))
     
             ## TODO: estimate errors, 
@@ -378,10 +388,30 @@ class Solver:
             GA = numpy.concatenate((GA, H), axis = 1)
 
             # solve Rayleigh-Ritz eigenproblem
-            GA = transform(GA, U)
-            lmdxy, Q = sla.eigh(GA)
-            #print(lmdxy)
+            # and estimate eigenvalue and eigenvector shifts
+            G = transform(GA, U)
+            YAY = G[nx : nxy, nx : nxy]
+            lmdy, Qy = sla.eigh(YAY)
+            G[:, nx : nxy] = numpy.dot(G[:, nx : nxy], Qy)
+            G[nx : nxy, :nx] = conjugate(G[:nx, nx : nxy])
+            G[nx : nxy, nx : nxy] = numpy.dot(conjugate(Qy), G[nx : nxy, nx : nxy])
+            
+            # estimate eigenvalue shifts
+            Num = G[:nx, nx : nxy]
+            Num = numpy.absolute(Num)
+            Lmd = numpy.ndarray((1, ny))
+            Mu = numpy.ndarray((nx, 1))
+            Lmd[0, :] = lmdy
+            Mu[:, 0] = lmd[ix : ix + nx]
+            Den = Mu - Lmd
+            dX[ix : ix + nx] = nla.norm(Num/Den, axis = 1)
+            Num = Num*Num
+            dlmd[ix : ix + nx] = numpy.sum(Num/Den, axis = 1)
+
+            lmdxy, Q = sla.eigh(G)
+            Q[nx : nxy, :] = numpy.dot(Qy, Q[nx : nxy, :])
             Q = sla.solve_triangular(U, Q)
+            #print(lmdxy)
 
             # TODO: select new numbers of left and right eigenpairs
             if self.__lcon >= left:
@@ -393,6 +423,8 @@ class Solver:
             else:
                 leftX_new = leftX
                 rightX_new = rightX
+#            print('left X: %d %d' % (leftX, leftX_new))
+#            print('right X: %d %d' % (rightX, rightX_new))
 
             # compute RR coefficients for X and 'old search directions' Z
             # by re-arranging columns of Q
@@ -448,6 +480,18 @@ class Solver:
             W.select(nz)
             Y.mult(QYZ, W)
             Z.add(W, 1.0) # Z = X*QXZ + Y*QYZ
+
+#            # re-arrange eigenvalue shifts
+#            for i in range(leftX):
+#                dlmd[ix_new + i] = dlmd[ix + i]
+#            for i in range(leftX, leftX_new):
+#                dlmd[ix_new + i] = 0
+#            last = ix + nx - 1
+#            last_new = ix_new + nx_new - 1
+#            for i in range(rightX):
+#                dlmd[last_new - i] = dlmd[last - i]
+#            for i in range(rightX, rightX_new):
+#                dlmd[last_new - i] = 0
 
             nx = nx_new
             ix = ix_new

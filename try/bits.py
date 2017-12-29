@@ -195,3 +195,24 @@ Created on Thu Oct 12 16:37:46 2017
 
     #        print('Gram matrix for (X,Y):')
     #        print(GB)
+
+#            lmdxy, Q = sla.eigh(GA)
+#            print(lmdxy)
+#            Q = sla.solve_triangular(U, Q)
+
+#            XAX = G[:nx, :nx]
+#            XAY = G[:nx, nx : nxy]
+#            YAX = G[nx : nxy, :nx]
+
+#            for i in range(nx):
+#                s = 0.0
+#                for j in range(ny):
+#                    t = abs(XAY[i, j])
+#                    s += t*t/abs(lmdy[j] - lmd[ix + i])
+#                dlmd[ix + i] = s
+            for i in range(nx):
+                s = 0.0
+                for j in range(ny):
+                    t = abs(G[i, nx + j])/abs(lmdy[j] - lmd[ix + i])
+                    s += t*t
+                dX[ix + i] = math.sqrt(s)
