@@ -403,7 +403,7 @@ class Solver:
             G[nx : nxy, :nx] = conjugate(G[:nx, nx : nxy])
             G[nx : nxy, nx : nxy] = numpy.dot(conjugate(Qy), G[nx : nxy, nx : nxy])
             
-            # estimate eigenvalue shifts
+            # estimate eigenvalue and eigenvector shifts
             Num = G[:nx, nx : nxy]
             Num = numpy.absolute(Num)
             Lmd = numpy.ndarray((1, ny))
@@ -411,6 +411,10 @@ class Solver:
             Lmd[0, :] = lmdy
             Mu[:, 0] = lmd[ix : ix + nx]
             Den = Mu - Lmd
+            # safeguard against division overflow
+            eps = 1e-16
+            exclude = numpy.absolute(Den) < eps*Num
+            Den[exclude] = eps*Num[exclude]
             dX[ix : ix + nx] = nla.norm(Num/Den, axis = 1)
             Num = Num*Num
             dlmd[ix : ix + nx] = numpy.sum(Num/Den, axis = 1)
