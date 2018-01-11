@@ -9,6 +9,8 @@ import numpy
 import numpy.linalg as nla
 import scipy.linalg as sla
 
+RECORDS = 20
+
 def conjugate(a):
     if isinstance(a[0,0], complex):
         return a.conj().T
@@ -52,7 +54,8 @@ class Problem:
 
 class Solver:
     def __init__ \
-    (self, problem, eigenvectors, options = Options(), which = (-1,-1)):
+        (self, problem, eigenvectors, options = Options(), which = (-1,-1)):
+
         vector = problem.vector()
         self.__problem = problem
         problem_type = problem.type()
@@ -98,15 +101,16 @@ class Solver:
         self.__err_est = options.err_est
         self.__res_tol = options.res_tol
         self.__max_iter = options.max_iter
-        self.__lcon = 0
-        self.__rcon = 0
         self.__Xc = eigenvectors
         if not std:
             self.__BXc = eigenvectors.clone()
         self.__ind = numpy.ndarray((m,), dtype = numpy.int32)
         self.__lmd = numpy.ndarray((mm,), dtype = numpy.float64)
-        self.__dlmd = numpy.ndarray((m,), dtype = numpy.float64)
-        self.__dX = numpy.ndarray((m,), dtype = numpy.float64)
+        self.__dlmd = numpy.zeros((m, RECORDS), dtype = numpy.float64)
+        self.__dX = numpy.ones((m,), dtype = numpy.float64)
+        self.__q = numpy.ones((mm,), dtype = numpy.float64)
+        self.__err_lmd = -numpy.ones((mm,), dtype = numpy.float64)
+        self.__err_X = -numpy.ones((mm,), dtype = numpy.float64)
         self.__X = vector.new_orthogonal_vectors(m)
         self.__Y = vector.new_vectors(m)
         self.__Z = vector.new_vectors(m)
@@ -142,6 +146,9 @@ class Solver:
         right = self.__right
         dlmd = self.__dlmd
         dX = self.__dX
+        q = self.__q
+        err_lmd = self.__err_lmd
+        err_X = self.__err_X
         Xc = self.__Xc
         if not std:
             BXc = self.__BXc
@@ -157,6 +164,9 @@ class Solver:
         BZ = None
         leftX = self.__left_block_size
         rightX = m - leftX
+        lconv = 0
+        rconv = 0
+        rec = 0
         ix = 0 # first X
         nx = m
         ny = m
@@ -194,10 +204,15 @@ class Solver:
             db = XBX.diagonal()
             new_lmd = da/db
             if iteration > 0:
-                print('eigenvalue shifts (estimated/actual):')
+                # compute eigenvalue decrements
                 for i in range(nx):
-                    print(dlmd[ix + i], new_lmd[i] - lmd[ix + i], dX[ix + i])
-            lmd[ix : ix + nx] = da/db
+                    delta = lmd[ix + i] - new_lmd[i]
+                    eps = 1e-6*max(abs(new_lmd[i]), abs(lmd[ix + i]))
+                    if abs(delta) > eps:
+                        dlmd[ix + i, rec - 1] = delta
+#                    print(dlmd[ix + i, rec - 1], lmd[ix + i] - new_lmd[i], dX[ix + i])
+                print(numpy.array_str(dlmd[ix : ix + nx, :rec].T, precision = 2))
+            lmd[ix : ix + nx] = new_lmd
             
             # compute residuals
             # std: A X - X lmd
@@ -227,29 +242,59 @@ class Solver:
                 W.add(Y, -1.0)
             s = W.dots(W)
             res[ix : ix + nx] = numpy.sqrt(s)
-            print('eigenvalue   residual')
-            for i in range(ix, ix + nx):
-                print('%e %e' % (lmd[i], res[i]))
     
-            ## TODO: estimate errors, 
+            ## TODO: estimate errors
+            if rec > 3: # sufficient history available
+                for i in range(nx):
+                    if dX[ix + i] > 0.1:
+                        continue
+                    k = 0
+                    s = 0
+                    # go through the last 1/3 of the history
+                    for r in range(rec - 1, rec - rec//3 - 2, -1):
+                        d = dlmd[ix + i, r]
+                        if d == 0:
+                            break
+                        k = k + 1
+                        s = s + d
+                    if k < 2 or s == 0:
+                        continue
+                    # estimate asymptotic convergence factor (a.c.f)
+                    qi = dlmd[ix + i, rec - 1]/s
+                    if qi <= 0:
+                        continue
+                    qi = qi**(1.0/(k - 1))
+                    q[ix + i] = qi # a.c.f. estimate
+                    # esimate error based on a.c.f.
+                    theta = qi/(1 - qi)
+                    d = theta*dlmd[ix + i, rec - 1]
+                    err_lmd[ix + i] = d
+                    qx = math.sqrt(qi)
+                    err_X[ix + i] = dX[ix + i]*qx/(1 - qx)
+
+            print('eigenvalue   residual     errors       a.c.f.')
+            for i in range(ix, ix + nx):
+                print('%e %.1e  %.1e %.1e  %.1e' % \
+                      (lmd[i], res[i], abs(err_lmd[i]), err_X[i], q[i]))
+
             lcon = 0
             for i in range(leftX):
-                j = self.__lcon + ix + i
+                j = lconv + ix + i
                 if res[i] < res_tol:
                     print('left eigenvector %d converged' % j)
                     lcon += 1
                 else:
                     break
-            self.__lcon += lcon
+            lconv += lcon
             rcon = 0
             for i in range(rightX):
-                j = self.__rcon + m - ix - nx + i
+                j = rconv + m - ix - nx + i
                 if res[ix + nx - i - 1] < res_tol:
                     print('right eigenvector %d converged' % j)
                     rcon += 1
                 else:
                     break
-            self.__rcon += rcon
+            rconv += rcon
 
             ## move converged X to Xc,
             if lcon > 0:
@@ -269,7 +314,7 @@ class Solver:
                 if not std:
                     BX.select(rcon, jx - rcon)
                     BXc.append(BX)
-            if self.__lcon >= left and self.__rcon >= right:
+            if lconv >= left and rconv >= right:
                 break
             
             leftX -= lcon
@@ -417,7 +462,12 @@ class Solver:
             Den[exclude] = eps*Num[exclude]
             dX[ix : ix + nx] = nla.norm(Num/Den, axis = 1)
             Num = Num*Num
-            dlmd[ix : ix + nx] = numpy.sum(Num/Den, axis = 1)
+            if rec == RECORDS:
+                for i in range(rec - 1):
+                    dlmd[:, i] = dlmd[:, i + 1]
+            else:
+                rec += 1
+            dlmd[ix : ix + nx, rec - 1] = -numpy.sum(Num/Den, axis = 1)
 
             lmdxy, Q = sla.eigh(G)
             Q[nx : nxy, :] = numpy.dot(Qy, Q[nx : nxy, :])
@@ -431,16 +481,16 @@ class Solver:
                 shift_right = rcon
             else:
                 shift_left = min(lcon, int(round(self.__lr_ratio*ny)))
-                shift_right = ny - shift_left
+                shift_right = min(rcon, ny - shift_left)
 
             # select new numbers of left and right eigenpairs
             # TODO: handle the case of all converged on either side
             leftX_new = leftX + shift_left
             rightX_new = rightX + shift_right
-#            if self.__lcon >= left:
+#            if lconv >= left:
 #                leftX_new = 0
 #                rightX_new = min(nxy, m)
-#            elif self.__rcon >= right:
+#            elif rconv >= right:
 #                leftX_new = min(nxy, m)
 #                rightX_new = 0
 #            else:
@@ -504,26 +554,42 @@ class Solver:
             Y.mult(QYZ, W)
             Z.add(W, 1.0) # Z = X*QXZ + Y*QYZ
 
-            # re-arrange eigenvalues and shifts
+            # re-arrange eigenvalues, shifts etc.
             l = self.__left_block_size
             if shift_left > 0:
                 for i in range(l - shift_left):
                     lmd[i] = lmd[i + shift_left]
-                    dlmd[i] = dlmd[i + shift_left]
+                    dlmd[i, :] = dlmd[i + shift_left, :]
                     dX[i] = dX[i + shift_left]
+                    q[i] = q[i + shift_left]
+                    q[m + i] = q[m + i + shift_left]
+                    err_lmd[i] = err_lmd[i + shift_left]
+                    err_lmd[m + i] = err_lmd[m + i + shift_left]
                 for i in range(l - shift_left, l):
                     lmd[i] = lmdz[i - (l - shift_left)]
-                    dlmd[i] = 0
+                    dlmd[i, :] = 0
                     dX[i] = 0
+                    q[i] = 1.0
+                    q[m + i] = 1.0
+                    err_lmd[i] = -1.0
+                    err_lmd[m + i] = -1.0
             if shift_right > 0:
                 for i in range(m - 1, l + shift_right - 1, -1):
                     lmd[i] = lmd[i - shift_right]
-                    dlmd[i] = dlmd[i - shift_right]
+                    dlmd[i, :] = dlmd[i - shift_right, :]
                     dX[i] = dX[i - shift_right]
+                    q[i] = q[i - shift_right]
+                    q[m + i] = q[m + i - shift_right]
+                    err_lmd[i] = err_lmd[i - shift_right]
+                    err_lmd[m + i] = err_lmd[m + i - shift_right]
                 for i in range(l + shift_right - 1, l - 1, -1):
                     lmd[i] = lmdz[nz - (l + shift_right - i)]
-                    dlmd[i] = 0
+                    dlmd[i, :] = 0
                     dX[i] = 0
+                    q[i] = 1.0
+                    q[m + i] = 1.0
+                    err_lmd[i] = -1.0
+                    err_lmd[m + i] = -1.0
 
             nx = nx_new
             ix = ix_new
