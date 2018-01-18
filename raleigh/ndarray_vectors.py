@@ -125,5 +125,5 @@ class NDArrayVectors: #(Vectors):
             self.__data[f : f + n, :] += s*other.data()
             return
         for i in range(n):
-            self.__data[i, :] += s[i]*other.data(i)
+            self.__data[f + i, :] += s[i]*other.data(i)
 

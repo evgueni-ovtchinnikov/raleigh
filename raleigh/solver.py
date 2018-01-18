@@ -213,9 +213,10 @@ class Solver:
             else:
                 XAX = AX.dot(X)
             XBX = BX.dot(X)
-            print(XBX.shape)
             da = XAX.diagonal()
             db = XBX.diagonal()
+            print(da)
+            print(db)
             new_lmd = da/db
             if iteration > 0:
                 # compute eigenvalue decrements
@@ -241,6 +242,8 @@ class Solver:
                 W.add(BX, -lmd[ix : ix + nx])
             else:
                 W.add(X, -lmd[ix : ix + nx])
+            s = W.dots(W)
+            print(numpy.sqrt(s))
 
             if Xc.nvec() > 0:
                 # orthogonalize W to Xc
@@ -347,11 +350,9 @@ class Solver:
             AX.select(nx, ix)
             if not std:
                 BX.select(nx, ix)
-#            XAX = XAX[ix : ix + nx, ix : ix + nx]
-#            XBX = XBX[ix : ix + nx, ix : ix + nx]
             XAX = XAX[lcon : lcon + nx, lcon : lcon + nx]
             XBX = XBX[lcon : lcon + nx, lcon : lcon + nx]
-            print(ix, nx, XBX.shape)
+#            print(ix, nx, XBX.shape)
 
             if P is None:
                 W.copy(Y)
@@ -370,7 +371,7 @@ class Solver:
                     ZBY = Y.dot(Z)
                 else:
                     ZBY = Y.dot(BZ)
-                print(ZAY.shape, ZBY.shape, ny, numpy.diag(lmd[iy : iy + ny]).shape)
+#                print(ZAY.shape, ZBY.shape, ny, numpy.diag(lmd[iy : iy + ny]).shape)
                 Num = ZAY - numpy.dot(ZBY, numpy.diag(lmd[iy : iy + ny]))
                 ny = Y.nvec()
                 Lmd = numpy.ndarray((1, ny))
@@ -420,7 +421,7 @@ class Solver:
                 XBY = BY.dot(X)
                 YBY = BY.dot(Y)
             YBX = conjugate(XBY)
-            print(nx, X.nvec(), Y.nvec(), XBX.shape, YBX.shape)
+ #           print(nx, X.nvec(), Y.nvec(), XBX.shape, YBX.shape)
             GB = numpy.concatenate((XBX, YBX))
             H = numpy.concatenate((XBY, YBY))
             GB = numpy.concatenate((GB, H), axis = 1)
@@ -512,7 +513,8 @@ class Solver:
                     shift_right = min(rcon, ny - shift_left)
                 print(shift_left, shift_left_max)
                 print(shift_right, shift_right_max)
-#                shift_left = min(shift_left, shift_left_max)
+                # TODO: debug changing ix
+                shift_left = min(shift_left, shift_left_max)
                 shift_right = min(shift_right, shift_right_max)
                 #print(ny, shift_left, nxy)
             else:
@@ -520,15 +522,15 @@ class Solver:
                 shift_right = 0
 
             # select new numbers of left and right eigenpairs
-            if left > 0 and lconv >= left: # left side converged
+            if left > 0 and lcon > 0 and lconv >= left: # left side converged
                 leftX_new = 0
-                rightX_new = min(nxy, block_size)
+                rightX_new = rightX + shift_right #min(nxy, block_size)
                 shift_left = -leftX
                 left_block_size_new = block_size - rightX_new
                 lr_ratio = 0.0
                 ix_new = left_block_size_new
-            elif right > 0 and rconv >= right: # right side converged
-                leftX_new = min(nxy, block_size)
+            elif right > 0 and rcon > 0 and rconv >= right: # right side converged
+                leftX_new = leftX + shift_left #min(nxy, block_size)
                 rightX_new = 0
                 shift_right = -rightX
                 left_block_size_new = leftX_new
@@ -542,7 +544,7 @@ class Solver:
             nx_new = leftX_new + rightX_new
             print('left X: %d %d' % (leftX, leftX_new))
             print('right X: %d %d' % (rightX, rightX_new))
-            print('ix: %d, nx: %d' % (ix_new, nx_new))
+            print('new ix: %d, nx: %d' % (ix_new, nx_new))
 
             # compute RR coefficients for X and 'old search directions' Z
             # by re-arranging columns of Q
@@ -568,6 +570,8 @@ class Solver:
             AZ.select(nz)
             AX.mult(QXZ, AZ)
             AX.select(nx_new, ix_new)
+            print(W.selected())
+            print(AX.selected())
             W.copy(AX)
             AZ.add(Z, 1.0)
             if not std:

@@ -227,3 +227,13 @@ Created on Thu Oct 12 16:37:46 2017
 #                    theta = qi/(1 - qi)
 #                    d = theta*dlmd[ix + i, rec - 1]
 #                    err_lmd[ix + i] = d
+
+#            print(X.selected())
+#            print(AX.selected())
+#            print(BX.selected())
+#            B(X, BX)
+#            A(BX, AX)
+
+#            print(XAX)
+#            print(XBX)
+
