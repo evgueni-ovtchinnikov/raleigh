@@ -216,3 +216,14 @@ Created on Thu Oct 12 16:37:46 2017
                     t = abs(G[i, nx + j])/abs(lmdy[j] - lmd[ix + i])
                     s += t*t
                 dX[ix + i] = math.sqrt(s)
+
+#                    q[m + ix + i] = qi # rough a.c.f. estimate
+#                    if qi > 0.9999999: # too large, skip refinement
+#                        continue
+
+#                    err_lmd[m + ix + i] = d
+#                    qi = (d/(s + d))**(1.0/k)
+#                    q[ix + i] = qi # refined a.c.f. estimate
+#                    theta = qi/(1 - qi)
+#                    d = theta*dlmd[ix + i, rec - 1]
+#                    err_lmd[ix + i] = d

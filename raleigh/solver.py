@@ -54,7 +54,8 @@ class Problem:
 
 class Solver:
     def __init__ \
-        (self, problem, eigenvectors, options = Options(), which = (-1,-1)):
+        (self, problem, eigenvectors, \
+         options = Options(), which = (-1,-1), extra = (-1,-1)):
 
         vector = problem.vector()
         self.__problem = problem
@@ -66,8 +67,16 @@ class Solver:
         right = int(which[1])
         if left == 0 and right == 0:
             raise ValueError('wrong number of needed eigenpairs')
+        extra_left = extra[0]
+        extra_right = extra[1]
+        if extra_left < 0:
+            extra_left = 0 # TODO: set proper default
+        if extra_right < 0:
+            extra_right = 0 # TODO: set proper default
         self.__left = left
         self.__right = right
+        self.__left_total = left + extra_left
+        self.__right_total = right + extra_right
 
         m = int(options.block_size)
         if m < 0:
@@ -141,9 +150,12 @@ class Solver:
         A = self.__problem.A()
         B = self.__problem.B()
         P = self.__P
-        m = self.__block_size
+        block_size = self.__block_size
+        left_block_size = self.__left_block_size
         left = self.__left
         right = self.__right
+        left_total = self.__left_total
+        right_total = self.__right_total
         dlmd = self.__dlmd
         dX = self.__dX
         q = self.__q
@@ -162,14 +174,15 @@ class Solver:
         BY = self.__BY
         AZ = None
         BZ = None
-        leftX = self.__left_block_size
-        rightX = m - leftX
+        leftX = left_block_size
+        rightX = block_size - leftX
+        lr_ratio = self.__lr_ratio
         lconv = 0
         rconv = 0
         rec = 0
         ix = 0 # first X
-        nx = m
-        ny = m
+        nx = block_size
+        ny = block_size
         nz = 0
         res_tol = self.__res_tol
 
@@ -200,12 +213,15 @@ class Solver:
             else:
                 XAX = AX.dot(X)
             XBX = BX.dot(X)
+            print(XBX.shape)
             da = XAX.diagonal()
             db = XBX.diagonal()
             new_lmd = da/db
             if iteration > 0:
                 # compute eigenvalue decrements
                 for i in range(nx):
+                    if dlmd[ix + i, rec - 1] == 0: # previous data not available
+                        continue
                     delta = lmd[ix + i] - new_lmd[i]
                     eps = 1e-6*max(abs(new_lmd[i]), abs(lmd[ix + i]))
                     if abs(delta) > eps:
@@ -279,8 +295,8 @@ class Solver:
 
             lcon = 0
             for i in range(leftX):
-                j = lconv + ix + i
-                if res[i] < res_tol:
+                j = lconv + i
+                if res[ix + i] < res_tol:
                     print('left eigenvector %d converged' % j)
                     lcon += 1
                 else:
@@ -288,7 +304,7 @@ class Solver:
             lconv += lcon
             rcon = 0
             for i in range(rightX):
-                j = rconv + m - ix - nx + i
+                j = rconv + i
                 if res[ix + nx - i - 1] < res_tol:
                     print('right eigenvector %d converged' % j)
                     rcon += 1
@@ -314,21 +330,28 @@ class Solver:
                 if not std:
                     BX.select(rcon, jx - rcon)
                     BXc.append(BX)
-            if lconv >= left and rconv >= right:
+            left_converged = left >= 0 and lconv >= left
+            right_converged = right >= 0 and rconv >= right
+            if left_converged and right_converged:
                 break
             
             leftX -= lcon
             rightX -= rcon
             
             ## select Xs, AXs, BXs accordingly
+            iy = ix
+            ny = nx
             ix += lcon
             nx -= lcon + rcon
             X.select(nx, ix)
             AX.select(nx, ix)
             if not std:
                 BX.select(nx, ix)
-            XAX = XAX[ix : ix + nx, ix : ix + nx]
-            XBX = XBX[ix : ix + nx, ix : ix + nx]
+#            XAX = XAX[ix : ix + nx, ix : ix + nx]
+#            XBX = XBX[ix : ix + nx, ix : ix + nx]
+            XAX = XAX[lcon : lcon + nx, lcon : lcon + nx]
+            XBX = XBX[lcon : lcon + nx, lcon : lcon + nx]
+            print(ix, nx, XBX.shape)
 
             if P is None:
                 W.copy(Y)
@@ -347,11 +370,12 @@ class Solver:
                     ZBY = Y.dot(Z)
                 else:
                     ZBY = Y.dot(BZ)
-                Num = ZAY - numpy.dot(ZBY, numpy.diag(lmd))
+                print(ZAY.shape, ZBY.shape, ny, numpy.diag(lmd[iy : iy + ny]).shape)
+                Num = ZAY - numpy.dot(ZBY, numpy.diag(lmd[iy : iy + ny]))
                 ny = Y.nvec()
                 Lmd = numpy.ndarray((1, ny))
                 Mu = numpy.ndarray((nz, 1))
-                Lmd[0, :] = lmd
+                Lmd[0, :] = lmd[iy : iy + ny]
                 Mu[:, 0] = lmdz
                 Den = Mu - Lmd
                 Beta = Num/Den
@@ -396,6 +420,7 @@ class Solver:
                 XBY = BY.dot(X)
                 YBY = BY.dot(Y)
             YBX = conjugate(XBY)
+            print(nx, X.nvec(), Y.nvec(), XBX.shape, YBX.shape)
             GB = numpy.concatenate((XBX, YBX))
             H = numpy.concatenate((XBY, YBY))
             GB = numpy.concatenate((GB, H), axis = 1)
@@ -406,7 +431,7 @@ class Solver:
             ind, dropped, last_piv = piv_chol(U, nx, 1e-4)
             if dropped > 0:
                 #print(ind)
-                print('dropped %d search directions' % dropped)
+                print('dropped %d search directions out of %d' % (dropped, ny))
             
             # re-arrange/drop-linear-dependent search directions
             ny -= dropped
@@ -476,28 +501,48 @@ class Solver:
 
             # TODO: compute proper shifts in the case of known number of
             # wanted eigenpairs
-            if lcon + rcon <= ny:
-                shift_left = lcon
-                shift_right = rcon
+            if lcon + rcon > 0:
+                shift_left_max = max(0, left_total - lconv - leftX)
+                shift_right_max = max(0, right_total - rconv - rightX)
+                if lcon + rcon <= ny:
+                    shift_left = lcon
+                    shift_right = rcon
+                else:
+                    shift_left = min(lcon, int(round(lr_ratio*ny)))
+                    shift_right = min(rcon, ny - shift_left)
+                print(shift_left, shift_left_max)
+                print(shift_right, shift_right_max)
+#                shift_left = min(shift_left, shift_left_max)
+                shift_right = min(shift_right, shift_right_max)
+                #print(ny, shift_left, nxy)
             else:
-                shift_left = min(lcon, int(round(self.__lr_ratio*ny)))
-                shift_right = min(rcon, ny - shift_left)
+                shift_left = 0
+                shift_right = 0
 
             # select new numbers of left and right eigenpairs
-            # TODO: handle the case of all converged on either side
-            leftX_new = leftX + shift_left
-            rightX_new = rightX + shift_right
-#            if lconv >= left:
-#                leftX_new = 0
-#                rightX_new = min(nxy, m)
-#            elif rconv >= right:
-#                leftX_new = min(nxy, m)
-#                rightX_new = 0
-#            else:
-#                leftX_new = leftX
-#                rightX_new = rightX
-#            print('left X: %d %d' % (leftX, leftX_new))
-#            print('right X: %d %d' % (rightX, rightX_new))
+            if left > 0 and lconv >= left: # left side converged
+                leftX_new = 0
+                rightX_new = min(nxy, block_size)
+                shift_left = -leftX
+                left_block_size_new = block_size - rightX_new
+                lr_ratio = 0.0
+                ix_new = left_block_size_new
+            elif right > 0 and rconv >= right: # right side converged
+                leftX_new = min(nxy, block_size)
+                rightX_new = 0
+                shift_right = -rightX
+                left_block_size_new = leftX_new
+                lr_ratio = 1.0
+                ix_new = ix - shift_left
+            else:
+                leftX_new = leftX + shift_left
+                rightX_new = rightX + shift_right
+                left_block_size_new = left_block_size
+                ix_new = ix - shift_left
+            nx_new = leftX_new + rightX_new
+            print('left X: %d %d' % (leftX, leftX_new))
+            print('right X: %d %d' % (rightX, rightX_new))
+            print('ix: %d, nx: %d' % (ix_new, nx_new))
 
             # compute RR coefficients for X and 'old search directions' Z
             # by re-arranging columns of Q
@@ -511,8 +556,6 @@ class Solver:
             QYZ = QZ[nx:, :].copy()
     
             # X and 'old search directions' Z and their A- and B-images
-            nx_new = leftX_new + rightX_new
-            ix_new = ix - shift_left
             nz = nxy - nx_new
             W.select(nx_new)
             Z.select(nx_new)
@@ -555,7 +598,9 @@ class Solver:
             Z.add(W, 1.0) # Z = X*QXZ + Y*QYZ
 
             # re-arrange eigenvalues, shifts etc.
-            l = self.__left_block_size
+            m = block_size
+            l = left_block_size
+            nl = left_block_size_new
             if shift_left > 0:
                 for i in range(l - shift_left):
                     lmd[i] = lmd[i + shift_left]
@@ -565,8 +610,8 @@ class Solver:
                     q[m + i] = q[m + i + shift_left]
                     err_lmd[i] = err_lmd[i + shift_left]
                     err_lmd[m + i] = err_lmd[m + i + shift_left]
-                for i in range(l - shift_left, l):
-                    lmd[i] = lmdz[i - (l - shift_left)]
+            if shift_left >= 0:
+                for i in range(l - shift_left, nl):
                     dlmd[i, :] = 0
                     dX[i] = 0
                     q[i] = 1.0
@@ -582,8 +627,8 @@ class Solver:
                     q[m + i] = q[m + i - shift_right]
                     err_lmd[i] = err_lmd[i - shift_right]
                     err_lmd[m + i] = err_lmd[m + i - shift_right]
-                for i in range(l + shift_right - 1, l - 1, -1):
-                    lmd[i] = lmdz[nz - (l + shift_right - i)]
+            if shift_right >= 0:
+                for i in range(l + shift_right - 1, nl - 1, -1):
                     dlmd[i, :] = 0
                     dX[i] = 0
                     q[i] = 1.0
@@ -595,3 +640,5 @@ class Solver:
             ix = ix_new
             leftX = leftX_new
             rightX = rightX_new
+            left_block_size = left_block_size_new
+            #print(ix, leftX, rightX, left_block_size)

@@ -15,7 +15,7 @@ def opB(x, y):
 
 opt = raleigh.solver.Options()
 opt.block_size = 5
-opt.max_iter = 23
+opt.max_iter = 30
 n = 40
 v = NDArrayVectors(n)
 problem = raleigh.solver.Problem(v, opA, opB, 'product')
