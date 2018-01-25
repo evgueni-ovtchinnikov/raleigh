@@ -237,3 +237,48 @@ Created on Thu Oct 12 16:37:46 2017
 #            print(XAX)
 #            print(XBX)
 
+            W.select(ny)
+            print(Y.selected())
+            print(W.selected())
+            B(Y, W)
+            W.add(BY, -1.0)
+            s = W.dots(W)
+            print('BY err: ', s)
+
+            W.select(ny)
+            B(Y, W)
+            W.add(BY, -1.0)
+            s = W.dots(W)
+            print('BY err: ', s)
+
+            W.select(nx)
+            B(X, W)
+            W.add(BX, -1.0)
+            s = W.dots(W)
+            print('BX err: ', s)
+            W.select(ny)
+            B(Y, W)
+            W.add(BY, -1.0)
+            s = W.dots(W)
+            print('BY err: ', s)
+
+            W.select(nx_new)
+            A(BX, W)
+            W.add(AX, -1.0)
+            s = W.dots(W)
+            print('A err: ', s)
+            W.select(nx_new)
+            B(X, W)
+            W.add(BX, -1.0)
+            s = W.dots(W)
+            print('B err: ', s)
+
+#                elif gen:
+#                    BY.select(ny)
+#                    B(Y, BY)
+#            elif not std:
+#                ny = Y.nvec()
+#                BY.select(ny)
+#                B(Y, BY)
+
+#                    print(dlmd[ix + i, rec - 1], lmd[ix + i] - new_lmd[i], dX[ix + i])

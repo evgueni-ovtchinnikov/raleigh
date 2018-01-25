@@ -215,8 +215,8 @@ class Solver:
             XBX = BX.dot(X)
             da = XAX.diagonal()
             db = XBX.diagonal()
-            print(da)
-            print(db)
+#            print(da)
+#            print(db)
             new_lmd = da/db
             if iteration > 0:
                 # compute eigenvalue decrements
@@ -227,7 +227,7 @@ class Solver:
                     eps = 1e-6*max(abs(new_lmd[i]), abs(lmd[ix + i]))
                     if abs(delta) > eps:
                         dlmd[ix + i, rec - 1] = delta
-#                    print(dlmd[ix + i, rec - 1], lmd[ix + i] - new_lmd[i], dX[ix + i])
+                print('eigenvalues shifts history:')
                 print(numpy.array_str(dlmd[ix : ix + nx, :rec].T, precision = 2))
             lmd[ix : ix + nx] = new_lmd
             
@@ -243,7 +243,7 @@ class Solver:
             else:
                 W.add(X, -lmd[ix : ix + nx])
             s = W.dots(W)
-            print(numpy.sqrt(s))
+#            print(numpy.sqrt(s))
 
             if Xc.nvec() > 0:
                 # orthogonalize W to Xc
@@ -359,6 +359,7 @@ class Solver:
             else:
                 P(W, Y)
             
+#            print('nz: %d' % nz)
             if nz > 0:
                 # compute the conjugation matrix
                 if pro:
@@ -385,7 +386,7 @@ class Solver:
                 AZ.select(ny)
                 Z.mult(Beta, AZ)
                 Y.add(AZ, -1.0)
-                if pro:
+                if pro: # if gen of nz == 0, BY computed later
                     BZ.mult(Beta, AZ)
                     W.add(AZ, -1.0)
                     BY.select(ny)
@@ -420,6 +421,7 @@ class Solver:
                 s = numpy.sqrt(BY.dots(Y))
                 XBY = BY.dot(X)
                 YBY = BY.dot(Y)
+
             YBX = conjugate(XBY)
  #           print(nx, X.nvec(), Y.nvec(), XBX.shape, YBX.shape)
             GB = numpy.concatenate((XBX, YBX))
@@ -441,8 +443,8 @@ class Solver:
             indy = ind[nx: nxy]
             for i in range(ny):
                 indy[i] -= nx
-            Y.copy(W, indy)
             W.select(ny)
+            Y.copy(W, indy)
             W.copy(Y)
             Y.select(ny)
             AY.select(ny)
@@ -523,6 +525,7 @@ class Solver:
 
             # select new numbers of left and right eigenpairs
             if left > 0 and lcon > 0 and lconv >= left: # left side converged
+                print('left side converged')
                 leftX_new = 0
                 rightX_new = rightX + shift_right #min(nxy, block_size)
                 shift_left = -leftX
@@ -530,12 +533,15 @@ class Solver:
                 lr_ratio = 0.0
                 ix_new = left_block_size_new
             elif right > 0 and rcon > 0 and rconv >= right: # right side converged
-                leftX_new = leftX + shift_left #min(nxy, block_size)
+                print('right side converged')
+                ix_new = ix - shift_left
+                leftX_new = min(nxy, block_size - ix_new)
+#                leftX_new = leftX + shift_left
                 rightX_new = 0
                 shift_right = -rightX
-                left_block_size_new = leftX_new
+                left_block_size_new = block_size
+#                left_block_size_new = leftX_new
                 lr_ratio = 1.0
-                ix_new = ix - shift_left
             else:
                 leftX_new = leftX + shift_left
                 rightX_new = rightX + shift_right
@@ -544,7 +550,7 @@ class Solver:
             nx_new = leftX_new + rightX_new
             print('left X: %d %d' % (leftX, leftX_new))
             print('right X: %d %d' % (rightX, rightX_new))
-            print('new ix: %d, nx: %d' % (ix_new, nx_new))
+            print('new ix: %d, nx: %d, nxy: %d' % (ix_new, nx_new, nxy))
 
             # compute RR coefficients for X and 'old search directions' Z
             # by re-arranging columns of Q
@@ -563,30 +569,34 @@ class Solver:
             Z.select(nx_new)
             AX.mult(QXX, W)
             AY.mult(QYX, Z)
-            W.add(Z, 1.0)
+            W.add(Z, 1.0) # W = AX*QXX + AY*QYX
             Z.select(nz)
-            AY.mult(QYZ, Z)
-            AZ = AY
-            AZ.select(nz)
-            AX.mult(QXZ, AZ)
+            if nz > 0:
+                AY.mult(QYZ, Z)
+                AZ = AY
+                AZ.select(nz)
+                AX.mult(QXZ, AZ)
             AX.select(nx_new, ix_new)
-            print(W.selected())
-            print(AX.selected())
+#            print(W.selected())
+#            print(AX.selected())
             W.copy(AX)
-            AZ.add(Z, 1.0)
+            if nz > 0:
+                AZ.add(Z, 1.0) # Z = AX*QXZ + AY*QYZ
             if not std:
                 Z.select(nx_new)
                 BX.mult(QXX, W)
                 BY.mult(QYX, Z)
                 W.add(Z, 1.0)
                 Z.select(nz)
-                BY.mult(QYZ, Z)
-                BZ = BY
-                BZ.select(nz)
-                BX.mult(QXZ, BZ)
+                if nz > 0:
+                    BY.mult(QYZ, Z)
+                    BZ = BY
+                    BZ.select(nz)
+                    BX.mult(QXZ, BZ)
                 BX.select(nx_new, ix_new)
                 W.copy(BX)
-                BZ.add(Z, 1.0)
+                if nz > 0:
+                    BZ.add(Z, 1.0)
             else:
                 BZ = Z
             Z.select(nx_new)
@@ -594,13 +604,15 @@ class Solver:
             Y.mult(QYX, Z)
             W.add(Z, 1.0) # W = X*QXX + Y*QYX
             Z.select(nz)
-            X.mult(QXZ, Z)
+            if nz > 0:
+                X.mult(QXZ, Z)
             X.select(nx_new, ix_new)
             W.copy(X)
-            W.select(nz)
-            Y.mult(QYZ, W)
-            Z.add(W, 1.0) # Z = X*QXZ + Y*QYZ
-
+            if nz > 0:
+                W.select(nz)
+                Y.mult(QYZ, W)
+                Z.add(W, 1.0) # Z = X*QXZ + Y*QYZ
+                
             # re-arrange eigenvalues, shifts etc.
             m = block_size
             l = left_block_size
