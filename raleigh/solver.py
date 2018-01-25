@@ -66,7 +66,10 @@ class Solver:
         left = int(which[0])
         right = int(which[1])
         if left == 0 and right == 0:
-            raise ValueError('wrong number of needed eigenpairs')
+            try:
+                raise ValueError('No eigenpairs requested, quit')
+            except:
+                return
         extra_left = extra[0]
         extra_right = extra[1]
         if extra_left < 0:
@@ -83,7 +86,12 @@ class Solver:
             if left < 0 or right < 0:
                 m = 16
             else:
-                m = max(2, left + right)
+                m = max(2, left + extra_left + right + extra_right)
+        elif m < 2:
+            try:
+                raise ValueError('Block size 1 too small')
+            except:
+                print('Will use 2 instead')
         mm = m + m
         self.__block_size = m
 
@@ -505,8 +513,14 @@ class Solver:
             # TODO: compute proper shifts in the case of known number of
             # wanted eigenpairs
             if lcon + rcon > 0:
-                shift_left_max = max(0, left_total - lconv - leftX)
-                shift_right_max = max(0, right_total - rconv - rightX)
+                if left < 0:
+                    shift_left_max = lcon
+                else:
+                    shift_left_max = max(0, left_total - lconv - leftX)
+                if right < 0:
+                    shift_right_max = rcon
+                else:
+                    shift_right_max = max(0, right_total - rconv - rightX)
                 if lcon + rcon <= ny:
                     shift_left = lcon
                     shift_right = rcon
