@@ -282,3 +282,47 @@ Created on Thu Oct 12 16:37:46 2017
 #                B(Y, BY)
 
 #                    print(dlmd[ix + i, rec - 1], lmd[ix + i] - new_lmd[i], dX[ix + i])
+
+#        extra_left = extra[0]
+#        extra_right = extra[1]
+#        if extra_left < 0:
+#            extra_left = 0 # TODO: set proper default
+#        if extra_right < 0:
+#            extra_right = 0 # TODO: set proper default
+#        left_total = left + extra_left
+#        right_total = right + extra_right
+
+#            if left < 0 or right < 0:
+#                m = 16
+#            else:
+#                m = max(2, left_total + right_total)
+
+def block_size(left, right):
+    threads = 8
+    if left == 0 and right == 0:
+        return 0
+    if left <= 0 and right <= 0:
+        return 2*threads
+    left_total = 0
+    right_total = 0
+    if left > 0:
+        left_total = int(round(left*1.2))
+    if right > 0:
+        right_total = int(round(right*1.2))
+    if left < 0:
+        left_total = right_total
+    if right < 0:
+        right_total = left_total
+    m = int(left_total + right_total)
+    m = 8*((m - 1)//8 + 1)
+    if left < 0 or right < 0:
+        m = max(m, 2*threads)
+    return m
+
+#while True:
+#    left = int(input('left: '))
+#    if left == 999:
+#        break
+#    right = int(input('right: '))
+#    m = block_size(left, right)
+#    print('block size: %d' % m)

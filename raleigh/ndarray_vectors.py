@@ -71,9 +71,9 @@ class NDArrayVectors: #(Vectors):
         self.__selected = (first, nv)
     def select_all(self):
         self.select(self.__data.shape[0])
-    def fill(self, array):
+    def fill(self, array_or_value):
         f, n = self.__selected;
-        self.__data[f : f + n, :] = array
+        self.__data[f : f + n, :] = array_or_value
     def data(self, i = None):
         f, n = self.__selected
         if i is None:

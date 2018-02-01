@@ -21,12 +21,13 @@ def opP(x, y):
 opt = raleigh.solver.Options()
 opt.block_size = 5
 opt.max_iter = 30
-n = 80
+n = 160
 v = NDArrayVectors(n)
 problem = raleigh.solver.Problem(v, opA, opB, 'product')
 solver = raleigh.solver.Solver(problem)
 solver.set_preconditioner(opP)
 solver.solve(v, opt, (3,0))
+#solver.solve(v, opt, (3,3))
 print('%d converged eigenvalues are:' % v.nvec())
 print(solver.eigenvalues)
 #solver.solve(v, opt, (2,1))

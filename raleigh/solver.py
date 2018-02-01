@@ -22,14 +22,36 @@ def transform(A, U):
     A = sla.solve_triangular(conjugate(U), conjugate(B), lower = True)
     return A
 
+def default_block_size(left, right, threads):
+    if threads <= 0:
+        threads = 8
+    if left == 0 and right == 0:
+        return 0
+    if left <= 0 and right <= 0:
+        return 2*threads
+    left_total = 0
+    right_total = 0
+    if left > 0:
+        left_total = int(math.floor(left*1.2))
+    if right > 0:
+        right_total = int(math.floor(right*1.2))
+    if left < 0:
+        left_total = right_total
+    if right < 0:
+        right_total = left_total
+    m = int(left_total + right_total)
+    m = 8*((m - 1)//8 + 1)
+    if left < 0 or right < 0:
+        m = max(m, 2*threads)
+    return m
+
 class Options:
     def __init__(self):
-        self.block_size = 16
-#        self.min_opA = True
-#        self.min_opB = True
         self.err_est = 0
         self.res_tol = 1e-2
         self.max_iter = 10
+        self.block_size = -1
+        self.threads = -1
 
 class Problem:
     def __init__(self, v, A, B = None, prod = None):
@@ -71,21 +93,10 @@ class Solver:
                 raise ValueError('No eigenpairs requested, quit')
             except:
                 return
-        extra_left = extra[0]
-        extra_right = extra[1]
-        if extra_left < 0:
-            extra_left = 0 # TODO: set proper default
-        if extra_right < 0:
-            extra_right = 0 # TODO: set proper default
-        left_total = left + extra_left
-        right_total = right + extra_right
 
         m = int(options.block_size)
         if m < 0:
-            if left < 0 or right < 0:
-                m = 16
-            else:
-                m = max(2, left_total + right_total)
+            m = default_block_size(left, right, options.threads)
         elif m < 2:
             try:
                 raise ValueError('Block size 1 too small')
@@ -109,6 +120,12 @@ class Solver:
             l = m - 1
         lr_ratio = r
         left_block_size = l
+        if left >= 0:
+            left_total = max(left, left_block_size)
+            print('left total: %d' % left_total)
+        if right >= 0:
+            right_total = max(right, block_size - left_block_size)
+            print('right_total: %d' % right_total)
         print('left block size %d, right block size %d' % (l, m - l))
 
         problem = self.__problem
@@ -163,8 +180,6 @@ class Solver:
         BZ = None
         leftX = left_block_size
         rightX = block_size - leftX
-#        lconv = 0
-#        rconv = 0
         rec = 0
         ix = 0 # first X
         nx = block_size
@@ -408,7 +423,8 @@ class Solver:
                 s = numpy.sqrt(Y.dots(Y))
                 Y.scale(s)
                 s = numpy.sqrt(Y.dots(Y))
-                XBY = Y.dot(X)
+                if nx > 0:
+                    XBY = Y.dot(X)
                 YBY = Y.dot(Y)
             else:
                 BY.select(Y.nvec())
@@ -418,14 +434,17 @@ class Solver:
                 Y.scale(s)
                 BY.scale(s)
                 s = numpy.sqrt(BY.dots(Y))
-                XBY = BY.dot(X)
+                if nx > 0:
+                    XBY = BY.dot(X)
                 YBY = BY.dot(Y)
 
-            YBX = conjugate(XBY)
- #           print(nx, X.nvec(), Y.nvec(), XBX.shape, YBX.shape)
-            GB = numpy.concatenate((XBX, YBX))
-            H = numpy.concatenate((XBY, YBY))
-            GB = numpy.concatenate((GB, H), axis = 1)
+            if nx > 0:
+                YBX = conjugate(XBY)
+                GB = numpy.concatenate((XBX, YBX))
+                H = numpy.concatenate((XBY, YBY))
+                GB = numpy.concatenate((GB, H), axis = 1)
+            else:
+                GB = YBY
 
             # do pivoted Cholesky for GB
             U = GB
@@ -455,16 +474,21 @@ class Solver:
             # compute A-Gram matrix for (X,Y)
             if pro:
                 A(BY, AY)
-                XAY = AY.dot(BX)
+                if nx > 0:
+                    XAY = AY.dot(BX)
                 YAY = AY.dot(BY)
             else:
                 A(Y, AY)
-                XAY = AY.dot(X)
+                if nx > 0:
+                    XAY = AY.dot(X)
                 YAY = AY.dot(Y)
-            YAX = conjugate(XAY)
-            GA = numpy.concatenate((XAX, YAX))
-            H = numpy.concatenate((XAY, YAY))
-            GA = numpy.concatenate((GA, H), axis = 1)
+            if nx > 0:
+                YAX = conjugate(XAY)
+                GA = numpy.concatenate((XAX, YAX))
+                H = numpy.concatenate((XAY, YAY))
+                GA = numpy.concatenate((GA, H), axis = 1)
+            else:
+                GA = YAY
 
             # solve Rayleigh-Ritz eigenproblem
             # and estimate eigenvalue and eigenvector shifts
@@ -472,29 +496,31 @@ class Solver:
             YAY = G[nx : nxy, nx : nxy]
             lmdy, Qy = sla.eigh(YAY)
             G[:, nx : nxy] = numpy.dot(G[:, nx : nxy], Qy)
-            G[nx : nxy, :nx] = conjugate(G[:nx, nx : nxy])
+            if nx > 0:
+                G[nx : nxy, :nx] = conjugate(G[:nx, nx : nxy])
             G[nx : nxy, nx : nxy] = numpy.dot(conjugate(Qy), G[nx : nxy, nx : nxy])
             
             # estimate eigenvalue and eigenvector shifts
-            Num = G[:nx, nx : nxy]
-            Num = numpy.absolute(Num)
-            Lmd = numpy.ndarray((1, ny))
-            Mu = numpy.ndarray((nx, 1))
-            Lmd[0, :] = lmdy
-            Mu[:, 0] = lmd[ix : ix + nx]
-            Den = Mu - Lmd
-            # safeguard against division overflow
-            eps = 1e-16
-            exclude = numpy.absolute(Den) < eps*Num
-            Den[exclude] = eps*Num[exclude]
-            dX[ix : ix + nx] = nla.norm(Num/Den, axis = 1)
-            Num = Num*Num
-            if rec == RECORDS:
-                for i in range(rec - 1):
-                    dlmd[:, i] = dlmd[:, i + 1]
-            else:
-                rec += 1
-            dlmd[ix : ix + nx, rec - 1] = -numpy.sum(Num/Den, axis = 1)
+            if nx > 0:
+                Num = G[:nx, nx : nxy]
+                Num = numpy.absolute(Num)
+                Lmd = numpy.ndarray((1, ny))
+                Mu = numpy.ndarray((nx, 1))
+                Lmd[0, :] = lmdy
+                Mu[:, 0] = lmd[ix : ix + nx]
+                Den = Mu - Lmd
+                # safeguard against division overflow
+                eps = 1e-16
+                exclude = numpy.absolute(Den) < eps*Num
+                Den[exclude] = eps*Num[exclude]
+                dX[ix : ix + nx] = nla.norm(Num/Den, axis = 1)
+                Num = Num*Num
+                if rec == RECORDS:
+                    for i in range(rec - 1):
+                        dlmd[:, i] = dlmd[:, i + 1]
+                else:
+                    rec += 1
+                dlmd[ix : ix + nx, rec - 1] = -numpy.sum(Num/Den, axis = 1)
 
             lmdxy, Q = sla.eigh(G)
             Q[nx : nxy, :] = numpy.dot(Qy, Q[nx : nxy, :])
@@ -538,11 +564,9 @@ class Solver:
                 print('right side converged')
                 ix_new = ix - shift_left
                 leftX_new = min(nxy, block_size - ix_new)
-#                leftX_new = leftX + shift_left
                 rightX_new = 0
                 shift_right = -rightX
                 left_block_size_new = block_size
-#                left_block_size_new = leftX_new
                 lr_ratio = 1.0
             else:
                 leftX_new = leftX + shift_left
@@ -560,41 +584,53 @@ class Solver:
                 ((Q[:, :leftX_new], Q[:, nxy - rightX_new:]), axis = 1)
             QZ = Q[:, leftX_new : nxy - rightX_new]
             lmdz = lmdxy[leftX_new : nxy - rightX_new]
-            QXX = QX[:nx, :].copy()
+            if nx > 0:
+                QXX = QX[:nx, :].copy()
             QYX = QX[nx:, :].copy()
-            QXZ = QZ[:nx, :].copy()
+            if nx > 0:
+                QXZ = QZ[:nx, :].copy()
             QYZ = QZ[nx:, :].copy()
     
             # X and 'old search directions' Z and their A- and B-images
             nz = nxy - nx_new
             W.select(nx_new)
             Z.select(nx_new)
-            AX.mult(QXX, W)
-            AY.mult(QYX, Z)
-            W.add(Z, 1.0) # W = AX*QXX + AY*QYX
+            if nx > 0:
+                AX.mult(QXX, W)
+                AY.mult(QYX, Z)
+                W.add(Z, 1.0) # W = AX*QXX + AY*QYX
+            else:
+                AY.mult(QYX, W)
             Z.select(nz)
             if nz > 0:
                 AY.mult(QYZ, Z)
                 AZ = AY
                 AZ.select(nz)
-                AX.mult(QXZ, AZ)
+                if nx > 0:
+                    AX.mult(QXZ, AZ)
+                else:
+                    AZ.fill(0.0)
             AX.select(nx_new, ix_new)
-#            print(W.selected())
-#            print(AX.selected())
             W.copy(AX)
             if nz > 0:
                 AZ.add(Z, 1.0) # Z = AX*QXZ + AY*QYZ
             if not std:
                 Z.select(nx_new)
-                BX.mult(QXX, W)
-                BY.mult(QYX, Z)
-                W.add(Z, 1.0)
+                if nx > 0:
+                    BX.mult(QXX, W)
+                    BY.mult(QYX, Z)
+                    W.add(Z, 1.0)
+                else:
+                    BY.mult(QYX, W)
                 Z.select(nz)
                 if nz > 0:
                     BY.mult(QYZ, Z)
                     BZ = BY
                     BZ.select(nz)
-                    BX.mult(QXZ, BZ)
+                    if nx > 0:
+                        BX.mult(QXZ, BZ)
+                    else:
+                        BZ.fill(0.0)
                 BX.select(nx_new, ix_new)
                 W.copy(BX)
                 if nz > 0:
@@ -602,12 +638,18 @@ class Solver:
             else:
                 BZ = Z
             Z.select(nx_new)
-            X.mult(QXX, W)
-            Y.mult(QYX, Z)
-            W.add(Z, 1.0) # W = X*QXX + Y*QYX
+            if nx > 0:
+                X.mult(QXX, W)
+                Y.mult(QYX, Z)
+                W.add(Z, 1.0) # W = X*QXX + Y*QYX
+            else:
+                Y.mult(QYX, W)
             Z.select(nz)
             if nz > 0:
-                X.mult(QXZ, Z)
+                if nx > 0:
+                    X.mult(QXZ, Z)
+                else:
+                    Z.fill(0.0)
             X.select(nx_new, ix_new)
             W.copy(X)
             if nz > 0:
