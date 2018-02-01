@@ -53,15 +53,16 @@ class Problem:
         return self.__vector
 
 class Solver:
-    def __init__ \
-        (self, problem, eigenvectors, \
-         options = Options(), which = (-1,-1), extra = (-1,-1)):
-
-        vector = problem.vector()
+    def __init__(self, problem):
         self.__problem = problem
-        problem_type = problem.type()
-        std = (problem_type == 's')
-        self.__data_type = vector.data_type()
+        self.__P = None
+
+    def set_preconditioner(self, P):
+        self.__P = P
+
+    def solve \
+        (self, eigenvectors, \
+         options = Options(), which = (-1,-1), extra = (-1,-1)):
 
         left = int(which[0])
         right = int(which[1])
@@ -76,124 +77,113 @@ class Solver:
             extra_left = 0 # TODO: set proper default
         if extra_right < 0:
             extra_right = 0 # TODO: set proper default
-        self.__left = left
-        self.__right = right
-        self.__left_total = left + extra_left
-        self.__right_total = right + extra_right
+        left_total = left + extra_left
+        right_total = right + extra_right
 
         m = int(options.block_size)
         if m < 0:
             if left < 0 or right < 0:
                 m = 16
             else:
-                m = max(2, left + extra_left + right + extra_right)
+                m = max(2, left_total + right_total)
         elif m < 2:
             try:
                 raise ValueError('Block size 1 too small')
             except:
                 print('Will use 2 instead')
         mm = m + m
-        self.__block_size = m
+        block_size = m
 
         if left == 0:
-            q = 0.0
+            r = 0.0
         elif right == 0:
-            q = 1.0
+            r = 1.0
         elif left > 0 and right > 0:
-            q = left/(left + 1.0*right)
+            r = left/(left + 1.0*right)
         else:
-            q = 0.5
-        l = int(round(q*m))
-        if l == 0 and q > 0.0:
+            r = 0.5
+        l = int(round(r*m))
+        if l == 0 and r > 0.0:
             l = 1
-        if l == m and q < 1.0:
+        if l == m and r < 1.0:
             l = m - 1
-        self.__lr_ratio = q
-        self.__left_block_size = l
+        lr_ratio = r
+        left_block_size = l
         print('left block size %d, right block size %d' % (l, m - l))
 
-        self.eigenvalues = numpy.ndarray((0,), dtype = numpy.float64)
-        self.lmd = numpy.ndarray((m,), dtype = numpy.float64)
-        self.res = numpy.ndarray((m,), dtype = numpy.float64)
-        self.__err_est = options.err_est
-        self.__res_tol = options.res_tol
-        self.__max_iter = options.max_iter
-        self.__Xc = eigenvectors
-        if not std:
-            self.__BXc = eigenvectors.clone()
-        self.__ind = numpy.ndarray((m,), dtype = numpy.int32)
-        self.__lmd = numpy.ndarray((mm,), dtype = numpy.float64)
-        self.__dlmd = numpy.zeros((m, RECORDS), dtype = numpy.float64)
-        self.__dX = numpy.ones((m,), dtype = numpy.float64)
-        self.__q = numpy.ones((mm,), dtype = numpy.float64)
-        self.__err_lmd = -numpy.ones((mm,), dtype = numpy.float64)
-        self.__err_X = -numpy.ones((mm,), dtype = numpy.float64)
-        self.__X = vector.new_orthogonal_vectors(m)
-        self.__Y = vector.new_vectors(m)
-        self.__Z = vector.new_vectors(m)
-        self.__W = vector.new_vectors(m)
-        self.__AX = vector.new_vectors(m)
-        self.__AY = vector.new_vectors(m)
-        if problem.type() != 's':
-            self.__BXc = eigenvectors.new_vectors(0)
-            self.__BX = vector.new_vectors(m)
-            self.__BY = vector.new_vectors(m)
-        else:
-            self.__BX = self.__X
-            self.__BY = self.__Y
-        self.__P = None
-
-    def set_preconditioner(self, P):
-        self.__P = P
-
-    def solve(self):
-
         problem = self.__problem
+        vector = problem.vector()
         problem_type = problem.type()
         std = (problem_type == 's')
         gen = (problem_type == 'g')
         pro = (problem_type == 'p')
+        #self.__data_type = vector.data_type()
+        self.lcon = 0
+        self.rcon = 0
+        self.eigenvalues = numpy.ndarray((0,), dtype = numpy.float64)
+        self.lmd = numpy.ndarray((m,), dtype = numpy.float64)
+        self.res = numpy.ndarray((m,), dtype = numpy.float64)
+        self.err_lmd = -numpy.ones((mm,), dtype = numpy.float64)
+        self.err_X = -numpy.ones((mm,), dtype = numpy.float64)
+#        self.__ind = numpy.ndarray((m,), dtype = numpy.int32)
+#        self.__lmd = numpy.ndarray((mm,), dtype = numpy.float64)
+        dlmd = numpy.zeros((m, RECORDS), dtype = numpy.float64)
+        dX = numpy.ones((m,), dtype = numpy.float64)
+        acf = numpy.ones((mm,), dtype = numpy.float64)
+        X = vector.new_orthogonal_vectors(m)
+        Y = vector.new_vectors(m)
+        Z = vector.new_vectors(m)
+        W = vector.new_vectors(m)
+        AX = vector.new_vectors(m)
+        AY = vector.new_vectors(m)
+        if problem.type() != 's':
+            BX = vector.new_vectors(m)
+            BY = vector.new_vectors(m)
+        else:
+            BX = X
+            BY = Y
+
+        # shorcuts
         lmd = self.lmd
         res = self.res
         A = self.__problem.A()
         B = self.__problem.B()
         P = self.__P
-        block_size = self.__block_size
-        left_block_size = self.__left_block_size
-        left = self.__left
-        right = self.__right
-        left_total = self.__left_total
-        right_total = self.__right_total
-        dlmd = self.__dlmd
-        dX = self.__dX
-        q = self.__q
-        err_lmd = self.__err_lmd
-        err_X = self.__err_X
-        Xc = self.__Xc
+        Xc = eigenvectors
         if not std:
-            BXc = self.__BXc
-        X = self.__X
-        Y = self.__Y
-        Z = self.__Z
-        W = self.__W
-        AX = self.__AX
-        BX = self.__BX
-        AY = self.__AY
-        BY = self.__BY
+            BXc = eigenvectors.clone()
+            if Xc.nvec() > 0:
+                B(Xc, BXc)
+        err_lmd = self.err_lmd
+        err_X = self.err_X
+        res_tol = options.res_tol
+
+        # initialize
         AZ = None
         BZ = None
         leftX = left_block_size
         rightX = block_size - leftX
-        lr_ratio = self.__lr_ratio
-        lconv = 0
-        rconv = 0
+#        lconv = 0
+#        rconv = 0
         rec = 0
         ix = 0 # first X
         nx = block_size
         ny = block_size
         nz = 0
-        res_tol = self.__res_tol
 
+        if Xc.nvec() > 0:
+            # orthogonalize Y to Xc
+            # std: X := X - Xc Xc* X
+            # gen: X := X - Xc BXc* X
+            # pro: X := X - Xc BXc* X
+            if not std:
+                Q = X.dot(BXc)
+            else:
+                Q = X.dot(Xc)
+            Xc.mult(Q, W)
+            X.add(W, -1.0)
+
+        # Rayleigh-Ritz in the initial space
         if not std:
             B(X, BX)
         else:
@@ -214,7 +204,8 @@ class Solver:
             BX.mult(Q, Z)
             Z.copy(BX)
 
-        for iteration in range(self.__max_iter):
+        # main CG loop
+        for iteration in range(options.max_iter):
             print('------------- iteration %d' % iteration)
             if pro:
                 XAX = AX.dot(BX)
@@ -235,8 +226,8 @@ class Solver:
                     eps = 1e-6*max(abs(new_lmd[i]), abs(lmd[ix + i]))
                     if abs(delta) > eps:
                         dlmd[ix + i, rec - 1] = delta
-                print('eigenvalues shifts history:')
-                print(numpy.array_str(dlmd[ix : ix + nx, :rec].T, precision = 2))
+#                print('eigenvalues shifts history:')
+#                print(numpy.array_str(dlmd[ix : ix + nx, :rec].T, precision = 2))
             lmd[ix : ix + nx] = new_lmd
             
             # compute residuals
@@ -291,7 +282,7 @@ class Solver:
                     if qi <= 0:
                         continue
                     qi = qi**(1.0/(k - 1))
-                    q[ix + i] = qi # a.c.f. estimate
+                    acf[ix + i] = qi # a.c.f. estimate
                     # esimate error based on a.c.f.
                     theta = qi/(1 - qi)
                     d = theta*dlmd[ix + i, rec - 1]
@@ -302,26 +293,26 @@ class Solver:
             print('eigenvalue   residual     errors       a.c.f.')
             for i in range(ix, ix + nx):
                 print('%e %.1e  %.1e %.1e  %.1e' % \
-                      (lmd[i], res[i], abs(err_lmd[i]), err_X[i], q[i]))
+                      (lmd[i], res[i], abs(err_lmd[i]), err_X[i], acf[i]))
 
             lcon = 0
             for i in range(leftX):
-                j = lconv + i
+                j = self.lcon + i
                 if res[ix + i] < res_tol:
                     print('left eigenvector %d converged' % j)
                     lcon += 1
                 else:
                     break
-            lconv += lcon
+            self.lcon += lcon
             rcon = 0
             for i in range(rightX):
-                j = rconv + i
+                j = self.rcon + i
                 if res[ix + nx - i - 1] < res_tol:
                     print('right eigenvector %d converged' % j)
                     rcon += 1
                 else:
                     break
-            rconv += rcon
+            self.rcon += rcon
 
             ## move converged X to Xc,
             if lcon > 0:
@@ -341,8 +332,8 @@ class Solver:
                 if not std:
                     BX.select(rcon, jx - rcon)
                     BXc.append(BX)
-            left_converged = left >= 0 and lconv >= left
-            right_converged = right >= 0 and rconv >= right
+            left_converged = left >= 0 and self.lcon >= left
+            right_converged = right >= 0 and self.rcon >= right
             if left_converged and right_converged:
                 break
             
@@ -510,17 +501,15 @@ class Solver:
             Q = sla.solve_triangular(U, Q)
             #print(lmdxy)
 
-            # TODO: compute proper shifts in the case of known number of
-            # wanted eigenpairs
             if lcon + rcon > 0:
                 if left < 0:
                     shift_left_max = lcon
                 else:
-                    shift_left_max = max(0, left_total - lconv - leftX)
+                    shift_left_max = max(0, left_total - self.lcon - leftX)
                 if right < 0:
                     shift_right_max = rcon
                 else:
-                    shift_right_max = max(0, right_total - rconv - rightX)
+                    shift_right_max = max(0, right_total - self.rcon - rightX)
                 if lcon + rcon <= ny:
                     shift_left = lcon
                     shift_right = rcon
@@ -529,7 +518,6 @@ class Solver:
                     shift_right = min(rcon, ny - shift_left)
                 print(shift_left, shift_left_max)
                 print(shift_right, shift_right_max)
-                # TODO: debug changing ix
                 shift_left = min(shift_left, shift_left_max)
                 shift_right = min(shift_right, shift_right_max)
                 #print(ny, shift_left, nxy)
@@ -538,7 +526,7 @@ class Solver:
                 shift_right = 0
 
             # select new numbers of left and right eigenpairs
-            if left > 0 and lcon > 0 and lconv >= left: # left side converged
+            if left > 0 and lcon > 0 and self.lcon >= left: # left side converged
                 print('left side converged')
                 leftX_new = 0
                 rightX_new = rightX + shift_right #min(nxy, block_size)
@@ -546,7 +534,7 @@ class Solver:
                 left_block_size_new = block_size - rightX_new
                 lr_ratio = 0.0
                 ix_new = left_block_size_new
-            elif right > 0 and rcon > 0 and rconv >= right: # right side converged
+            elif right > 0 and rcon > 0 and self.rcon >= right: # right side converged
                 print('right side converged')
                 ix_new = ix - shift_left
                 leftX_new = min(nxy, block_size - ix_new)
@@ -636,16 +624,16 @@ class Solver:
                     lmd[i] = lmd[i + shift_left]
                     dlmd[i, :] = dlmd[i + shift_left, :]
                     dX[i] = dX[i + shift_left]
-                    q[i] = q[i + shift_left]
-                    q[m + i] = q[m + i + shift_left]
+                    acf[i] = acf[i + shift_left]
+                    acf[m + i] = acf[m + i + shift_left]
                     err_lmd[i] = err_lmd[i + shift_left]
                     err_lmd[m + i] = err_lmd[m + i + shift_left]
             if shift_left >= 0:
                 for i in range(l - shift_left, nl):
                     dlmd[i, :] = 0
                     dX[i] = 0
-                    q[i] = 1.0
-                    q[m + i] = 1.0
+                    acf[i] = 1.0
+                    acf[m + i] = 1.0
                     err_lmd[i] = -1.0
                     err_lmd[m + i] = -1.0
             if shift_right > 0:
@@ -653,16 +641,16 @@ class Solver:
                     lmd[i] = lmd[i - shift_right]
                     dlmd[i, :] = dlmd[i - shift_right, :]
                     dX[i] = dX[i - shift_right]
-                    q[i] = q[i - shift_right]
-                    q[m + i] = q[m + i - shift_right]
+                    acf[i] = acf[i - shift_right]
+                    acf[m + i] = acf[m + i - shift_right]
                     err_lmd[i] = err_lmd[i - shift_right]
                     err_lmd[m + i] = err_lmd[m + i - shift_right]
             if shift_right >= 0:
                 for i in range(l + shift_right - 1, nl - 1, -1):
                     dlmd[i, :] = 0
                     dX[i] = 0
-                    q[i] = 1.0
-                    q[m + i] = 1.0
+                    acf[i] = 1.0
+                    acf[m + i] = 1.0
                     err_lmd[i] = -1.0
                     err_lmd[m + i] = -1.0
 
