@@ -241,7 +241,7 @@ class Solver:
                     eps = 1e-6*max(abs(new_lmd[i]), abs(lmd[ix + i]))
                     if abs(delta) > eps:
                         dlmd[ix + i, rec - 1] = delta
-                print(dlmd[ix : ix + nx, rec - 1])
+#                print(dlmd[ix : ix + nx, rec - 1])
 #                print('eigenvalues shifts history:')
 #                print(numpy.array_str(dlmd[ix : ix + nx, :rec].T, precision = 2))
             lmd[ix : ix + nx] = new_lmd
@@ -501,27 +501,27 @@ class Solver:
                 G[nx : nxy, :nx] = conjugate(G[:nx, nx : nxy])
             G[nx : nxy, nx : nxy] = numpy.dot(conjugate(Qy), G[nx : nxy, nx : nxy])
             
-            # estimate eigenvalue and eigenvector shifts
-            if nx > 0:
-                Num = G[:nx, nx : nxy]
-                Num = numpy.absolute(Num)
-                Lmd = numpy.ndarray((1, ny))
-                Mu = numpy.ndarray((nx, 1))
-                Lmd[0, :] = lmdy
-                Mu[:, 0] = lmd[ix : ix + nx]
-                Den = Mu - Lmd
-                # safeguard against division overflow
-                eps = 1e-16
-                exclude = numpy.absolute(Den) < eps*Num
-                Den[exclude] = eps*Num[exclude]
-                dX[ix : ix + nx] = nla.norm(Num/Den, axis = 1)
-                Num = Num*Num
-                if rec == RECORDS:
-                    for i in range(rec - 1):
-                        dlmd[:, i] = dlmd[:, i + 1]
-                else:
-                    rec += 1
-                dlmd[ix : ix + nx, rec - 1] = -numpy.sum(Num/Den, axis = 1)
+#            # estimate eigenvalue and eigenvector shifts
+#            if nx > 0:
+#                Num = G[:nx, nx : nxy]
+#                Num = numpy.absolute(Num)
+#                Lmd = numpy.ndarray((1, ny))
+#                Mu = numpy.ndarray((nx, 1))
+#                Lmd[0, :] = lmdy
+#                Mu[:, 0] = lmd[ix : ix + nx]
+#                Den = Mu - Lmd
+#                # safeguard against division overflow
+#                eps = 1e-16
+#                exclude = numpy.absolute(Den) < eps*Num
+#                Den[exclude] = eps*Num[exclude]
+#                dX[ix : ix + nx] = nla.norm(Num/Den, axis = 1)
+#                Num = Num*Num
+#                if rec == RECORDS:
+#                    for i in range(rec - 1):
+#                        dlmd[:, i] = dlmd[:, i + 1]
+#                else:
+#                    rec += 1
+#                dlmd[ix : ix + nx, rec - 1] = -numpy.sum(Num/Den, axis = 1)
 
             lmdxy, Q = sla.eigh(G)
             #print(lmdxy)
@@ -577,6 +577,45 @@ class Solver:
             print('right X: %d %d' % (rightX, rightX_new))
             print('new ix: %d, nx: %d, nxy: %d' % (ix_new, nx_new, nxy))
 
+            # re-arrange eigenvalues, shifts etc.
+            m = block_size
+            l = left_block_size
+            nl = left_block_size_new
+            if shift_left > 0:
+                for i in range(l - shift_left):
+                    lmd[i] = lmd[i + shift_left]
+#                    dlmd[i, :] = dlmd[i + shift_left, :]
+#                    dX[i] = dX[i + shift_left]
+                    acf[i] = acf[i + shift_left]
+                    acf[m + i] = acf[m + i + shift_left]
+                    err_lmd[i] = err_lmd[i + shift_left]
+                    err_lmd[m + i] = err_lmd[m + i + shift_left]
+            if shift_left >= 0:
+                for i in range(l - shift_left, nl):
+#                    dlmd[i, :] = 0
+#                    dX[i] = 0
+                    acf[i] = 1.0
+                    acf[m + i] = 1.0
+                    err_lmd[i] = -1.0
+                    err_lmd[m + i] = -1.0
+            if shift_right > 0:
+                for i in range(m - 1, l + shift_right - 1, -1):
+                    lmd[i] = lmd[i - shift_right]
+#                    dlmd[i, :] = dlmd[i - shift_right, :]
+#                    dX[i] = dX[i - shift_right]
+                    acf[i] = acf[i - shift_right]
+                    acf[m + i] = acf[m + i - shift_right]
+                    err_lmd[i] = err_lmd[i - shift_right]
+                    err_lmd[m + i] = err_lmd[m + i - shift_right]
+            if shift_right >= 0:
+                for i in range(l + shift_right - 1, nl - 1, -1):
+#                    dlmd[i, :] = 0
+#                    dX[i] = 0
+                    acf[i] = 1.0
+                    acf[m + i] = 1.0
+                    err_lmd[i] = -1.0
+                    err_lmd[m + i] = -1.0
+
             lmdx = numpy.concatenate \
                 ((lmdxy[:leftX_new], lmdxy[nxy - rightX_new:]))
             lmdz = lmdxy[leftX_new : nxy - rightX_new]
@@ -588,8 +627,17 @@ class Solver:
             lmdX[0, :] = lmdx
             lmdY[:, 0] = lmdy
             Delta = (lmdY - lmdX)*QYX*QYX
-            print(Delta.shape)
-            print(nla.norm(QYX, axis = 0))
+#            print(dX[ix : ix + nx_new])
+            dX[ix : ix + nx_new] = nla.norm(QYX, axis = 0)
+#            print(dX[ix : ix + nx_new])
+#            print(dlmd[ix : ix + nx_new, rec - 1])
+            if rec == RECORDS:
+                for i in range(rec - 1):
+                    dlmd[:, i] = dlmd[:, i + 1]
+            else:
+                rec += 1
+            dlmd[ix : ix + nx_new, rec - 1] = numpy.sum(Delta, axis = 0)
+#            print(dlmd[ix : ix + nx_new, rec - 1])
 
             # compute RR coefficients for X and 'old search directions' Z
             # by re-arranging columns of Q
@@ -671,52 +719,9 @@ class Solver:
                 Y.mult(QYZ, W)
                 Z.add(W, 1.0) # Z = X*QXZ + Y*QYZ
                 
-            # re-arrange eigenvalues, shifts etc.
-            m = block_size
-            l = left_block_size
-            nl = left_block_size_new
-            if shift_left > 0:
-                for i in range(l - shift_left):
-                    lmd[i] = lmd[i + shift_left]
-                    dlmd[i, :] = dlmd[i + shift_left, :]
-                    dX[i] = dX[i + shift_left]
-                    acf[i] = acf[i + shift_left]
-                    acf[m + i] = acf[m + i + shift_left]
-                    err_lmd[i] = err_lmd[i + shift_left]
-                    err_lmd[m + i] = err_lmd[m + i + shift_left]
-            if shift_left >= 0:
-                for i in range(l - shift_left, nl):
-                    dlmd[i, :] = 0
-                    dX[i] = 0
-                    acf[i] = 1.0
-                    acf[m + i] = 1.0
-                    err_lmd[i] = -1.0
-                    err_lmd[m + i] = -1.0
-            if shift_right > 0:
-                for i in range(m - 1, l + shift_right - 1, -1):
-                    lmd[i] = lmd[i - shift_right]
-                    dlmd[i, :] = dlmd[i - shift_right, :]
-                    dX[i] = dX[i - shift_right]
-                    acf[i] = acf[i - shift_right]
-                    acf[m + i] = acf[m + i - shift_right]
-                    err_lmd[i] = err_lmd[i - shift_right]
-                    err_lmd[m + i] = err_lmd[m + i - shift_right]
-            if shift_right >= 0:
-                for i in range(l + shift_right - 1, nl - 1, -1):
-                    dlmd[i, :] = 0
-                    dX[i] = 0
-                    acf[i] = 1.0
-                    acf[m + i] = 1.0
-                    err_lmd[i] = -1.0
-                    err_lmd[m + i] = -1.0
-
             nx = nx_new
             ix = ix_new
             leftX = leftX_new
             rightX = rightX_new
             left_block_size = left_block_size_new
             #print(ix, leftX, rightX, left_block_size)
-            print(dX[ix : ix + nx])
-            print(nla.norm(QYX, axis = 0))
-            print(numpy.sum(Delta, axis = 0))
-            print(dlmd[ix : ix + nx, rec - 1])
