@@ -241,6 +241,7 @@ class Solver:
                     eps = 1e-6*max(abs(new_lmd[i]), abs(lmd[ix + i]))
                     if abs(delta) > eps:
                         dlmd[ix + i, rec - 1] = delta
+                print(dlmd[ix : ix + nx, rec - 1])
 #                print('eigenvalues shifts history:')
 #                print(numpy.array_str(dlmd[ix : ix + nx, :rec].T, precision = 2))
             lmd[ix : ix + nx] = new_lmd
@@ -523,8 +524,6 @@ class Solver:
                 dlmd[ix : ix + nx, rec - 1] = -numpy.sum(Num/Den, axis = 1)
 
             lmdxy, Q = sla.eigh(G)
-            Q[nx : nxy, :] = numpy.dot(Qy, Q[nx : nxy, :])
-            Q = sla.solve_triangular(U, Q)
             #print(lmdxy)
 
             if lcon + rcon > 0:
@@ -578,12 +577,27 @@ class Solver:
             print('right X: %d %d' % (rightX, rightX_new))
             print('new ix: %d, nx: %d, nxy: %d' % (ix_new, nx_new, nxy))
 
+            lmdx = numpy.concatenate \
+                ((lmdxy[:leftX_new], lmdxy[nxy - rightX_new:]))
+            lmdz = lmdxy[leftX_new : nxy - rightX_new]
+            QX = numpy.concatenate \
+                ((Q[:, :leftX_new], Q[:, nxy - rightX_new:]), axis = 1)
+            QYX = QX[nx:, :].copy()
+            lmdX = numpy.ndarray((1, nx_new))
+            lmdY = numpy.ndarray((nxy - nx_new, 1))
+            lmdX[0, :] = lmdx
+            lmdY[:, 0] = lmdy
+            Delta = (lmdY - lmdX)*QYX*QYX
+            print(Delta.shape)
+            print(nla.norm(QYX, axis = 0))
+
             # compute RR coefficients for X and 'old search directions' Z
             # by re-arranging columns of Q
+            Q[nx : nxy, :] = numpy.dot(Qy, Q[nx : nxy, :])
+            Q = sla.solve_triangular(U, Q)
             QX = numpy.concatenate \
                 ((Q[:, :leftX_new], Q[:, nxy - rightX_new:]), axis = 1)
             QZ = Q[:, leftX_new : nxy - rightX_new]
-            lmdz = lmdxy[leftX_new : nxy - rightX_new]
             if nx > 0:
                 QXX = QX[:nx, :].copy()
             QYX = QX[nx:, :].copy()
@@ -702,3 +716,7 @@ class Solver:
             rightX = rightX_new
             left_block_size = left_block_size_new
             #print(ix, leftX, rightX, left_block_size)
+            print(dX[ix : ix + nx])
+            print(nla.norm(QYX, axis = 0))
+            print(numpy.sum(Delta, axis = 0))
+            print(dlmd[ix : ix + nx, rec - 1])
