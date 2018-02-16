@@ -22,25 +22,40 @@ def transform(A, U):
     A = sla.solve_triangular(conjugate(U), conjugate(B), lower = True)
     return A
 
-def default_block_size(left, right, threads):
+def default_block_size(which, init, threads = 8):
+    left = int(which[0])
+    right = int(which[1])
+    il = 0
+    ir = 0
+    if init is not None:
+        if init[0] is not None:
+            il = int(init[0].nvec())
+        if init[1] is not None:
+            ir = int(init[1].nvec())
     if threads <= 0:
         threads = 8
     if left == 0 and right == 0:
         return 0
     if left <= 0 and right <= 0:
-        return 2*threads
+        if il == 0 and ir == 0:
+            return 2*threads
+        m = il + ir
+        m = threads*((m - 1)//threads + 1)
+        if left < 0 or right < 0:
+            m = max(m, 2*threads)
+        return m
     left_total = 0
     right_total = 0
     if left > 0:
-        left_total = int(math.floor(left*1.2))
+        left_total = int(math.floor(max(left, il)*1.2))
     if right > 0:
-        right_total = int(math.floor(right*1.2))
+        right_total = int(math.floor(max(right, ir)*1.2))
     if left < 0:
         left_total = right_total
     if right < 0:
         right_total = left_total
     m = int(left_total + right_total)
-    m = 8*((m - 1)//8 + 1)
+    m = threads*((m - 1)//threads + 1)
     if left < 0 or right < 0:
         m = max(m, 2*threads)
     return m
@@ -84,7 +99,10 @@ class Solver:
 
     def solve \
         (self, eigenvectors, \
-         options = Options(), which = (-1,-1), extra = (-1,-1)):
+         options = Options(), \
+         which = (-1,-1), \
+         extra = (-1,-1), \
+         init = (None, None)):
 
         left = int(which[0])
         right = int(which[1])
@@ -96,7 +114,7 @@ class Solver:
 
         m = int(options.block_size)
         if m < 0:
-            m = default_block_size(left, right, options.threads)
+            m = default_block_size(which, init, options.threads)
         elif m < 2:
             try:
                 raise ValueError('Block size 1 too small')
@@ -169,6 +187,24 @@ class Solver:
         else:
             BX = X
             BY = Y
+
+        if init is not None:
+            l = left_block_size
+            leftX = init[0]
+            if leftX is not None:
+                il = min(l, leftX.nvec())
+                X.select(il)
+                leftX.select(il)
+                leftX.copy(X)
+            else:
+                il = 0
+            rightX = init[1]
+            if rightX is not None:
+                ir = min(m - l, rightX.nvec())
+                X.select(ir, il)
+                rightX.select(ir)
+                rightX.copy(X)
+            X.select(m)
 
         # shorcuts
         lmd = self.lmd
