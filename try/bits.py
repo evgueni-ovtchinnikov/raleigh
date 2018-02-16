@@ -367,3 +367,18 @@ def block_size(left, right):
 
 #            print(dlmd[ix : ix + nx_new, rec - 1])
 
+#def opA(x, y):
+#    n = x.dimension()
+#    for i in range(n):
+#        y.data()[:,i] = (i + 1)*x.data()[:,i]
+
+#def opB(x, y):
+#    d = 2*numpy.ones((1, x.dimension()))
+#    y.data()[:,:] = d*x.data()
+##    y.data()[:,:] = 2*x.data()[:,:]
+
+#def opP(x, y):
+#    n = x.dimension()
+#    for i in range(n):
+#        y.data()[:,i] = x.data()[:,i]/(i + 1)
+
