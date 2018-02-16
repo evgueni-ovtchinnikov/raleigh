@@ -326,3 +326,44 @@ def block_size(left, right):
 #    right = int(input('right: '))
 #    m = block_size(left, right)
 #    print('block size: %d' % m)
+
+#                print(ZAY.shape, ZBY.shape, ny, numpy.diag(lmd[iy : iy + ny]).shape)
+
+#            # estimate eigenvalue and eigenvector shifts
+#            if nx > 0:
+#                Num = G[:nx, nx : nxy]
+#                Num = numpy.absolute(Num)
+#                Lmd = numpy.ndarray((1, ny))
+#                Mu = numpy.ndarray((nx, 1))
+#                Lmd[0, :] = lmdy
+#                Mu[:, 0] = lmd[ix : ix + nx]
+#                Den = Mu - Lmd
+#                # safeguard against division overflow
+#                eps = 1e-16
+#                exclude = numpy.absolute(Den) < eps*Num
+#                Den[exclude] = eps*Num[exclude]
+#                dX[ix : ix + nx] = nla.norm(Num/Den, axis = 1)
+#                Num = Num*Num
+#                if rec == RECORDS:
+#                    for i in range(rec - 1):
+#                        dlmd[:, i] = dlmd[:, i + 1]
+#                else:
+#                    rec += 1
+#                dlmd[ix : ix + nx, rec - 1] = -numpy.sum(Num/Den, axis = 1)
+
+#                    dlmd[i, :] = dlmd[i + shift_left, :]
+#                    dX[i] = dX[i + shift_left]
+
+#                    dlmd[i, :] = 0
+#                    dX[i] = 0
+
+#                    dlmd[i, :] = dlmd[i - shift_right, :]
+#                    dX[i] = dX[i - shift_right]
+
+#                    dlmd[i, :] = 0
+#                    dX[i] = 0
+
+#            print(dX[ix : ix + nx_new])
+
+#            print(dlmd[ix : ix + nx_new, rec - 1])
+

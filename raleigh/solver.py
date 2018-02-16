@@ -102,6 +102,7 @@ class Solver:
                 raise ValueError('Block size 1 too small')
             except:
                 print('Will use 2 instead')
+                m = 2
         mm = m + m
         block_size = m
 
@@ -120,11 +121,20 @@ class Solver:
             l = m - 1
         lr_ratio = r
         left_block_size = l
+        
+        extra_left = int(extra[0])
+        extra_right = int(extra[1])
         if left >= 0:
-            left_total = max(left, left_block_size)
+            if extra_left >= 0:
+                left_total = left + extra_left
+            else:
+                left_total = max(left, left_block_size)
             print('left total: %d' % left_total)
         if right >= 0:
-            right_total = max(right, block_size - left_block_size)
+            if extra_right >= 0:
+                right_total = right + extra_right
+            else:
+                right_total = max(right, block_size - left_block_size)
             print('right_total: %d' % right_total)
         print('left block size %d, right block size %d' % (l, m - l))
 
@@ -229,8 +239,6 @@ class Solver:
             XBX = BX.dot(X)
             da = XAX.diagonal()
             db = XBX.diagonal()
-#            print(da)
-#            print(db)
             new_lmd = da/db
             if iteration > 0:
                 # compute eigenvalue decrements
@@ -258,7 +266,6 @@ class Solver:
             else:
                 W.add(X, -lmd[ix : ix + nx])
             s = W.dots(W)
-#            print(numpy.sqrt(s))
 
             if Xc.nvec() > 0:
                 # orthogonalize W to Xc
@@ -367,14 +374,12 @@ class Solver:
                 BX.select(nx, ix)
             XAX = XAX[lcon : lcon + nx, lcon : lcon + nx]
             XBX = XBX[lcon : lcon + nx, lcon : lcon + nx]
-#            print(ix, nx, XBX.shape)
 
             if P is None:
                 W.copy(Y)
             else:
                 P(W, Y)
             
-#            print('nz: %d' % nz)
             if nz > 0:
                 # compute the conjugation matrix
                 if pro:
@@ -387,7 +392,6 @@ class Solver:
                     ZBY = Y.dot(Z)
                 else:
                     ZBY = Y.dot(BZ)
-#                print(ZAY.shape, ZBY.shape, ny, numpy.diag(lmd[iy : iy + ny]).shape)
                 Num = ZAY - numpy.dot(ZBY, numpy.diag(lmd[iy : iy + ny]))
                 ny = Y.nvec()
                 Lmd = numpy.ndarray((1, ny))
@@ -492,7 +496,6 @@ class Solver:
                 GA = YAY
 
             # solve Rayleigh-Ritz eigenproblem
-            # and estimate eigenvalue and eigenvector shifts
             G = transform(GA, U)
             YAY = G[nx : nxy, nx : nxy]
             lmdy, Qy = sla.eigh(YAY)
@@ -501,28 +504,6 @@ class Solver:
                 G[nx : nxy, :nx] = conjugate(G[:nx, nx : nxy])
             G[nx : nxy, nx : nxy] = numpy.dot(conjugate(Qy), G[nx : nxy, nx : nxy])
             
-#            # estimate eigenvalue and eigenvector shifts
-#            if nx > 0:
-#                Num = G[:nx, nx : nxy]
-#                Num = numpy.absolute(Num)
-#                Lmd = numpy.ndarray((1, ny))
-#                Mu = numpy.ndarray((nx, 1))
-#                Lmd[0, :] = lmdy
-#                Mu[:, 0] = lmd[ix : ix + nx]
-#                Den = Mu - Lmd
-#                # safeguard against division overflow
-#                eps = 1e-16
-#                exclude = numpy.absolute(Den) < eps*Num
-#                Den[exclude] = eps*Num[exclude]
-#                dX[ix : ix + nx] = nla.norm(Num/Den, axis = 1)
-#                Num = Num*Num
-#                if rec == RECORDS:
-#                    for i in range(rec - 1):
-#                        dlmd[:, i] = dlmd[:, i + 1]
-#                else:
-#                    rec += 1
-#                dlmd[ix : ix + nx, rec - 1] = -numpy.sum(Num/Den, axis = 1)
-
             lmdxy, Q = sla.eigh(G)
             #print(lmdxy)
 
@@ -584,16 +565,12 @@ class Solver:
             if shift_left > 0:
                 for i in range(l - shift_left):
                     lmd[i] = lmd[i + shift_left]
-#                    dlmd[i, :] = dlmd[i + shift_left, :]
-#                    dX[i] = dX[i + shift_left]
                     acf[i] = acf[i + shift_left]
                     acf[m + i] = acf[m + i + shift_left]
                     err_lmd[i] = err_lmd[i + shift_left]
                     err_lmd[m + i] = err_lmd[m + i + shift_left]
             if shift_left >= 0:
                 for i in range(l - shift_left, nl):
-#                    dlmd[i, :] = 0
-#                    dX[i] = 0
                     acf[i] = 1.0
                     acf[m + i] = 1.0
                     err_lmd[i] = -1.0
@@ -601,21 +578,18 @@ class Solver:
             if shift_right > 0:
                 for i in range(m - 1, l + shift_right - 1, -1):
                     lmd[i] = lmd[i - shift_right]
-#                    dlmd[i, :] = dlmd[i - shift_right, :]
-#                    dX[i] = dX[i - shift_right]
                     acf[i] = acf[i - shift_right]
                     acf[m + i] = acf[m + i - shift_right]
                     err_lmd[i] = err_lmd[i - shift_right]
                     err_lmd[m + i] = err_lmd[m + i - shift_right]
             if shift_right >= 0:
                 for i in range(l + shift_right - 1, nl - 1, -1):
-#                    dlmd[i, :] = 0
-#                    dX[i] = 0
                     acf[i] = 1.0
                     acf[m + i] = 1.0
                     err_lmd[i] = -1.0
                     err_lmd[m + i] = -1.0
 
+            # estimate eigenvalue and eigenvector shifts
             lmdx = numpy.concatenate \
                 ((lmdxy[:leftX_new], lmdxy[nxy - rightX_new:]))
             lmdz = lmdxy[leftX_new : nxy - rightX_new]
@@ -623,20 +597,23 @@ class Solver:
                 ((Q[:, :leftX_new], Q[:, nxy - rightX_new:]), axis = 1)
             QYX = QX[nx:, :].copy()
             lmdX = numpy.ndarray((1, nx_new))
-            lmdY = numpy.ndarray((nxy - nx_new, 1))
+            lmdY = numpy.ndarray((ny, 1))
+#            lmdY = numpy.ndarray((nxy - nx_new, 1))
             lmdX[0, :] = lmdx
             lmdY[:, 0] = lmdy
             Delta = (lmdY - lmdX)*QYX*QYX
+#            print(QYX.shape)
+#            print(nla.norm(QYX, axis = 0).shape)
+#            print(dX[ix : ix + nx_new].shape)
+#            print(nx_new)
+            dX[ix_new : ix_new + nx_new] = nla.norm(QYX, axis = 0)
 #            print(dX[ix : ix + nx_new])
-            dX[ix : ix + nx_new] = nla.norm(QYX, axis = 0)
-#            print(dX[ix : ix + nx_new])
-#            print(dlmd[ix : ix + nx_new, rec - 1])
             if rec == RECORDS:
                 for i in range(rec - 1):
                     dlmd[:, i] = dlmd[:, i + 1]
             else:
                 rec += 1
-            dlmd[ix : ix + nx_new, rec - 1] = numpy.sum(Delta, axis = 0)
+            dlmd[ix_new : ix_new + nx_new, rec - 1] = numpy.sum(Delta, axis = 0)
 #            print(dlmd[ix : ix + nx_new, rec - 1])
 
             # compute RR coefficients for X and 'old search directions' Z
