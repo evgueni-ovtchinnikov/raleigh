@@ -22,24 +22,25 @@ def transform(A, U):
     A = sla.solve_triangular(conjugate(U), conjugate(B), lower = True)
     return A
 
-def default_block_size(which, init, threads = 8):
+def default_block_size(which, extra, init, threads):
     left = int(which[0])
     right = int(which[1])
-    il = 0
-    ir = 0
-    if init is not None:
-        if init[0] is not None:
-            il = int(init[0].nvec())
-        if init[1] is not None:
-            ir = int(init[1].nvec())
+    extra_left = int(extra[0])
+    extra_right = int(extra[1])
+    init_left = 0
+    init_right = 0
+    if init[0] is not None:
+        init_left = int(init[0].nvec())
+    if init[1] is not None:
+        init_right = int(init[1].nvec())
     if threads <= 0:
         threads = 8
     if left == 0 and right == 0:
         return 0
     if left <= 0 and right <= 0:
-        if il == 0 and ir == 0:
+        if init_left == 0 and init_right == 0:
             return 2*threads
-        m = il + ir
+        m = init_left + init_right
         m = threads*((m - 1)//threads + 1)
         if left < 0 or right < 0:
             m = max(m, 2*threads)
@@ -47,9 +48,15 @@ def default_block_size(which, init, threads = 8):
     left_total = 0
     right_total = 0
     if left > 0:
-        left_total = int(math.floor(max(left, il)*1.2))
+        if extra_left >= 0:
+            left_total = max(left + extra_left, init_left)
+        else:
+            left_total = int(math.floor(max(left, init_left)*1.2))
     if right > 0:
-        right_total = int(math.floor(max(right, ir)*1.2))
+        if extra_right >= 0:
+            right_total = max(right + extra_right, init_right)
+        else:
+            right_total = int(math.floor(max(right, init_right)*1.2))
     if left < 0:
         left_total = right_total
     if right < 0:
@@ -114,7 +121,7 @@ class Solver:
 
         m = int(options.block_size)
         if m < 0:
-            m = default_block_size(which, init, options.threads)
+            m = default_block_size(which, extra, init, options.threads)
         elif m < 2:
             try:
                 raise ValueError('Block size 1 too small')
@@ -175,7 +182,8 @@ class Solver:
         dlmd = numpy.zeros((m, RECORDS), dtype = numpy.float64)
         dX = numpy.ones((m,), dtype = numpy.float64)
         acf = numpy.ones((mm,), dtype = numpy.float64)
-        X = vector.new_orthogonal_vectors(m)
+        #X = vector.new_orthogonal_vectors(m)
+        X = vector.new_random_vectors(m)
         Y = vector.new_vectors(m)
         Z = vector.new_vectors(m)
         W = vector.new_vectors(m)
@@ -188,23 +196,25 @@ class Solver:
             BX = X
             BY = Y
 
-        if init is not None:
-            l = left_block_size
-            leftX = init[0]
-            if leftX is not None:
-                il = min(l, leftX.nvec())
-                X.select(il)
-                leftX.select(il)
-                leftX.copy(X)
-            else:
-                il = 0
-            rightX = init[1]
-            if rightX is not None:
-                ir = min(m - l, rightX.nvec())
-                X.select(ir, il)
-                rightX.select(ir)
-                rightX.copy(X)
-            X.select(m)
+        l = left_block_size
+        leftX = init[0]
+        if leftX is not None:
+            init_left = min(l, leftX.nvec())
+            X.select(init_left)
+            leftX.select(init_left)
+            leftX.copy(X)
+        else:
+            init_left = 0
+        rightX = init[1]
+        if rightX is not None:
+            init_right = min(m - l, rightX.nvec())
+            X.select(init_right, init_left)
+            rightX.select(init_right)
+            rightX.copy(X)
+
+        X.select(m)
+            
+        #print(X.data().T)
 
         # shorcuts
         lmd = self.lmd

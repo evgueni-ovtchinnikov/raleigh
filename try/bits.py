@@ -382,3 +382,9 @@ def block_size(left, right):
 #    for i in range(n):
 #        y.data()[:,i] = x.data()[:,i]/(i + 1)
 
+#    def data_type(self):
+#        return self.__data.dtype
+
+#    def axpy(self, q, output):
+#        f, n = output.__selected;
+#        output.__data[:, f : f + n] += numpy.dot(self.data(), q)

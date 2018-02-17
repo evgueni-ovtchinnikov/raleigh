@@ -6,16 +6,17 @@ Implementation of the abstract class Vectors based on numpy.ndarray
 import numbers
 import numpy
 
-ORDER = 'C'
-
 class NDArrayVectors: #(Vectors):
-    def __init__(self, arg, nvec = 0):
+    def __init__(self, arg, nvec = 0, data_type = None):
         if isinstance(arg, NDArrayVectors):
             self.__data = arg.__data.copy()
         elif isinstance(arg, numpy.ndarray):
             self.__data = arg
         elif isinstance(arg, numbers.Number):
-            self.__data = numpy.zeros((nvec, arg), order = ORDER)
+            if data_type is None: # use default data type
+                self.__data = numpy.zeros((nvec, arg))
+            else:
+                self.__data = numpy.zeros((nvec, arg), dtype = data_type)
         else:
             raise ValueError \
             ('wrong argument %s in constructor' % repr(type(arg)))
@@ -34,14 +35,20 @@ class NDArrayVectors: #(Vectors):
         self.select_all()
     def new_vectors(self, nv):
         m, n = self.__data.shape
-        data = numpy.zeros((nv, n), dtype = self.__data.dtype, order = ORDER)
+        data = numpy.zeros((nv, n), dtype = self.__data.dtype)
+        return NDArrayVectors(data)
+    def new_random_vectors(self, nv):
+        m, n = self.__data.shape
+        #numpy.random.seed(1) # to debug
+        data = numpy.zeros((nv, n), dtype = self.__data.dtype)
+        data[:,:] = 2*numpy.random.rand(nv, n) - 1
         return NDArrayVectors(data)
     def new_orthogonal_vectors(self, m):
         k, n = self.__data.shape
         if n < m:
             print('Warning: number of vectors too large, reducing')
             m = n
-        a = numpy.zeros((m, n), order = ORDER)
+        a = numpy.zeros((m, n), dtype = self.__data.dtype)
         a[0,0] = 1.0
         i = 1
         while 2*i < m:
@@ -111,9 +118,6 @@ class NDArrayVectors: #(Vectors):
             return
         print('using non-optimized dot')
         output.__data[f : f + n, :] = numpy.dot(q.T, self.data())
-#    def axpy(self, q, output):
-#        f, n = output.__selected;
-#        output.__data[:, f : f + n] += numpy.dot(self.data(), q)
     def scale(self, s):
         f, n = self.__selected;
         for i in range(n):
