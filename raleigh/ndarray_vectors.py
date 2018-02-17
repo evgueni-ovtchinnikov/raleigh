@@ -35,20 +35,22 @@ class NDArrayVectors: #(Vectors):
         self.select_all()
     def new_vectors(self, nv):
         m, n = self.__data.shape
-        data = numpy.zeros((nv, n), dtype = self.__data.dtype)
+        data = numpy.ones((nv, n), dtype = self.__data.dtype)
         return NDArrayVectors(data)
-    def new_random_vectors(self, nv):
+    def fill_random(self):
+        iv, nv = self.__selected
         m, n = self.__data.shape
-        #numpy.random.seed(1) # to debug
-        data = numpy.zeros((nv, n), dtype = self.__data.dtype)
-        data[:,:] = 2*numpy.random.rand(nv, n) - 1
-        return NDArrayVectors(data)
-    def new_orthogonal_vectors(self, m):
+        #data = numpy.zeros((nv, n), dtype = self.__data.dtype)
+        self.__data[iv : iv + nv,:] = 2*numpy.random.rand(nv, n) - 1
+        #return NDArrayVectors(data)
+    def fill_orthogonal(self, m):
+        iv, nv = self.__selected
         k, n = self.__data.shape
         if n < m:
             print('Warning: number of vectors too large, reducing')
             m = n
-        a = numpy.zeros((m, n), dtype = self.__data.dtype)
+        #a = numpy.zeros((m, n), dtype = self.__data.dtype)
+        a = self.__data[iv : iv + nv, :]
         a[0,0] = 1.0
         i = 1
         while 2*i < m:
@@ -68,7 +70,7 @@ class NDArrayVectors: #(Vectors):
         j = i//2
         a[k : m,   : j] = a[:(m - k), : j]
         a[k : m, j : i] = -a[:(m - k), j : i]
-        return NDArrayVectors(a)
+        #return NDArrayVectors(a)
     def nvec(self):
         return self.__selected[1]
     def selected(self):

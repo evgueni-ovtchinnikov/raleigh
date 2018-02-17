@@ -388,3 +388,11 @@ def block_size(left, right):
 #    def axpy(self, q, output):
 #        f, n = output.__selected;
 #        output.__data[:, f : f + n] += numpy.dot(self.data(), q)
+
+#            if not std:
+#                Q = X.dot(BXc)
+#            else:
+#                Q = X.dot(Xc)
+
+#        else:
+#            BX = X

@@ -114,20 +114,15 @@ class Solver:
         left = int(which[0])
         right = int(which[1])
         if left == 0 and right == 0:
-            try:
-                raise ValueError('No eigenpairs requested, quit')
-            except:
-                return
+            print('No eigenpairs requested, quit')
+            return
 
         m = int(options.block_size)
         if m < 0:
             m = default_block_size(which, extra, init, options.threads)
         elif m < 2:
-            try:
-                raise ValueError('Block size 1 too small')
-            except:
-                print('Will use 2 instead')
-                m = 2
+            print('Block size 1 too small, will use 2 instead')
+            m = 2
         mm = m + m
         block_size = m
 
@@ -183,13 +178,15 @@ class Solver:
         dX = numpy.ones((m,), dtype = numpy.float64)
         acf = numpy.ones((mm,), dtype = numpy.float64)
         #X = vector.new_orthogonal_vectors(m)
-        X = vector.new_random_vectors(m)
+        X = vector.new_vectors(m)
+        X.fill_random()
+        #X.fill_orthogonal(m)
         Y = vector.new_vectors(m)
         Z = vector.new_vectors(m)
         W = vector.new_vectors(m)
         AX = vector.new_vectors(m)
         AY = vector.new_vectors(m)
-        if problem.type() != 's':
+        if not std:
             BX = vector.new_vectors(m)
             BY = vector.new_vectors(m)
         else:
@@ -197,22 +194,32 @@ class Solver:
             BY = Y
 
         l = left_block_size
-        leftX = init[0]
-        if leftX is not None:
-            init_left = min(l, leftX.nvec())
+        init_lX = init[0]
+        if init_lX is not None:
+            init_left = min(l, init_lX.nvec())
             X.select(init_left)
-            leftX.select(init_left)
-            leftX.copy(X)
+            init_lX.select(init_left)
+            init_lX.copy(X)
         else:
             init_left = 0
-        rightX = init[1]
-        if rightX is not None:
-            init_right = min(m - l, rightX.nvec())
+        init_rX = init[1]
+        if init_rX is not None:
+            init_right = min(m - l, init_rX.nvec())
             X.select(init_right, init_left)
-            rightX.select(init_right)
-            rightX.copy(X)
+            init_rX.select(init_right)
+            init_rX.copy(X)
 
         X.select(m)
+        s = X.dots(X)
+        for i in range(m):
+            if s[i] == 0.0:
+                print('Zero initial guess, replacing with random')
+                X.select(1, i)
+                X.fill_random()
+                s[i : i + 1] = X.dots(X)
+        X.select(m)
+        s = numpy.sqrt(X.dots(X))
+        X.scale(s)
             
         #print(X.data().T)
 
@@ -227,6 +234,8 @@ class Solver:
             BXc = eigenvectors.clone()
             if Xc.nvec() > 0:
                 B(Xc, BXc)
+        else:
+            BXc = Xc
         err_lmd = self.err_lmd
         err_X = self.err_X
         res_tol = options.res_tol
@@ -243,29 +252,59 @@ class Solver:
         nz = 0
 
         if Xc.nvec() > 0:
-            # orthogonalize Y to Xc
+            # orthogonalize X to Xc
             # std: X := X - Xc Xc* X
             # gen: X := X - Xc BXc* X
             # pro: X := X - Xc BXc* X
-            if not std:
-                Q = X.dot(BXc)
-            else:
-                Q = X.dot(Xc)
+            Q = X.dot(BXc)
             Xc.mult(Q, W)
             X.add(W, -1.0)
 
-        # Rayleigh-Ritz in the initial space
         if not std:
             B(X, BX)
-        else:
-            BX = X
+        XBX = BX.dot(X)
+
+        # do pivoted Cholesky for XBX to eliminate linear dependent X
+        U = XBX
+        ind, dropped, last_piv = piv_chol(U, 0, 1e-8)
+        if dropped > 0:
+            print(ind)
+            print('dropped %d initial vectors out of %d' % (dropped, nx))
+            # drop-linear-dependent initial vectors
+            nx -= dropped
+            if nx > 0:
+                W.select(nx)
+                X.copy(W, ind)
+                W.copy(X)
+            X.select(dropped, nx)
+            X.fill_random()
+            if not std:
+                if nx > 0:
+                    BX.copy(W, ind)
+                    W.copy(BX)
+                BX.select(dropped, nx)
+                B(X, BX)
+            if Xc.nvec() > 0:
+                # orthogonalize X to Xc
+                Q = X.dot(BXc)
+                Xc.mult(Q, W)
+                X.add(W, -1.0)
+                if not std:
+                    BXc.mult(Q, W)
+                    BX.add(W, -1.0)
+            nx = m
+            X.select(nx)
+            if not std:
+                BX.select(nx)
+            XBX = BX.dot(X)
+            
+        # Rayleigh-Ritz in the initial space
         if pro:
             A(BX, AX)
             XAX = AX.dot(BX)
         else:
             A(X, AX)
             XAX = AX.dot(X)
-        XBX = BX.dot(X)
         lmd_in, Q = sla.eigh(XAX, XBX, overwrite_a = True, overwrite_b = True)
         X.mult(Q, W)
         W.copy(X)

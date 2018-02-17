@@ -1,3 +1,6 @@
+'''Pivoted Cholesky for a matrix with unit diagonal
+'''
+
 import math
 import numpy as np
 import numpy.linalg as nla
