@@ -6,13 +6,15 @@ import operators
 import raleigh.solver
 from raleigh.ndarray_vectors import NDArrayVectors
 
-def sort_eigenpairs(lmd, u):
+def sort_eigenpairs(lmd, u, err_lmd, err_X):
     ind = numpy.argsort(lmd)
     w = NDArrayVectors(u)
     lmd = lmd[ind]
+    err_lmd = err_lmd[ind]
+    err_X = err_X[ind]
     u.copy(w, ind)
     w.copy(u)
-    return lmd, u
+    return lmd, u, err_lmd, err_X
 
 numpy.random.seed(1) # to debug
 
@@ -41,7 +43,8 @@ solver.solve(u, opt, which = (3,3))
 print('after %d iterations, %d + %d eigenvalues converged:' \
       % (solver.iteration, solver.lcon, solver.rcon))
 lmd = solver.eigenvalues
-lmd, u = sort_eigenpairs(lmd, u)
+lmd, u, err_lmd, err_X = sort_eigenpairs\
+    (lmd, u, solver.errors_val, solver.errors_vec)
 print(lmd)
 lconu = solver.lcon
 rconu = solver.rcon
@@ -52,7 +55,8 @@ solver.solve(v, opt, which = (3,3))
 print('after %d iterations, %d + %d eigenvalues converged:' \
       % (solver.iteration, solver.lcon, solver.rcon))
 lmd = solver.eigenvalues
-lmd, v = sort_eigenpairs(lmd, v)
+lmd, v, err_lmd, err_X = sort_eigenpairs\
+    (lmd, v, solver.errors_val, solver.errors_vec)
 print(lmd)
 
 w = NDArrayVectors(u)
@@ -80,5 +84,11 @@ v.add(w, -1.0)
 opB(v, w)
 sr = w.dots(v)
 sr = numpy.sqrt(sr)
+s = numpy.concatenate((sl, sr))
 print('eigenvector errors:')
-print(sl, sr)
+print('  estimated    actual')
+for i in range(lcon + rcon):
+    print('%e %e' % (err_X[i], s[i]))
+#print(sl, sr)
+#print(s)
+#print(err_X)

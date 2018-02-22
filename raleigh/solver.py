@@ -176,15 +176,15 @@ class Solver:
         self.lcon = 0
         self.rcon = 0
         self.eigenvalues = numpy.ndarray((0,), dtype = numpy.float64)
+        self.errors_val = numpy.ndarray((0,), dtype = numpy.float32)
+        self.errors_vec = numpy.ndarray((0,), dtype = numpy.float32)
         self.lmd = numpy.ndarray((m,), dtype = numpy.float64)
-        self.res = numpy.ndarray((m,), dtype = numpy.float64)
-        self.err_lmd = -numpy.ones((mm,), dtype = numpy.float64)
-        self.err_X = -numpy.ones((mm,), dtype = numpy.float64)
-#        self.__ind = numpy.ndarray((m,), dtype = numpy.int32)
-#        self.__lmd = numpy.ndarray((mm,), dtype = numpy.float64)
-        dlmd = numpy.zeros((m, RECORDS), dtype = numpy.float64)
-        dX = numpy.ones((m,), dtype = numpy.float64)
-        acf = numpy.ones((mm,), dtype = numpy.float64)
+        self.res = numpy.ndarray((m,), dtype = numpy.float32)
+        self.err_lmd = -numpy.ones((mm,), dtype = numpy.float32)
+        self.err_X = -numpy.ones((mm,), dtype = numpy.float32)
+        dlmd = numpy.zeros((m, RECORDS), dtype = numpy.float32)
+        dX = numpy.ones((m,), dtype = numpy.float32)
+        acf = numpy.ones((mm,), dtype = numpy.float32)
         #X = vector.new_orthogonal_vectors(m)
         X = vector.new_vectors(m)
         X.fill_random()
@@ -429,8 +429,9 @@ class Solver:
                 j = self.lcon + i
                 if res[ix + i] < res_tol:
                     if verb > 0:
-                        print('left eigenvector %d converged, error %e' \
-                              % (j, err_X[ix + i]))
+                        msg = 'left eigenvector %d converged,' + \
+                        ' eigenvalue %e, error %e'
+                        print(msg % (j, lmd[ix + i], err_X[ix + i]))
                     lcon += 1
                 else:
                     break
@@ -438,10 +439,12 @@ class Solver:
             rcon = 0
             for i in range(rightX):
                 j = self.rcon + i
-                if res[ix + nx - i - 1] < res_tol:
+                k = ix + nx - i - 1
+                if res[k] < res_tol:
                     if verb > 0:
-                        print('right eigenvector %d converged, error %e' \
-                              % (j, err_X[ix + nx - i - 1]))
+                        msg = 'right eigenvector %d converged,' + \
+                        ' eigenvalue %e, error %e'
+                        print(msg % (j, lmd[k], err_X[k]))
                     rcon += 1
                 else:
                     break
@@ -451,6 +454,10 @@ class Solver:
             if lcon > 0:
                 self.eigenvalues = numpy.concatenate \
                     ((self.eigenvalues, lmd[ix : ix + lcon]))
+                self.errors_val = numpy.concatenate \
+                    ((self.errors_val, err_lmd[ix : ix + lcon]))
+                self.errors_vec = numpy.concatenate \
+                    ((self.errors_vec, err_X[ix : ix + lcon]))
                 X.select(lcon, ix)
                 Xc.append(X)
                 if not std:
@@ -460,6 +467,10 @@ class Solver:
                 jx = ix + nx
                 self.eigenvalues = numpy.concatenate \
                     ((self.eigenvalues, lmd[jx - rcon : jx]))
+                self.errors_val = numpy.concatenate \
+                    ((self.errors_val, err_lmd[jx - rcon : jx]))
+                self.errors_vec = numpy.concatenate \
+                    ((self.errors_vec, err_X[jx - rcon : jx]))
                 X.select(rcon, jx - rcon)
                 Xc.append(X)
                 if not std:
