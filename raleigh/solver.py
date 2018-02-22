@@ -308,6 +308,9 @@ class Solver:
                 BX.select(nx)
             XBX = BX.dot(X)
             
+#        lmdB, Q = sla.eigh(XBX)
+#        print(lmdB)
+            
         # Rayleigh-Ritz in the initial space
         if pro:
             A(BX, AX)
@@ -316,6 +319,7 @@ class Solver:
             A(X, AX)
             XAX = AX.dot(X)
         lmd_in, Q = sla.eigh(XAX, XBX, overwrite_a = True, overwrite_b = True)
+        W.select(m)
         X.mult(Q, W)
         W.copy(X)
         AX.mult(Q, W)
@@ -338,11 +342,13 @@ class Solver:
             new_lmd = da/db
             if self.iteration > 0:
                 # compute eigenvalue decrements
+                #print(lmd)
                 for i in range(nx):
                     if dlmd[ix + i, rec - 1] == 0: # previous data not available
                         continue
                     delta = lmd[ix + i] - new_lmd[i]
                     eps = 1e-4*max(abs(new_lmd[i]), abs(lmd[ix + i]))
+                    #print(delta)
                     if abs(delta) > eps:
                         dlmd[ix + i, rec - 1] = delta
 #                print(dlmd[ix : ix + nx, rec - 1])
@@ -422,7 +428,8 @@ class Solver:
                 j = self.lcon + i
                 if res[ix + i] < res_tol:
                     if verb > 0:
-                        print('left eigenvector %d converged' % j)
+                        print('left eigenvector %d converged, error %e' \
+                              % (j, err_X[ix + i]))
                     lcon += 1
                 else:
                     break
@@ -432,7 +439,8 @@ class Solver:
                 j = self.rcon + i
                 if res[ix + nx - i - 1] < res_tol:
                     if verb > 0:
-                        print('right eigenvector %d converged' % j)
+                        print('right eigenvector %d converged, error %e' \
+                              % (j, err_X[ix + nx - i - 1]))
                     rcon += 1
                 else:
                     break
@@ -630,6 +638,7 @@ class Solver:
                 shift_left = min(shift_left, shift_left_max)
                 shift_right = min(shift_right, shift_right_max)
                 #print(ny, shift_left, nxy)
+                #print('shifts:', shift_left, shift_right)
             else:
                 shift_left = 0
                 shift_right = 0
@@ -641,7 +650,8 @@ class Solver:
                 leftX_new = 0
                 rightX_new = rightX + shift_right #min(nxy, block_size)
                 shift_left = -leftX
-                left_block_size_new = block_size - rightX_new
+                left_block_size_new = ix + leftX + rightX - rightX_new
+#                left_block_size_new = block_size - rightX_new
                 lr_ratio = 0.0
                 ix_new = left_block_size_new
             elif right > 0 and rcon > 0 and self.rcon >= right: # right side converged
@@ -651,7 +661,8 @@ class Solver:
                 leftX_new = min(nxy, block_size - ix_new)
                 rightX_new = 0
                 shift_right = -rightX
-                left_block_size_new = block_size
+                left_block_size_new = ix + leftX + rightX
+#                left_block_size_new = block_size
                 lr_ratio = 1.0
             else:
                 leftX_new = leftX + shift_left
@@ -659,6 +670,7 @@ class Solver:
                 left_block_size_new = left_block_size
                 ix_new = ix - shift_left
             nx_new = leftX_new + rightX_new
+            #print('shifts:', shift_left, shift_right)
             if verb > 2:
                 print('left X: %d %d' % (leftX, leftX_new))
                 print('right X: %d %d' % (rightX, rightX_new))
@@ -675,12 +687,16 @@ class Solver:
                     acf[m + i] = acf[m + i + shift_left]
                     err_lmd[i] = err_lmd[i + shift_left]
                     err_lmd[m + i] = err_lmd[m + i + shift_left]
+                    dlmd[i, :] = dlmd[i + shift_left, :]
+                    dX[i] = dX[i + shift_left]
             if shift_left >= 0:
                 for i in range(l - shift_left, nl):
                     acf[i] = 1.0
                     acf[m + i] = 1.0
                     err_lmd[i] = -1.0
                     err_lmd[m + i] = -1.0
+                    dlmd[i, :] = 0
+                    dX[i] = 0
             if shift_right > 0:
                 for i in range(m - 1, l + shift_right - 1, -1):
                     lmd[i] = lmd[i - shift_right]
@@ -688,12 +704,16 @@ class Solver:
                     acf[m + i] = acf[m + i - shift_right]
                     err_lmd[i] = err_lmd[i - shift_right]
                     err_lmd[m + i] = err_lmd[m + i - shift_right]
+                    dlmd[i, :] = dlmd[i - shift_right, :]
+                    dX[i] = dX[i - shift_right]
             if shift_right >= 0:
                 for i in range(l + shift_right - 1, nl - 1, -1):
                     acf[i] = 1.0
                     acf[m + i] = 1.0
                     err_lmd[i] = -1.0
                     err_lmd[m + i] = -1.0
+                    dlmd[i, :] = 0
+                    dX[i] = 0
 
             # estimate eigenvalue and eigenvector shifts
             lmdx = numpy.concatenate \
