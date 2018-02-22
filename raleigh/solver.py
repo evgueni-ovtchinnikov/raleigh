@@ -74,6 +74,7 @@ class Options:
         self.max_iter = 10
         self.block_size = -1
         self.threads = -1
+        self.verbosity = 0
 
 class Problem:
     def __init__(self, v, A, B = None, prod = None):
@@ -110,18 +111,22 @@ class Solver:
          which = (-1,-1), \
          extra = (-1,-1), \
          init = (None, None)):
+            
+        verb = options.verbosity
 
         left = int(which[0])
         right = int(which[1])
         if left == 0 and right == 0:
-            print('No eigenpairs requested, quit')
+            if verb > -1:
+                print('No eigenpairs requested, quit')
             return
 
         m = int(options.block_size)
         if m < 0:
             m = default_block_size(which, extra, init, options.threads)
         elif m < 2:
-            print('Block size 1 too small, will use 2 instead')
+            if verb > -1:
+                print('Block size 1 too small, will use 2 instead')
             m = 2
         mm = m + m
         block_size = m
@@ -149,14 +154,17 @@ class Solver:
                 left_total = left + extra_left
             else:
                 left_total = max(left, left_block_size)
-            print('left total: %d' % left_total)
+            if verb > 0:
+                print('left total: %d' % left_total)
         if right >= 0:
             if extra_right >= 0:
                 right_total = right + extra_right
             else:
                 right_total = max(right, block_size - left_block_size)
-            print('right_total: %d' % right_total)
-        print('left block size %d, right block size %d' % (l, m - l))
+            if verb > 0:
+                print('right_total: %d' % right_total)
+        if verb > 0:
+            print('left block size %d, right block size %d' % (l, m - l))
 
         problem = self.__problem
         vector = problem.vector()
@@ -213,7 +221,8 @@ class Solver:
         s = X.dots(X)
         for i in range(m):
             if s[i] == 0.0:
-                print('Zero initial guess, replacing with random')
+                if verb > -1:
+                    print('Zero initial guess, replacing with random')
                 X.select(1, i)
                 X.fill_random()
                 s[i : i + 1] = X.dots(X)
@@ -268,8 +277,9 @@ class Solver:
         U = XBX
         ind, dropped, last_piv = piv_chol(U, 0, 1e-8)
         if dropped > 0:
-            print(ind)
-            print('dropped %d initial vectors out of %d' % (dropped, nx))
+            #print(ind)
+            if verb > -1:
+                print('dropped %d initial vectors out of %d' % (dropped, nx))
             # drop-linear-dependent initial vectors
             nx -= dropped
             if nx > 0:
@@ -315,8 +325,9 @@ class Solver:
             Z.copy(BX)
 
         # main CG loop
-        for iteration in range(options.max_iter):
-            print('------------- iteration %d' % iteration)
+        for self.iteration in range(options.max_iter):
+            if verb > 0:
+                print('------------- iteration %d' % self.iteration)
             if pro:
                 XAX = AX.dot(BX)
             else:
@@ -325,18 +336,20 @@ class Solver:
             da = XAX.diagonal()
             db = XBX.diagonal()
             new_lmd = da/db
-            if iteration > 0:
+            if self.iteration > 0:
                 # compute eigenvalue decrements
                 for i in range(nx):
                     if dlmd[ix + i, rec - 1] == 0: # previous data not available
                         continue
                     delta = lmd[ix + i] - new_lmd[i]
-                    eps = 1e-6*max(abs(new_lmd[i]), abs(lmd[ix + i]))
+                    eps = 1e-4*max(abs(new_lmd[i]), abs(lmd[ix + i]))
                     if abs(delta) > eps:
                         dlmd[ix + i, rec - 1] = delta
 #                print(dlmd[ix : ix + nx, rec - 1])
-#                print('eigenvalues shifts history:')
-#                print(numpy.array_str(dlmd[ix : ix + nx, :rec].T, precision = 2))
+                if verb > 3:
+                    print('eigenvalues shifts history:')
+                    print(numpy.array_str(dlmd[ix : ix + nx, :rec].T, \
+                                          precision = 2))
             lmd[ix : ix + nx] = new_lmd
             
             # compute residuals
@@ -398,16 +411,18 @@ class Solver:
                     qx = math.sqrt(qi)
                     err_X[ix + i] = dX[ix + i]*qx/(1 - qx)
 
-            print('eigenvalue   residual     errors       a.c.f.')
-            for i in range(ix, ix + nx):
-                print('%e %.1e  %.1e %.1e  %.1e' % \
-                      (lmd[i], res[i], abs(err_lmd[i]), err_X[i], acf[i]))
+            if verb > 1:
+                print('eigenvalue   residual     errors       a.c.f.')
+                for i in range(ix, ix + nx):
+                    print('%e %.1e  %.1e %.1e  %.1e' % \
+                          (lmd[i], res[i], abs(err_lmd[i]), err_X[i], acf[i]))
 
             lcon = 0
             for i in range(leftX):
                 j = self.lcon + i
                 if res[ix + i] < res_tol:
-                    print('left eigenvector %d converged' % j)
+                    if verb > 0:
+                        print('left eigenvector %d converged' % j)
                     lcon += 1
                 else:
                     break
@@ -416,7 +431,8 @@ class Solver:
             for i in range(rightX):
                 j = self.rcon + i
                 if res[ix + nx - i - 1] < res_tol:
-                    print('right eigenvector %d converged' % j)
+                    if verb > 0:
+                        print('right eigenvector %d converged' % j)
                     rcon += 1
                 else:
                     break
@@ -542,7 +558,9 @@ class Solver:
             ind, dropped, last_piv = piv_chol(U, nx, 1e-4)
             if dropped > 0:
                 #print(ind)
-                print('dropped %d search directions out of %d' % (dropped, ny))
+                if verb > -1:
+                    print('dropped %d search directions out of %d' \
+                          % (dropped, ny))
             
             # re-arrange/drop-linear-dependent search directions
             ny -= dropped
@@ -607,8 +625,8 @@ class Solver:
                 else:
                     shift_left = min(lcon, int(round(lr_ratio*ny)))
                     shift_right = min(rcon, ny - shift_left)
-                print(shift_left, shift_left_max)
-                print(shift_right, shift_right_max)
+                #print(shift_left, shift_left_max)
+                #print(shift_right, shift_right_max)
                 shift_left = min(shift_left, shift_left_max)
                 shift_right = min(shift_right, shift_right_max)
                 #print(ny, shift_left, nxy)
@@ -618,7 +636,8 @@ class Solver:
 
             # select new numbers of left and right eigenpairs
             if left > 0 and lcon > 0 and self.lcon >= left: # left side converged
-                print('left side converged')
+                if verb > 0:
+                    print('left side converged')
                 leftX_new = 0
                 rightX_new = rightX + shift_right #min(nxy, block_size)
                 shift_left = -leftX
@@ -626,7 +645,8 @@ class Solver:
                 lr_ratio = 0.0
                 ix_new = left_block_size_new
             elif right > 0 and rcon > 0 and self.rcon >= right: # right side converged
-                print('right side converged')
+                if verb > 0:
+                    print('right side converged')
                 ix_new = ix - shift_left
                 leftX_new = min(nxy, block_size - ix_new)
                 rightX_new = 0
@@ -639,9 +659,10 @@ class Solver:
                 left_block_size_new = left_block_size
                 ix_new = ix - shift_left
             nx_new = leftX_new + rightX_new
-            print('left X: %d %d' % (leftX, leftX_new))
-            print('right X: %d %d' % (rightX, rightX_new))
-            print('new ix: %d, nx: %d, nxy: %d' % (ix_new, nx_new, nxy))
+            if verb > 2:
+                print('left X: %d %d' % (leftX, leftX_new))
+                print('right X: %d %d' % (rightX, rightX_new))
+                print('new ix: %d, nx: %d, nxy: %d' % (ix_new, nx_new, nxy))
 
             # re-arrange eigenvalues, shifts etc.
             m = block_size

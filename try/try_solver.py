@@ -12,6 +12,7 @@ opt = raleigh.solver.Options()
 #opt.block_size = 5
 opt.max_iter = 40
 opt.res_tol = 1e-4
+#opt.verbosity = 1
 n = 40
 #n = 160
 v = NDArrayVectors(n)
@@ -35,7 +36,8 @@ solver = raleigh.solver.Solver(problem)
 #solver.set_preconditioner(opP)
 #solver.solve(v, opt, which = (3,0), extra = (0,0), init = (w, None))
 solver.solve(v, opt, which = (3,3), init = (wl, wr)) #, extra = (1,1))
-print('%d converged eigenvalues are:' % v.nvec())
+print('after %d iterations, %d converged eigenvalues are:' \
+      % (solver.iteration, v.nvec()))
 print(solver.eigenvalues)
 #solver.solve(v, opt, (2,1))
 #print('%d converged eigenvalues are:' % (solver.lcon + solver.rcon))
