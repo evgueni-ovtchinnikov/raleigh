@@ -419,7 +419,8 @@ class Solver:
 
             if verb > 1:
                 print('eigenvalue   residual     errors       a.c.f.')
-                for i in range(ix, ix + nx):
+#                for i in range(ix, ix + nx):
+                for i in range(block_size):
                     print('%e %.1e  %.1e %.1e  %.1e' % \
                           (lmd[i], res[i], abs(err_lmd[i]), err_X[i], acf[i]))
 
@@ -718,7 +719,6 @@ class Solver:
             # estimate eigenvalue and eigenvector shifts
             lmdx = numpy.concatenate \
                 ((lmdxy[:leftX_new], lmdxy[nxy - rightX_new:]))
-            lmdz = lmdxy[leftX_new : nxy - rightX_new]
             QX = numpy.concatenate \
                 ((Q[:, :leftX_new], Q[:, nxy - rightX_new:]), axis = 1)
             QYX = QX[nx:, :].copy()
@@ -748,7 +748,13 @@ class Solver:
             Q = sla.solve_triangular(U, Q)
             QX = numpy.concatenate \
                 ((Q[:, :leftX_new], Q[:, nxy - rightX_new:]), axis = 1)
-            QZ = Q[:, leftX_new : nxy - rightX_new]
+            lft = max(leftX, leftX_new)
+            rgt = max(rightX, rightX_new)
+            nz = nxy - lft - rgt
+            lmdz = lmdxy[lft : nxy - rgt]
+            QZ = Q[:, lft : nxy - rgt]
+#            lmdz = lmdxy[leftX_new : nxy - rightX_new]
+#            QZ = Q[:, leftX_new : nxy - rightX_new]
             if nx > 0:
                 QXX = QX[:nx, :].copy()
             QYX = QX[nx:, :].copy()
@@ -757,7 +763,7 @@ class Solver:
             QYZ = QZ[nx:, :].copy()
     
             # X and 'old search directions' Z and their A- and B-images
-            nz = nxy - nx_new
+            #nz = min(block_size, nxy - nx_new)
             W.select(nx_new)
             Z.select(nx_new)
             if nx > 0:

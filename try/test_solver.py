@@ -43,6 +43,9 @@ print('after %d iterations, %d + %d eigenvalues converged:' \
 lmd = solver.eigenvalues
 lmd, u = sort_eigenpairs(lmd, u)
 print(lmd)
+lconu = solver.lcon
+rconu = solver.rcon
+nconu = lconu + rconu
 
 opt.verbosity = 1
 solver.solve(v, opt, which = (3,3))
@@ -53,8 +56,9 @@ lmd, v = sort_eigenpairs(lmd, v)
 print(lmd)
 
 w = NDArrayVectors(u)
-lcon = solver.lcon
-rcon = solver.rcon
+nconv = solver.lcon + solver.rcon
+lcon = min(lconu, solver.lcon)
+rcon = min(rconu, solver.rcon)
 u.select(lcon)
 v.select(lcon)
 w.select(lcon)
@@ -66,9 +70,9 @@ opB(v, w)
 sl = w.dots(v)
 sl = numpy.sqrt(sl)
 
-u.select(rcon, lcon)
-v.select(rcon, lcon)
-w.select(rcon, lcon)
+u.select(rcon, nconu - rcon)
+v.select(rcon, nconv - rcon)
+w.select(rcon, nconu - rcon)
 opB(v, w)
 q = w.dot(u)
 u.mult(q, w)
