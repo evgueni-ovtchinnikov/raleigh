@@ -22,8 +22,8 @@ def check_eigenvectors_accuracy \
     problem_type = problem.type()
     std = (problem_type == 's')
 
-    u = problem.vector().new_vectors(0)
-    v = problem.vector().new_vectors(0)
+    u = problem.vector().new_vectors()
+    v = problem.vector().new_vectors()
 
     solver = raleigh.solver.Solver(problem)
 

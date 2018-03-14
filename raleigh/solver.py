@@ -791,7 +791,7 @@ class Solver:
                 if nx > 0:
                     AX.mult(QXZ, AZ)
                 else:
-                    AZ.fill(0.0)
+                    AZ.zero() #fill(0.0)
             AX.select(nx_new, ix_new)
             W.copy(AX)
             if nz > 0:
@@ -812,7 +812,7 @@ class Solver:
                     if nx > 0:
                         BX.mult(QXZ, BZ)
                     else:
-                        BZ.fill(0.0)
+                        BZ.zero() #fill(0.0)
                 BX.select(nx_new, ix_new)
                 W.copy(BX)
                 if nz > 0:
@@ -831,7 +831,7 @@ class Solver:
                 if nx > 0:
                     X.mult(QXZ, Z)
                 else:
-                    Z.fill(0.0)
+                    Z.zero() #fill(0.0)
             X.select(nx_new, ix_new)
             W.copy(X)
             if nz > 0:

@@ -22,21 +22,19 @@ class NDArrayVectors: #(Vectors):
             ('wrong argument %s in constructor' % repr(type(arg)))
         m, n = self.__data.shape
         self.__selected = (0, m)
-    def dimension(self):
-        return self.__data.shape[1]
-    def data_type(self):
-        return self.__data.dtype
+##    def dimension(self):
+##        return self.__data.shape[1]
+##    def data_type(self):
+##        return self.__data.dtype
     def is_complex(self):
         return isinstance(self.__data[0,0], complex)
     def clone(self):
-        return NDArrayVectors(self.__data.copy())
-    def append(self, other):
-        self.__data = numpy.concatenate((self.__data, other.data()))
-        self.select_all()
-    def new_vectors(self, nv):
+        return NDArrayVectors(self) #.__data.copy())
+    def new_vectors(self, nv = 0):
         m, n = self.__data.shape
-        data = numpy.ones((nv, n), dtype = self.__data.dtype)
-        return NDArrayVectors(data)
+        return NDArrayVectors(n, nv)
+##        data = numpy.ones((nv, n), dtype = self.__data.dtype)
+##        return NDArrayVectors(data)
     def fill_random(self):
         iv, nv = self.__selected
         m, n = self.__data.shape
@@ -80,15 +78,21 @@ class NDArrayVectors: #(Vectors):
         self.__selected = (first, nv)
     def select_all(self):
         self.select(self.__data.shape[0])
-    def fill(self, array_or_value):
+    def zero(self):
         f, n = self.__selected;
-        self.__data[f : f + n, :] = array_or_value
+        self.__data[f : f + n, :] = 0.0
+##    def fill(self, array_or_value):
+##        f, n = self.__selected;
+##        self.__data[f : f + n, :] = array_or_value
     def data(self, i = None):
         f, n = self.__selected
         if i is None:
             return self.__data[f : f + n, :]
         else:
             return self.__data[f + i, :]
+    def append(self, other):
+        self.__data = numpy.concatenate((self.__data, other.data()))
+        self.select_all()
     def copy(self, other, ind = None):
         i, n = self.__selected
         j, m = other.__selected
