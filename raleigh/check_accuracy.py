@@ -22,12 +22,10 @@ def check_eigenvectors_accuracy \
     problem_type = problem.type()
     std = (problem_type == 's')
 
-    u = problem.vector().new_vectors()
-    v = problem.vector().new_vectors()
-
     solver = raleigh.solver.Solver(problem)
 
     # run first time
+    u = problem.vector().new_vectors()
     solver.solve(u, opt, which, extra, init)
     print('after %d iterations, %d + %d eigenvalues converged:' \
           % (solver.iteration, solver.lcon, solver.rcon))
@@ -38,8 +36,14 @@ def check_eigenvectors_accuracy \
     lconu = solver.lcon
     rconu = solver.rcon
     nconu = lconu + rconu
+    if nconu < 1:
+        print('no eigenpairs converged')
+        return
+##    q = u.dot(u)
+##    print(q)
 
     # run second time
+    v = problem.vector().new_vectors()
     solver.solve(v, opt, which, extra, init)
     print('after %d iterations, %d + %d eigenvalues converged:' \
           % (solver.iteration, solver.lcon, solver.rcon))
@@ -50,6 +54,9 @@ def check_eigenvectors_accuracy \
     lconv = solver.lcon
     rconv = solver.rcon
     nconv = lconv + rconv
+    if nconv < 1:
+        print('no eigenpairs converged')
+        return
 
     # compare to get an idea about the actual eigenvector errors
     # since the error in each u and respective v are essentially random,
@@ -106,4 +113,4 @@ def check_eigenvectors_accuracy \
     print('  estimated    actual')
     for i in range(lcon + rcon):
         print('%e %e' % (t[i], s[i]))
-    return s, t
+#    return s, t

@@ -391,7 +391,7 @@ class Solver:
             ## TODO: estimate errors
             if rec > 3: # sufficient history available
                 for i in range(nx):
-                    if dX[ix + i] > 0.1:
+                    if dX[ix + i] > 0.01:
                         continue
                     k = 0
                     s = 0
@@ -418,7 +418,7 @@ class Solver:
                     err_X[ix + i] = dX[ix + i]*qx/(1 - qx)
 
             if verb > 1:
-                print('eigenvalue   residual     errors       a.c.f.')
+                print('eigenvalue   residual estimated errors  a.c.f.')
 #                for i in range(ix, ix + nx):
                 for i in range(block_size):
                     print('%e %.1e  %.1e %.1e  %.1e' % \
@@ -532,7 +532,7 @@ class Solver:
                     BY.select(ny)
                     W.copy(BY)
 
-            if Xc.nvec() > 0 and (P is not None or gen):
+            if Xc.nvec() > 0: #and (P is not None or gen):
                 # orthogonalize Y to Xc
                 # std: W := W - Xc Xc* W (not needed if P is None)
                 # gen: W := W - Xc BXc* W
