@@ -403,3 +403,10 @@ def block_size(left, right):
 #                    Gc = numpy.concatenate((Gc, Gx[:, :ncon]))
 #                    Gc = numpy.concatenate((Gc, conjugate(Gx)), axis = 1)
                 #Gc = (Gc + conjugate(Gc))/2
+
+#            if verb > 1:
+#                print('eigenvalue   residual estimated errors')
+#                for i in range(block_size):
+#                    print('%e %.1e  %.1e %.1e' % \
+#                          (lmd[i], res[i], err_lmd[i + m], err_X[i + m]))
+

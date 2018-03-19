@@ -395,7 +395,42 @@ class Solver:
             s = W.dots(W)
             res[ix : ix + nx] = numpy.sqrt(s)
     
-            ## TODO: estimate errors
+            # residual-based error estimates
+            lp = 0
+            for k in range(1, leftX):
+                i = ix + k
+                if dX[i] > 0.01:
+                    break
+                if lmd[i] - lmd[i - 1] > res[i]:
+                    lp = k
+            if lp > 0:
+                i = ix + lp
+                t = lmd[i]
+                print('using left pole at lmd[%d] = %e' % (i, t))
+                m = block_size
+                for i in range(lp):
+                    s = res[i]
+                    err_lmd[i + m] = s*s/(t - lmd[i])
+                    err_X[i + m] = s/(t - lmd[i])
+            lp = 0
+            for k in range(1, rightX):
+                i = ix + nx - k - 1
+                if dX[i] > 0.01:
+                    break
+                if lmd[i + 1] - lmd[i] > res[i]:
+                    lp = k
+            if lp > 0:
+                i = ix + nx - lp - 1
+                t = lmd[i]
+                print('using right pole at lmd[%d] = %e' % (i, t))
+                m = block_size
+                for k in range(lp):
+                    i = ix + nx - k - 1
+                    s = res[i]
+                    err_lmd[i + m] = s*s/(lmd[i] - t)
+                    err_X[i + m] = s/(lmd[i] - t)
+
+            # kinematic error estimates
             if rec > 3: # sufficient history available
                 for i in range(nx):
                     if dX[ix + i] > 0.01:
@@ -425,11 +460,15 @@ class Solver:
                     err_X[ix + i] = dX[ix + i]*qx/(1 - qx)
 
             if verb > 1:
-                print('eigenvalue   residual estimated errors  a.c.f.')
-#                for i in range(ix, ix + nx):
+                msg = 'eigenvalue   residual  ' + \
+                'estimated errors (kinematic/residual)' + \
+                '  a.c.f.'
+                print(msg)
                 for i in range(block_size):
-                    print('%e %.1e  %.1e %.1e  %.1e' % \
-                          (lmd[i], res[i], abs(err_lmd[i]), err_X[i], acf[i]))
+                    print('%e %.1e  %.1e / %.1e    %.1e / %.1e  %.1e' % \
+                          (lmd[i], res[i], \
+                          abs(err_lmd[i]), abs(err_lmd[m + i]), \
+                          abs(err_X[i]), abs(err_X[m + i]), acf[i]))
 
             lcon = 0
             for i in range(leftX):
@@ -755,6 +794,8 @@ class Solver:
                     err_lmd[i] = err_lmd[i + shift_left]
                     err_lmd[m + i] = err_lmd[m + i + shift_left]
                     dlmd[i, :] = dlmd[i + shift_left, :]
+                    err_X[i] = err_X[i + shift_left]
+                    err_X[m + i] = err_X[m + i + shift_left]
                     dX[i] = dX[i + shift_left]
             if shift_left >= 0:
                 for i in range(l - shift_left, nl):
@@ -763,6 +804,8 @@ class Solver:
                     err_lmd[i] = -1.0
                     err_lmd[m + i] = -1.0
                     dlmd[i, :] = 0
+                    err_X[i] = -1.0
+                    err_X[m + i] = -1.0
                     dX[i] = 0
             if shift_right > 0:
                 for i in range(m - 1, l + shift_right - 1, -1):
@@ -772,6 +815,8 @@ class Solver:
                     err_lmd[i] = err_lmd[i - shift_right]
                     err_lmd[m + i] = err_lmd[m + i - shift_right]
                     dlmd[i, :] = dlmd[i - shift_right, :]
+                    err_X[i] = err_X[i - shift_right]
+                    err_X[m + i] = err_X[m + i - shift_right]
                     dX[i] = dX[i - shift_right]
             if shift_right >= 0:
                 for i in range(l + shift_right - 1, nl - 1, -1):
@@ -780,6 +825,8 @@ class Solver:
                     err_lmd[i] = -1.0
                     err_lmd[m + i] = -1.0
                     dlmd[i, :] = 0
+                    err_X[i] = -1.0
+                    err_X[m + i] = -1.0
                     dX[i] = 0
 
             # estimate eigenvalue and eigenvector shifts
