@@ -396,3 +396,10 @@ def block_size(left, right):
 
 #        else:
 #            BX = X
+
+#                    Gc = numpy.concatenate((Gc, Gx[:, :ncon]))
+#                    Gc = numpy.concatenate((Gc, conjugate(Gx)), axis = 1)
+
+#                    Gc = numpy.concatenate((Gc, Gx[:, :ncon]))
+#                    Gc = numpy.concatenate((Gc, conjugate(Gx)), axis = 1)
+                #Gc = (Gc + conjugate(Gc))/2

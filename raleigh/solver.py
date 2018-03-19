@@ -238,16 +238,23 @@ class Solver:
         A = self.__problem.A()
         B = self.__problem.B()
         P = self.__P
-        Xc = eigenvectors
-        if not std:
-            BXc = eigenvectors.clone()
-            if Xc.nvec() > 0:
-                B(Xc, BXc)
-        else:
-            BXc = Xc
         err_lmd = self.err_lmd
         err_X = self.err_X
         res_tol = options.res_tol
+
+        # already available eigenvectors (e.g. previous run)
+        Xc = eigenvectors
+        nc = Xc.nvec()
+        if not std:
+            BXc = eigenvectors.clone()
+            if nc > 0:
+                B(Xc, BXc)
+        else:
+            BXc = Xc
+        if nc > 0:
+            Gc = Xc.dot(Xc)
+            # approximate inverse of Gc
+            Gci = 2*numpy.identity(nc) - Gc
 
         # initialize
         AZ = None
@@ -265,7 +272,7 @@ class Solver:
             # std: X := X - Xc Xc* X
             # gen: X := X - Xc BXc* X
             # pro: X := X - Xc BXc* X
-            Q = X.dot(BXc)
+            Q = numpy.dot(Gci, X.dot(BXc))
             Xc.mult(Q, W)
             X.add(W, -1.0)
 
@@ -296,7 +303,7 @@ class Solver:
                 B(X, BX)
             if Xc.nvec() > 0:
                 # orthogonalize X to Xc
-                Q = X.dot(BXc)
+                Q = numpy.dot(Gci, X.dot(BXc))
                 Xc.mult(Q, W)
                 X.add(W, -1.0)
                 if not std:
@@ -377,9 +384,9 @@ class Solver:
                 # gen: W := W - BXc Xc* W
                 # pro: W := W - Xc BXc* W
                 if pro:
-                    Q = W.dot(BXc)
+                    Q = numpy.dot(Gci, W.dot(BXc))
                 else:
-                    Q = W.dot(Xc)
+                    Q = numpy.dot(Gci, W.dot(Xc))
                 if gen:
                     BXc.mult(Q, Y)
                 else:
@@ -435,7 +442,6 @@ class Solver:
                     lcon += 1
                 else:
                     break
-            self.lcon += lcon
             rcon = 0
             for i in range(rightX):
                 j = self.rcon + i
@@ -448,9 +454,9 @@ class Solver:
                     rcon += 1
                 else:
                     break
-            self.rcon += rcon
 
-            ## move converged X to Xc,
+            # move converged X to Xc, update Gram matrix for Xc
+            ncon = Xc.nvec()
             if lcon > 0:
                 self.eigenvalues = numpy.concatenate \
                     ((self.eigenvalues, lmd[ix : ix + lcon]))
@@ -459,10 +465,29 @@ class Solver:
                 self.errors_vec = numpy.concatenate \
                     ((self.errors_vec, err_X[ix : ix + lcon]))
                 X.select(lcon, ix)
+                if std and ncon > 0:
+                    if ncon > 0:
+                        Gu = X.dot(Xc)
                 Xc.append(X)
                 if not std:
+                    if ncon > 0:
+                        Gu = X.dot(BXc)
                     BX.select(lcon, ix)
                     BXc.append(BX)
+                    if ncon < 1:
+                        Gc = BXc.dot(Xc)
+                    else:
+                        Gl = BXc.dot(X)
+                else:
+                    if ncon < 1:
+                        Gc = Xc.dot(Xc)
+                    else:
+                        Gl = Xc.dot(X)
+                if ncon > 0:
+                    Gc = numpy.concatenate((Gc, Gu), axis = 1)
+                    Gc = numpy.concatenate((Gc, Gl))
+                Gc = (Gc + conjugate(Gc))/2
+                ncon += lcon
             if rcon > 0:
                 jx = ix + nx
                 self.eigenvalues = numpy.concatenate \
@@ -472,10 +497,40 @@ class Solver:
                 self.errors_vec = numpy.concatenate \
                     ((self.errors_vec, err_X[jx - rcon : jx]))
                 X.select(rcon, jx - rcon)
+                if std and ncon > 0:
+                    if ncon > 0:
+                        Gu = X.dot(Xc)
                 Xc.append(X)
                 if not std:
+                    if ncon > 0:
+                        Gu = X.dot(BXc)
                     BX.select(rcon, jx - rcon)
                     BXc.append(BX)
+                    if ncon < 1:
+                        Gc = BXc.dot(Xc)
+                    else:
+                        Gl = BXc.dot(X)
+                else:
+                    if ncon < 1:
+                        Gc = Xc.dot(Xc)
+                    else:
+                        Gl = Xc.dot(X)
+                if ncon > 0:
+                    Gc = numpy.concatenate((Gc, Gu), axis = 1)
+                    Gc = numpy.concatenate((Gc, Gl))
+                ncon += rcon
+            if ncon > 0:
+                H = Gc - numpy.identity(ncon)
+                if verb > 1:
+                    print('Gram error: %e' % nla.norm(H))
+                # approximate inverse, good enough for Gram error up to 1e-8
+                Gci = 2*numpy.identity(ncon) - Gc
+#                print(Gc)
+#                H = numpy.dot(Gci, Gc)
+#                print(H)
+
+            self.lcon += lcon
+            self.rcon += rcon
             left_converged = left >= 0 and self.lcon >= left
             right_converged = right >= 0 and self.rcon >= right
             if left_converged and right_converged:
@@ -538,9 +593,9 @@ class Solver:
                 # gen: W := W - Xc BXc* W
                 # pro: W := W - Xc BXc* W (not needed if P is None)
                 if not std:
-                    Q = Y.dot(BXc)
+                    Q = numpy.dot(Gci, Y.dot(BXc))
                 else:
-                    Q = Y.dot(Xc)
+                    Q = numpy.dot(Gci, Y.dot(Xc))
                 Xc.mult(Q, W)
                 Y.add(W, -1.0)
 
