@@ -185,7 +185,6 @@ class Solver:
         dlmd = numpy.zeros((m, RECORDS), dtype = numpy.float32)
         dX = numpy.ones((m,), dtype = numpy.float32)
         acf = numpy.ones((mm,), dtype = numpy.float32)
-        #X = vector.new_orthogonal_vectors(m)
         X = vector.new_vectors(m)
         X.fill_random()
         #X.fill_orthogonal(m)
@@ -230,8 +229,6 @@ class Solver:
         s = numpy.sqrt(X.dots(X))
         X.scale(s)
             
-        #print(X.data().T)
-
         # shorcuts
         lmd = self.lmd
         res = self.res
@@ -242,7 +239,7 @@ class Solver:
         err_X = self.err_X
         res_tol = options.res_tol
 
-        # already available eigenvectors (e.g. previous run)
+        # constraints (already available eigenvectors e.g. from previous run)
         Xc = eigenvectors
         nc = Xc.nvec()
         if not std:
@@ -252,7 +249,7 @@ class Solver:
         else:
             BXc = Xc
         if nc > 0:
-            Gc = Xc.dot(Xc)
+            Gc = BXc.dot(Xc)
             # approximate inverse of Gc
             Gci = 2*numpy.identity(nc) - Gc
 
@@ -337,8 +334,10 @@ class Solver:
 
         # main CG loop
         for self.iteration in range(options.max_iter):
+
             if verb > 0:
                 print('------------- iteration %d' % self.iteration)
+
             if pro:
                 XAX = AX.dot(BX)
             else:
@@ -349,7 +348,6 @@ class Solver:
             new_lmd = da/db
             if self.iteration > 0:
                 # compute eigenvalue decrements
-                #print(lmd)
                 for i in range(nx):
                     if dlmd[ix + i, rec - 1] == 0: # previous data not available
                         continue
@@ -395,36 +393,38 @@ class Solver:
             s = W.dots(W)
             res[ix : ix + nx] = numpy.sqrt(s)
     
-            # residual-based error estimates
-            lp = 0
+            # residual-based error estimates:
+            # asymptotic Lehmann for eigenvalues
+            # generalized (extended gap) Davis-Kahan for eigenvectors
+            l = 0
             for k in range(1, leftX):
                 i = ix + k
                 if dX[i] > 0.01:
                     break
                 if lmd[i] - lmd[i - 1] > res[i]:
-                    lp = k
-            if lp > 0:
-                i = ix + lp
+                    l = k
+            if l > 0:
+                i = ix + l
                 t = lmd[i]
                 print('using left pole at lmd[%d] = %e' % (i, t))
                 m = block_size
-                for i in range(lp):
+                for i in range(l):
                     s = res[i]
                     err_lmd[i + m] = s*s/(t - lmd[i])
                     err_X[i + m] = s/(t - lmd[i])
-            lp = 0
+            l = 0
             for k in range(1, rightX):
                 i = ix + nx - k - 1
                 if dX[i] > 0.01:
                     break
                 if lmd[i + 1] - lmd[i] > res[i]:
-                    lp = k
-            if lp > 0:
-                i = ix + nx - lp - 1
+                    l = k
+            if l > 0:
+                i = ix + nx - l - 1
                 t = lmd[i]
                 print('using right pole at lmd[%d] = %e' % (i, t))
                 m = block_size
-                for k in range(lp):
+                for k in range(l):
                     i = ix + nx - k - 1
                     s = res[i]
                     err_lmd[i + m] = s*s/(lmd[i] - t)
@@ -525,7 +525,6 @@ class Solver:
                 if ncon > 0:
                     Gc = numpy.concatenate((Gc, Gu), axis = 1)
                     Gc = numpy.concatenate((Gc, Gl))
-                Gc = (Gc + conjugate(Gc))/2
                 ncon += lcon
             if rcon > 0:
                 jx = ix + nx
@@ -564,9 +563,6 @@ class Solver:
                     print('Gram error: %e' % nla.norm(H))
                 # approximate inverse, good enough for Gram error up to 1e-8
                 Gci = 2*numpy.identity(ncon) - Gc
-#                print(Gc)
-#                H = numpy.dot(Gci, Gc)
-#                print(H)
 
             self.lcon += lcon
             self.rcon += rcon
@@ -578,7 +574,7 @@ class Solver:
             leftX -= lcon
             rightX -= rcon
             
-            ## select Xs, AXs, BXs accordingly
+            ## re-select Xs, AXs, BXs accordingly
             iy = ix
             ny = nx
             ix += lcon
@@ -614,13 +610,14 @@ class Solver:
                 Lmd[0, :] = lmd[iy : iy + ny]
                 Mu[:, 0] = lmdz
                 Den = Mu - Lmd
+                # TODO: avoid division by zero
                 Beta = Num/Den
                 
                 # conjugate search directions
                 AZ.select(ny)
                 Z.mult(Beta, AZ)
                 Y.add(AZ, -1.0)
-                if pro: # if gen of nz == 0, BY computed later
+                if pro: # if gen or nz == 0, BY computed later
                     BZ.mult(Beta, AZ)
                     W.add(AZ, -1.0)
                     BY.select(ny)
@@ -739,12 +736,8 @@ class Solver:
                 else:
                     shift_left = min(lcon, int(round(lr_ratio*ny)))
                     shift_right = min(rcon, ny - shift_left)
-                #print(shift_left, shift_left_max)
-                #print(shift_right, shift_right_max)
                 shift_left = min(shift_left, shift_left_max)
                 shift_right = min(shift_right, shift_right_max)
-                #print(ny, shift_left, nxy)
-                #print('shifts:', shift_left, shift_right)
             else:
                 shift_left = 0
                 shift_right = 0
@@ -754,10 +747,9 @@ class Solver:
                 if verb > 0:
                     print('left side converged')
                 leftX_new = 0
-                rightX_new = rightX + shift_right #min(nxy, block_size)
+                rightX_new = rightX + shift_right
                 shift_left = -leftX
                 left_block_size_new = ix + leftX + rightX - rightX_new
-#                left_block_size_new = block_size - rightX_new
                 lr_ratio = 0.0
                 ix_new = left_block_size_new
             elif right > 0 and rcon > 0 and self.rcon >= right: # right side converged
@@ -768,7 +760,6 @@ class Solver:
                 rightX_new = 0
                 shift_right = -rightX
                 left_block_size_new = ix + leftX + rightX
-#                left_block_size_new = block_size
                 lr_ratio = 1.0
             else:
                 leftX_new = leftX + shift_left
@@ -782,7 +773,7 @@ class Solver:
                 print('right X: %d %d' % (rightX, rightX_new))
                 print('new ix: %d, nx: %d, nxy: %d' % (ix_new, nx_new, nxy))
 
-            # re-arrange eigenvalues, shifts etc.
+            # shift eigenvalues etc.
             m = block_size
             l = left_block_size
             nl = left_block_size_new
@@ -829,7 +820,7 @@ class Solver:
                     err_X[m + i] = -1.0
                     dX[i] = 0
 
-            # estimate eigenvalue and eigenvector shifts
+            # estimate changes in eigenvalues and eigenvectors
             lmdx = numpy.concatenate \
                 ((lmdxy[:leftX_new], lmdxy[nxy - rightX_new:]))
             QX = numpy.concatenate \
@@ -837,23 +828,16 @@ class Solver:
             QYX = QX[nx:, :].copy()
             lmdX = numpy.ndarray((1, nx_new))
             lmdY = numpy.ndarray((ny, 1))
-#            lmdY = numpy.ndarray((nxy - nx_new, 1))
             lmdX[0, :] = lmdx
             lmdY[:, 0] = lmdy
             Delta = (lmdY - lmdX)*QYX*QYX
-#            print(QYX.shape)
-#            print(nla.norm(QYX, axis = 0).shape)
-#            print(dX[ix : ix + nx_new].shape)
-#            print(nx_new)
             dX[ix_new : ix_new + nx_new] = nla.norm(QYX, axis = 0)
-#            print(dX[ix : ix + nx_new])
             if rec == RECORDS:
                 for i in range(rec - 1):
                     dlmd[:, i] = dlmd[:, i + 1]
             else:
                 rec += 1
             dlmd[ix_new : ix_new + nx_new, rec - 1] = numpy.sum(Delta, axis = 0)
-#            print(dlmd[ix : ix + nx_new, rec - 1])
 
             # compute RR coefficients for X and 'old search directions' Z
             # by re-arranging columns of Q
@@ -866,8 +850,6 @@ class Solver:
             nz = nxy - lft - rgt
             lmdz = lmdxy[lft : nxy - rgt]
             QZ = Q[:, lft : nxy - rgt]
-#            lmdz = lmdxy[leftX_new : nxy - rightX_new]
-#            QZ = Q[:, leftX_new : nxy - rightX_new]
             if nx > 0:
                 QXX = QX[:nx, :].copy()
             QYX = QX[nx:, :].copy()
@@ -876,7 +858,6 @@ class Solver:
             QYZ = QZ[nx:, :].copy()
     
             # X and 'old search directions' Z and their A- and B-images
-            #nz = min(block_size, nxy - nx_new)
             W.select(nx_new)
             Z.select(nx_new)
             if nx > 0:
@@ -893,7 +874,7 @@ class Solver:
                 if nx > 0:
                     AX.mult(QXZ, AZ)
                 else:
-                    AZ.zero() #fill(0.0)
+                    AZ.zero()
             AX.select(nx_new, ix_new)
             W.copy(AX)
             if nz > 0:
@@ -914,7 +895,7 @@ class Solver:
                     if nx > 0:
                         BX.mult(QXZ, BZ)
                     else:
-                        BZ.zero() #fill(0.0)
+                        BZ.zero()
                 BX.select(nx_new, ix_new)
                 W.copy(BX)
                 if nz > 0:
@@ -933,7 +914,7 @@ class Solver:
                 if nx > 0:
                     X.mult(QXZ, Z)
                 else:
-                    Z.zero() #fill(0.0)
+                    Z.zero()
             X.select(nx_new, ix_new)
             W.copy(X)
             if nz > 0:
@@ -946,4 +927,3 @@ class Solver:
             leftX = leftX_new
             rightX = rightX_new
             left_block_size = left_block_size_new
-            #print(ix, leftX, rightX, left_block_size)

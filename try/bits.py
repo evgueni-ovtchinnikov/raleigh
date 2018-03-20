@@ -410,3 +410,35 @@ def block_size(left, right):
 #                    print('%e %.1e  %.1e %.1e' % \
 #                          (lmd[i], res[i], err_lmd[i + m], err_X[i + m]))
 
+#                print(Gc)
+#                H = numpy.dot(Gci, Gc)
+#                print(H)
+
+                #print(shift_left, shift_left_max)
+                #print(shift_right, shift_right_max)
+
+                #print(ny, shift_left, nxy)
+                #print('shifts:', shift_left, shift_right)
+
+#                left_block_size_new = block_size - rightX_new
+
+#                left_block_size_new = block_size
+
+#            lmdY = numpy.ndarray((nxy - nx_new, 1))
+
+#            print(QYX.shape)
+#            print(nla.norm(QYX, axis = 0).shape)
+#            print(dX[ix : ix + nx_new].shape)
+#            print(nx_new)
+
+#            print(dX[ix : ix + nx_new])
+
+#            print(dlmd[ix : ix + nx_new, rec - 1])
+
+#            lmdz = lmdxy[leftX_new : nxy - rightX_new]
+#            QZ = Q[:, leftX_new : nxy - rightX_new]
+
+            #nz = min(block_size, nxy - nx_new)
+
+            #print(ix, leftX, rightX, left_block_size)
+
