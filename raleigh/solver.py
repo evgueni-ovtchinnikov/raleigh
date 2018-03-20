@@ -481,7 +481,8 @@ class Solver:
                 t = lmd[i]
                 print('using left pole at lmd[%d] = %e' % (i, t))
                 m = block_size
-                for i in range(l):
+                for k in range(l):
+                    i = ix + k
                     s = res[i]
                     err_lmd[1, i] = s*s/(t - lmd[i])
                     err_X[1, i] = s/(t - lmd[i])
