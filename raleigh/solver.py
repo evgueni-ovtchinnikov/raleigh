@@ -76,6 +76,19 @@ class Options:
         self.threads = -1
         self.verbosity = 0
 
+class EstimatedErrors:
+    def __init__(self):
+        self.kinematic = numpy.ndarray((0,), dtype = numpy.float32)
+        self.residual = numpy.ndarray((0,), dtype = numpy.float32)
+    def __getitem__(self, item):
+        return self.kinematic[item], self.residual[item]
+    def append(self, est):
+        self.kinematic = numpy.concatenate((self.kinematic, est[0,:]))
+        self.residual = numpy.concatenate((self.residual, est[1,:]))
+    def reorder(self, ind):
+        self.kinematic = self.kinematic[ind]
+        self.residual = self.residual[ind]
+
 class Problem:
     def __init__(self, v, A, B = None, prod = None):
         self.__vector = v
@@ -166,6 +179,7 @@ class Solver:
         if verb > 0:
             print('left block size %d, right block size %d' % (l, m - l))
 
+        # problem
         problem = self.__problem
         vector = problem.vector()
         problem_type = problem.type()
@@ -173,21 +187,28 @@ class Solver:
         gen = (problem_type == 'g')
         pro = (problem_type == 'p')
         #self.__data_type = vector.data_type()
+
+        #output
         self.lcon = 0
         self.rcon = 0
         self.eigenvalues = numpy.ndarray((0,), dtype = numpy.float64)
-        self.errors_val = numpy.ndarray((0,), dtype = numpy.float32)
-        self.errors_vec = numpy.ndarray((0,), dtype = numpy.float32)
-        self.lmd = numpy.ndarray((m,), dtype = numpy.float64)
-        self.res = numpy.ndarray((m,), dtype = numpy.float32)
+        self.eigenvalue_errors = EstimatedErrors()
+        self.eigenvector_errors = EstimatedErrors()
+        self.residual_norms = numpy.ndarray((0,), dtype = numpy.float32)
+
+        # convergence data
+        self.cnv = numpy.zeros((m,), dtype = numpy.int32)
+        self.lmd = numpy.zeros((m,), dtype = numpy.float64)
+        self.res = -numpy.ones((m,), dtype = numpy.float32)
         self.err_lmd = -numpy.ones((2, m,), dtype = numpy.float32)
         self.err_X = -numpy.ones((2, m,), dtype = numpy.float32)
-#        self.err_lmd = -numpy.ones((mm,), dtype = numpy.float32)
-#        self.err_X = -numpy.ones((mm,), dtype = numpy.float32)
+
+        # convergence history data
         dlmd = numpy.zeros((m, RECORDS), dtype = numpy.float32)
         dX = numpy.ones((m,), dtype = numpy.float32)
         acf = numpy.ones((2, m,), dtype = numpy.float32)
-#        acf = numpy.ones((mm,), dtype = numpy.float32)
+
+        # workspace
         X = vector.new_vectors(m)
         X.fill_random()
         #X.fill_orthogonal(m)
@@ -203,7 +224,9 @@ class Solver:
             BX = X
             BY = Y
 
+        # copy initial vectors if present
         l = left_block_size
+        m = block_size
         init_lX = init[0]
         if init_lX is not None:
             init_left = min(l, init_lX.nvec())
@@ -219,6 +242,7 @@ class Solver:
             init_rX.select(init_right)
             init_rX.copy(X)
 
+        # check for zero initial vectors
         X.select(m)
         s = X.dots(X)
         for i in range(m):
@@ -356,7 +380,6 @@ class Solver:
                         continue
                     delta = lmd[ix + i] - new_lmd[i]
                     eps = 1e-4*max(abs(new_lmd[i]), abs(lmd[ix + i]))
-                    #print(delta)
                     if abs(delta) > eps:
                         dlmd[ix + i, rec - 1] = delta
 #                print(dlmd[ix : ix + nx, rec - 1])
@@ -396,47 +419,6 @@ class Solver:
             s = W.dots(W)
             res[ix : ix + nx] = numpy.sqrt(s)
     
-            # residual-based error estimates:
-            # asymptotic Lehmann for eigenvalues
-            # generalized (extended gap) Davis-Kahan for eigenvectors
-            l = 0
-            for k in range(1, leftX):
-                i = ix + k
-                if dX[i] > 0.01:
-                    break
-                if lmd[i] - lmd[i - 1] > res[i]:
-                    l = k
-            if l > 0:
-                i = ix + l
-                t = lmd[i]
-                print('using left pole at lmd[%d] = %e' % (i, t))
-                m = block_size
-                for i in range(l):
-                    s = res[i]
-                    err_lmd[1, i] = s*s/(t - lmd[i])
-                    err_X[1, i] = s/(t - lmd[i])
-#                    err_lmd[i + m] = s*s/(t - lmd[i])
-#                    err_X[i + m] = s/(t - lmd[i])
-            l = 0
-            for k in range(1, rightX):
-                i = ix + nx - k - 1
-                if dX[i] > 0.01:
-                    break
-                if lmd[i + 1] - lmd[i] > res[i]:
-                    l = k
-            if l > 0:
-                i = ix + nx - l - 1
-                t = lmd[i]
-                print('using right pole at lmd[%d] = %e' % (i, t))
-                m = block_size
-                for k in range(l):
-                    i = ix + nx - k - 1
-                    s = res[i]
-                    err_lmd[1, i] = s*s/(lmd[i] - t)
-                    err_X[1, i] = s/(lmd[i] - t)
-#                    err_lmd[i + m] = s*s/(lmd[i] - t)
-#                    err_X[i + m] = s/(lmd[i] - t)
-
             # kinematic error estimates
             if rec > 3: # sufficient history available
                 for i in range(nx):
@@ -459,15 +441,49 @@ class Solver:
                         continue
                     qi = qi**(1.0/(k - 1))
                     acf[0, ix + i] = qi # a.c.f. estimate
-#                    acf[ix + i] = qi # a.c.f. estimate
                     # esimate error based on a.c.f.
                     theta = qi/(1 - qi)
                     d = theta*dlmd[ix + i, rec - 1]
                     err_lmd[0, ix + i] = d
-#                    err_lmd[ix + i] = d
                     qx = math.sqrt(qi)
                     err_X[0, ix + i] = dX[ix + i]*qx/(1 - qx)
-#                    err_X[ix + i] = dX[ix + i]*qx/(1 - qx)
+
+            # residual-based error estimates:
+            # asymptotic Lehmann for eigenvalues
+            # generalized (extended gap) Davis-Kahan for eigenvectors
+            l = 0
+            for k in range(1, leftX):
+                i = ix + k
+                if dX[i] > 0.01:
+                    break
+                if lmd[i] - lmd[i - 1] > res[i]:
+                    l = k
+            if l > 0:
+                i = ix + l
+                t = lmd[i]
+                print('using left pole at lmd[%d] = %e' % (i, t))
+                m = block_size
+                for i in range(l):
+                    s = res[i]
+                    err_lmd[1, i] = s*s/(t - lmd[i])
+                    err_X[1, i] = s/(t - lmd[i])
+            l = 0
+            for k in range(1, rightX):
+                i = ix + nx - k - 1
+                if dX[i] > 0.01:
+                    break
+                if lmd[i + 1] - lmd[i] > res[i]:
+                    l = k
+            if l > 0:
+                i = ix + nx - l - 1
+                t = lmd[i]
+                print('using right pole at lmd[%d] = %e' % (i, t))
+                m = block_size
+                for k in range(l):
+                    i = ix + nx - k - 1
+                    s = res[i]
+                    err_lmd[1, i] = s*s/(lmd[i] - t)
+                    err_X[1, i] = s/(lmd[i] - t)
 
             if verb > 1:
                 msg = 'eigenvalue   residual  ' + \
@@ -479,8 +495,6 @@ class Solver:
                           (lmd[i], res[i], \
                           abs(err_lmd[0, i]), abs(err_lmd[1, i]), \
                           abs(err_X[0, i]), abs(err_X[1, i]), acf[0, i]))
-#                          abs(err_lmd[i]), abs(err_lmd[m + i]), \
-#                          abs(err_X[i]), abs(err_X[m + i]), acf[i]))
 
             lcon = 0
             for i in range(leftX):
@@ -491,7 +505,6 @@ class Solver:
                         msg = 'left eigenvector %d converged,' + \
                         ' eigenvalue %e, error %e / %e'
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
-#                        print(msg % (j, lmd[ix + i], err_X[ix + i]))
                     lcon += 1
                 else:
                     break
@@ -501,10 +514,9 @@ class Solver:
                 k = ix + nx - i - 1
                 if res[k] < res_tol:
                     if verb > 0:
-                        msg = 'right eigenvector %d converged,' + \
+                        msg = 'right eigenvector %d converged, \n' + \
                         ' eigenvalue %e, error %e / %e'
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
-#                        print(msg % (j, lmd[k], err_X[k]))
                     rcon += 1
                 else:
                     break
@@ -514,10 +526,10 @@ class Solver:
             if lcon > 0:
                 self.eigenvalues = numpy.concatenate \
                     ((self.eigenvalues, lmd[ix : ix + lcon]))
-                self.errors_val = numpy.concatenate \
-                    ((self.errors_val, err_lmd[0, ix : ix + lcon]))
-                self.errors_vec = numpy.concatenate \
-                    ((self.errors_vec, err_X[0, ix : ix + lcon]))
+                self.eigenvalue_errors.append(err_lmd[:, ix : ix + lcon])
+                self.eigenvector_errors.append(err_X[:, ix : ix + lcon])
+                self.residual_norms = numpy.concatenate \
+                    ((self.residual_norms, res[ix : ix + lcon]))
                 X.select(lcon, ix)
                 if std and ncon > 0:
                     if ncon > 0:
@@ -545,10 +557,10 @@ class Solver:
                 jx = ix + nx
                 self.eigenvalues = numpy.concatenate \
                     ((self.eigenvalues, lmd[jx - rcon : jx]))
-                self.errors_val = numpy.concatenate \
-                    ((self.errors_val, err_lmd[0, jx - rcon : jx]))
-                self.errors_vec = numpy.concatenate \
-                    ((self.errors_vec, err_X[0, jx - rcon : jx]))
+                self.eigenvalue_errors.append(err_lmd[:, jx - rcon : jx])
+                self.eigenvector_errors.append(err_X[:, jx - rcon : jx])
+                self.residual_norms = numpy.concatenate \
+                    ((self.residual_norms, res[jx - rcon : jx]))
                 X.select(rcon, jx - rcon)
                 if std and ncon > 0:
                     if ncon > 0:
@@ -796,43 +808,31 @@ class Solver:
                 for i in range(l - shift_left):
                     lmd[i] = lmd[i + shift_left]
                     acf[:, i] = acf[:, i + shift_left]
-#                    acf[m + i] = acf[m + i + shift_left]
                     err_lmd[:, i] = err_lmd[:, i + shift_left]
-#                    err_lmd[m + i] = err_lmd[m + i + shift_left]
                     dlmd[i, :] = dlmd[i + shift_left, :]
                     err_X[:, i] = err_X[:, i + shift_left]
-#                    err_X[m + i] = err_X[m + i + shift_left]
                     dX[i] = dX[i + shift_left]
             if shift_left >= 0:
                 for i in range(l - shift_left, nl):
                     acf[:, i] = 1.0
-#                    acf[m + i] = 1.0
                     err_lmd[:, i] = -1.0
-#                    err_lmd[m + i] = -1.0
                     dlmd[i, :] = 0
                     err_X[:, i] = -1.0
-#                    err_X[m + i] = -1.0
                     dX[i] = 0
             if shift_right > 0:
                 for i in range(m - 1, l + shift_right - 1, -1):
                     lmd[i] = lmd[i - shift_right]
                     acf[:, i] = acf[:, i - shift_right]
-#                    acf[m + i] = acf[m + i - shift_right]
                     err_lmd[:, i] = err_lmd[:, i - shift_right]
-#                    err_lmd[m + i] = err_lmd[m + i - shift_right]
                     dlmd[i, :] = dlmd[i - shift_right, :]
                     err_X[:, i] = err_X[:, i - shift_right]
-#                    err_X[m + i] = err_X[m + i - shift_right]
                     dX[i] = dX[i - shift_right]
             if shift_right >= 0:
                 for i in range(l + shift_right - 1, nl - 1, -1):
                     acf[:, i] = 1.0
-#                    acf[m + i] = 1.0
                     err_lmd[:, i] = -1.0
-#                    err_lmd[m + i] = -1.0
                     dlmd[i, :] = 0
                     err_X[:, i] = -1.0
-#                    err_X[m + i] = -1.0
                     dX[i] = 0
 
             # estimate changes in eigenvalues and eigenvectors

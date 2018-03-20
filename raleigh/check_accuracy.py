@@ -3,15 +3,16 @@ import numpy
 #sys.path.append('..')
 import raleigh.solver
 
-def sort_eigenpairs(lmd, u, err_lmd, err_X):
+def sort_eigenpairs_and_errors(lmd, u, err_lmd, err_X, res):
     ind = numpy.argsort(lmd)
     w = u.new_vectors(u.nvec())
     lmd = lmd[ind]
-    err_lmd = err_lmd[ind]
-    err_X = err_X[ind]
     u.copy(w, ind)
     w.copy(u)
-    return lmd, u, err_lmd, err_X
+    err_lmd.reorder(ind)
+    err_X.reorder(ind)
+    res = res[ind]
+    return lmd, u, err_lmd, err_X, res
 
 def check_eigenvectors_accuracy \
     (problem, opt, which = (-1,-1), \
@@ -30,8 +31,9 @@ def check_eigenvectors_accuracy \
     print('after %d iterations, %d + %d eigenvalues converged:' \
           % (solver.iteration, solver.lcon, solver.rcon))
     lmdu = solver.eigenvalues
-    lmdu, u, err_lmd, err_X = sort_eigenpairs\
-        (lmdu, u, solver.errors_val, solver.errors_vec)
+    lmdu, u, err_lmdu, err_u, res_u = sort_eigenpairs_and_errors\
+        (lmdu, u, solver.eigenvalue_errors, solver.eigenvector_errors, \
+        solver.residual_norms)
     print(lmdu)
     lconu = solver.lcon
     rconu = solver.rcon
@@ -39,8 +41,6 @@ def check_eigenvectors_accuracy \
     if nconu < 1:
         print('no eigenpairs converged')
         return
-##    q = u.dot(u)
-##    print(q)
 
     # run second time
     v = problem.vector().new_vectors()
@@ -48,8 +48,9 @@ def check_eigenvectors_accuracy \
     print('after %d iterations, %d + %d eigenvalues converged:' \
           % (solver.iteration, solver.lcon, solver.rcon))
     lmdv = solver.eigenvalues
-    lmdv, v, err_lmd, err_X = sort_eigenpairs\
-        (lmdv, v, solver.errors_val, solver.errors_vec)
+    lmdv, v, err_lmdv, err_v, res_v = sort_eigenpairs_and_errors\
+        (lmdv, v, solver.eigenvalue_errors, solver.eigenvector_errors, \
+        solver.residual_norms)
     print(lmdv)
     lconv = solver.lcon
     rconv = solver.rcon
@@ -57,6 +58,11 @@ def check_eigenvectors_accuracy \
     if nconv < 1:
         print('no eigenpairs converged')
         return
+        
+#    for i in range(nconu):
+#        print('eigenvalue: %e, residual norm: %.1e' % (lmdu[i], res_u[i]))
+#    for i in range(nconv):
+#        print('eigenvalue: %e, residual norm: %.1e' % (lmdv[i], res_v[i]))
 
     # compare to get an idea about the actual eigenvector errors
     # since the error in each u and respective v are essentially random,
@@ -84,7 +90,6 @@ def check_eigenvectors_accuracy \
         B(w, x)
         sl = x.dots(w)
     sl = numpy.sqrt(sl) # difference on the left
-    tl = err_X[:lcon]
 
     # compare eigenvectors on the right
     rcon = min(rconu, rconv)
@@ -106,11 +111,18 @@ def check_eigenvectors_accuracy \
         B(w, x)
         sr = x.dots(w)
     sr = numpy.sqrt(sr) # difference on the right
-    tr = err_X[nconv - rcon:]
-    s = numpy.concatenate((sl, sr))
-    t = numpy.concatenate((tl, tr))
+
     print('eigenvector errors:')
-    print('  estimated    actual')
-    for i in range(lcon + rcon):
-        print('%e %e' % (t[i], s[i]))
-#    return s, t
+    msg = '   estimated (first | second, kinematic/residual)' + \
+    '                actual'
+    print(msg)
+    for i in range(lcon):
+        err_ui = err_u[i]
+        err_vi = err_v[i]
+        print('%e / %e | %e / %e    %e' % \
+        (err_ui[0], err_ui[1], err_vi[0], err_vi[1], sl[i]))
+    for i in range(rcon):
+        err_ui = err_u[nconv - rcon + i]
+        err_vi = err_v[nconv - rcon + i]
+        print('%e / %e | %e / %e    %e' % \
+        (err_ui[0], err_ui[1], err_vi[0], err_vi[1], sr[i]))

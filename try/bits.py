@@ -442,3 +442,89 @@ def block_size(left, right):
 
             #print(ix, leftX, rightX, left_block_size)
 
+def sort_eigenpairs(lmd, u, err_lmd, err_X):
+    ind = numpy.argsort(lmd)
+    w = u.new_vectors(u.nvec())
+    lmd = lmd[ind]
+    err_lmd = err_lmd[ind]
+    err_X = err_X[ind]
+    u.copy(w, ind)
+    w.copy(u)
+    return lmd, u, err_lmd, err_X
+
+#    lmdu, u, err_lmd, err_X = sort_eigenpairs\
+#        (lmdu, u, solver.errors_val, solver.errors_vec)
+
+##    q = u.dot(u)
+##    print(q)
+
+#    lmdv, v, err_lmd, err_X = sort_eigenpairs\
+#        (lmdv, v, solver.errors_val, solver.errors_vec)
+
+#    for i in range(lcon + rcon):
+#        print('%e %e' % (t[i], s[i]))
+#    return s, t
+
+    s = numpy.concatenate((sl, sr))
+
+#        self.errors_val = numpy.ndarray((0,), dtype = numpy.float32)
+#        self.errors_vec = numpy.ndarray((0,), dtype = numpy.float32)
+
+#        self.err_lmd = -numpy.ones((mm,), dtype = numpy.float32)
+#        self.err_X = -numpy.ones((mm,), dtype = numpy.float32)
+
+#        acf = numpy.ones((mm,), dtype = numpy.float32)
+
+#                    err_lmd[i + m] = s*s/(t - lmd[i])
+#                    err_X[i + m] = s/(t - lmd[i])
+
+#                    err_lmd[i + m] = s*s/(lmd[i] - t)
+#                    err_X[i + m] = s/(lmd[i] - t)
+
+#                    acf[ix + i] = qi # a.c.f. estimate
+
+#                    err_lmd[ix + i] = d
+
+#                    err_X[ix + i] = dX[ix + i]*qx/(1 - qx)
+
+#                          abs(err_lmd[i]), abs(err_lmd[m + i]), \
+#                          abs(err_X[i]), abs(err_X[m + i]), acf[i]))
+
+#                        print(msg % (j, lmd[ix + i], err_X[ix + i]))
+
+#                        print(msg % (j, lmd[k], err_X[k]))
+
+#                self.errors_val = numpy.concatenate \
+#                    ((self.errors_val, err_lmd[0, ix : ix + lcon]))
+#                self.errors_vec = numpy.concatenate \
+#                    ((self.errors_vec, err_X[0, ix : ix + lcon]))
+
+#                self.errors_val = numpy.concatenate \
+#                    ((self.errors_val, err_lmd[0, jx - rcon : jx]))
+#                self.errors_vec = numpy.concatenate \
+#                    ((self.errors_vec, err_X[0, jx - rcon : jx]))
+
+#                    acf[m + i] = acf[m + i + shift_left]
+
+#                    err_lmd[m + i] = err_lmd[m + i + shift_left]
+
+#                    err_X[m + i] = err_X[m + i + shift_left]
+
+#                    acf[m + i] = 1.0
+
+#                    err_lmd[m + i] = -1.0
+
+#                    err_X[m + i] = -1.0
+
+#                    acf[m + i] = acf[m + i - shift_right]
+
+#                    err_lmd[m + i] = err_lmd[m + i - shift_right]
+
+#                    err_X[m + i] = err_X[m + i - shift_right]
+
+#                    acf[m + i] = 1.0
+
+#                    err_lmd[m + i] = -1.0
+
+#                    err_X[m + i] = -1.0
+
