@@ -7,6 +7,13 @@ import operators
 import raleigh.solver
 from raleigh.ndarray_vectors import NDArrayVectors
 
+class MyConvergenceCriteria:
+    def __init__(self, tol):
+        self.tol = tol
+    def satisfied(self, solver, i):
+        err = solver.convergence_data('ve', i)
+        return err[1] >= 0 and err[1] <= self.tol
+
 numpy.random.seed(1) # make results reproducible
 
 opt = raleigh.solver.Options()
@@ -14,6 +21,7 @@ opt = raleigh.solver.Options()
 opt.max_iter = 40
 opt.res_tol = 1e-10
 opt.verbosity = 2
+opt.convergence_criteria = MyConvergenceCriteria(1e-4)
 m = 2000
 n = 40
 

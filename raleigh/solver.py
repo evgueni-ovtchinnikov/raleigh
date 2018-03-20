@@ -67,15 +67,24 @@ def default_block_size(which, extra, init, threads):
         m = max(m, 2*threads)
     return m
 
+class DefaultConvergenceCriteria:
+    def __init__(self, tol):
+        self.tol_X = tol
+    def satisfied(self, solver, i):
+        cnv = solver.convergence_data('c', i)
+        if cnv:
+            return cnv
+        err = solver.convergence_data('ve', i)
+        return err[0] >= 0 and err[0] <= self.tol_X
+
 class Options:
     def __init__(self):
-        self.err_est = 0
-        self.res_tol = 1e-2
         self.max_iter = 10
         self.block_size = -1
         self.threads = -1
+        self.convergence_criteria = DefaultConvergenceCriteria(1e-3)
         self.verbosity = 0
-
+        
 class EstimatedErrors:
     def __init__(self):
         self.kinematic = numpy.ndarray((0,), dtype = numpy.float32)
@@ -117,6 +126,16 @@ class Solver:
 
     def set_preconditioner(self, P):
         self.__P = P
+        
+    def convergence_data(self, what = 'converged', which = 0):
+        if what[0] == 'c':
+            return self.cnv[which]
+        if what[0] == 'r':
+            return self.res[which]
+        if what[0 : 2] == 'va':
+            return self.err_lmd[:, which]
+        if what[0 : 2] == 've':
+            return self.err_X[:, which]
 
     def solve \
         (self, eigenvectors, \
@@ -141,8 +160,8 @@ class Solver:
             if verb > -1:
                 print('Block size 1 too small, will use 2 instead')
             m = 2
-        mm = m + m
         block_size = m
+        self.block_size = m
 
         if left == 0:
             r = 0.0
@@ -264,7 +283,6 @@ class Solver:
         P = self.__P
         err_lmd = self.err_lmd
         err_X = self.err_X
-        res_tol = options.res_tol
 
         # constraints (already available eigenvectors e.g. from previous run)
         Xc = eigenvectors
@@ -500,24 +518,26 @@ class Solver:
             for i in range(leftX):
                 j = self.lcon + i
                 k = ix + i
-                if res[k] < res_tol:
+                if options.convergence_criteria.satisfied(self, k):
                     if verb > 0:
                         msg = 'left eigenvector %d converged,' + \
                         ' eigenvalue %e, error %e / %e'
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     lcon += 1
+                    self.cnv[k] = 1
                 else:
                     break
             rcon = 0
             for i in range(rightX):
                 j = self.rcon + i
                 k = ix + nx - i - 1
-                if res[k] < res_tol:
+                if options.convergence_criteria.satisfied(self, k):
                     if verb > 0:
                         msg = 'right eigenvector %d converged, \n' + \
                         ' eigenvalue %e, error %e / %e'
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
+                    self.cnv[k] = 1
                 else:
                     break
 
@@ -804,9 +824,12 @@ class Solver:
             m = block_size
             l = left_block_size
             nl = left_block_size_new
+            cnv = self.cnv
             if shift_left > 0:
                 for i in range(l - shift_left):
+                    cnv[i] = cnv[i + shift_left]
                     lmd[i] = lmd[i + shift_left]
+                    res[i] = res[i + shift_left]
                     acf[:, i] = acf[:, i + shift_left]
                     err_lmd[:, i] = err_lmd[:, i + shift_left]
                     dlmd[i, :] = dlmd[i + shift_left, :]
@@ -814,6 +837,8 @@ class Solver:
                     dX[i] = dX[i + shift_left]
             if shift_left >= 0:
                 for i in range(l - shift_left, nl):
+                    cnv[i] = 0
+                    res[i] = -1.0
                     acf[:, i] = 1.0
                     err_lmd[:, i] = -1.0
                     dlmd[i, :] = 0
@@ -821,7 +846,9 @@ class Solver:
                     dX[i] = 0
             if shift_right > 0:
                 for i in range(m - 1, l + shift_right - 1, -1):
+                    cnv[i] = cnv[i - shift_right]
                     lmd[i] = lmd[i - shift_right]
+                    res[i] = res[i - shift_right]
                     acf[:, i] = acf[:, i - shift_right]
                     err_lmd[:, i] = err_lmd[:, i - shift_right]
                     dlmd[i, :] = dlmd[i - shift_right, :]
@@ -829,6 +856,8 @@ class Solver:
                     dX[i] = dX[i - shift_right]
             if shift_right >= 0:
                 for i in range(l + shift_right - 1, nl - 1, -1):
+                    cnv[i] = 0
+                    res[i] = -1.0
                     acf[:, i] = 1.0
                     err_lmd[:, i] = -1.0
                     dlmd[i, :] = 0
