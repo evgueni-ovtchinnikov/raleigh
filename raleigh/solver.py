@@ -180,11 +180,14 @@ class Solver:
         self.errors_vec = numpy.ndarray((0,), dtype = numpy.float32)
         self.lmd = numpy.ndarray((m,), dtype = numpy.float64)
         self.res = numpy.ndarray((m,), dtype = numpy.float32)
-        self.err_lmd = -numpy.ones((mm,), dtype = numpy.float32)
-        self.err_X = -numpy.ones((mm,), dtype = numpy.float32)
+        self.err_lmd = -numpy.ones((2, m,), dtype = numpy.float32)
+        self.err_X = -numpy.ones((2, m,), dtype = numpy.float32)
+#        self.err_lmd = -numpy.ones((mm,), dtype = numpy.float32)
+#        self.err_X = -numpy.ones((mm,), dtype = numpy.float32)
         dlmd = numpy.zeros((m, RECORDS), dtype = numpy.float32)
         dX = numpy.ones((m,), dtype = numpy.float32)
-        acf = numpy.ones((mm,), dtype = numpy.float32)
+        acf = numpy.ones((2, m,), dtype = numpy.float32)
+#        acf = numpy.ones((mm,), dtype = numpy.float32)
         X = vector.new_vectors(m)
         X.fill_random()
         #X.fill_orthogonal(m)
@@ -410,8 +413,10 @@ class Solver:
                 m = block_size
                 for i in range(l):
                     s = res[i]
-                    err_lmd[i + m] = s*s/(t - lmd[i])
-                    err_X[i + m] = s/(t - lmd[i])
+                    err_lmd[1, i] = s*s/(t - lmd[i])
+                    err_X[1, i] = s/(t - lmd[i])
+#                    err_lmd[i + m] = s*s/(t - lmd[i])
+#                    err_X[i + m] = s/(t - lmd[i])
             l = 0
             for k in range(1, rightX):
                 i = ix + nx - k - 1
@@ -427,8 +432,10 @@ class Solver:
                 for k in range(l):
                     i = ix + nx - k - 1
                     s = res[i]
-                    err_lmd[i + m] = s*s/(lmd[i] - t)
-                    err_X[i + m] = s/(lmd[i] - t)
+                    err_lmd[1, i] = s*s/(lmd[i] - t)
+                    err_X[1, i] = s/(lmd[i] - t)
+#                    err_lmd[i + m] = s*s/(lmd[i] - t)
+#                    err_X[i + m] = s/(lmd[i] - t)
 
             # kinematic error estimates
             if rec > 3: # sufficient history available
@@ -451,13 +458,16 @@ class Solver:
                     if qi <= 0:
                         continue
                     qi = qi**(1.0/(k - 1))
-                    acf[ix + i] = qi # a.c.f. estimate
+                    acf[0, ix + i] = qi # a.c.f. estimate
+#                    acf[ix + i] = qi # a.c.f. estimate
                     # esimate error based on a.c.f.
                     theta = qi/(1 - qi)
                     d = theta*dlmd[ix + i, rec - 1]
-                    err_lmd[ix + i] = d
+                    err_lmd[0, ix + i] = d
+#                    err_lmd[ix + i] = d
                     qx = math.sqrt(qi)
-                    err_X[ix + i] = dX[ix + i]*qx/(1 - qx)
+                    err_X[0, ix + i] = dX[ix + i]*qx/(1 - qx)
+#                    err_X[ix + i] = dX[ix + i]*qx/(1 - qx)
 
             if verb > 1:
                 msg = 'eigenvalue   residual  ' + \
@@ -467,17 +477,21 @@ class Solver:
                 for i in range(block_size):
                     print('%e %.1e  %.1e / %.1e    %.1e / %.1e  %.1e' % \
                           (lmd[i], res[i], \
-                          abs(err_lmd[i]), abs(err_lmd[m + i]), \
-                          abs(err_X[i]), abs(err_X[m + i]), acf[i]))
+                          abs(err_lmd[0, i]), abs(err_lmd[1, i]), \
+                          abs(err_X[0, i]), abs(err_X[1, i]), acf[0, i]))
+#                          abs(err_lmd[i]), abs(err_lmd[m + i]), \
+#                          abs(err_X[i]), abs(err_X[m + i]), acf[i]))
 
             lcon = 0
             for i in range(leftX):
                 j = self.lcon + i
-                if res[ix + i] < res_tol:
+                k = ix + i
+                if res[k] < res_tol:
                     if verb > 0:
                         msg = 'left eigenvector %d converged,' + \
-                        ' eigenvalue %e, error %e'
-                        print(msg % (j, lmd[ix + i], err_X[ix + i]))
+                        ' eigenvalue %e, error %e / %e'
+                        print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
+#                        print(msg % (j, lmd[ix + i], err_X[ix + i]))
                     lcon += 1
                 else:
                     break
@@ -488,8 +502,9 @@ class Solver:
                 if res[k] < res_tol:
                     if verb > 0:
                         msg = 'right eigenvector %d converged,' + \
-                        ' eigenvalue %e, error %e'
-                        print(msg % (j, lmd[k], err_X[k]))
+                        ' eigenvalue %e, error %e / %e'
+                        print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
+#                        print(msg % (j, lmd[k], err_X[k]))
                     rcon += 1
                 else:
                     break
@@ -500,9 +515,9 @@ class Solver:
                 self.eigenvalues = numpy.concatenate \
                     ((self.eigenvalues, lmd[ix : ix + lcon]))
                 self.errors_val = numpy.concatenate \
-                    ((self.errors_val, err_lmd[ix : ix + lcon]))
+                    ((self.errors_val, err_lmd[0, ix : ix + lcon]))
                 self.errors_vec = numpy.concatenate \
-                    ((self.errors_vec, err_X[ix : ix + lcon]))
+                    ((self.errors_vec, err_X[0, ix : ix + lcon]))
                 X.select(lcon, ix)
                 if std and ncon > 0:
                     if ncon > 0:
@@ -531,9 +546,9 @@ class Solver:
                 self.eigenvalues = numpy.concatenate \
                     ((self.eigenvalues, lmd[jx - rcon : jx]))
                 self.errors_val = numpy.concatenate \
-                    ((self.errors_val, err_lmd[jx - rcon : jx]))
+                    ((self.errors_val, err_lmd[0, jx - rcon : jx]))
                 self.errors_vec = numpy.concatenate \
-                    ((self.errors_vec, err_X[jx - rcon : jx]))
+                    ((self.errors_vec, err_X[0, jx - rcon : jx]))
                 X.select(rcon, jx - rcon)
                 if std and ncon > 0:
                     if ncon > 0:
@@ -780,44 +795,44 @@ class Solver:
             if shift_left > 0:
                 for i in range(l - shift_left):
                     lmd[i] = lmd[i + shift_left]
-                    acf[i] = acf[i + shift_left]
-                    acf[m + i] = acf[m + i + shift_left]
-                    err_lmd[i] = err_lmd[i + shift_left]
-                    err_lmd[m + i] = err_lmd[m + i + shift_left]
+                    acf[:, i] = acf[:, i + shift_left]
+#                    acf[m + i] = acf[m + i + shift_left]
+                    err_lmd[:, i] = err_lmd[:, i + shift_left]
+#                    err_lmd[m + i] = err_lmd[m + i + shift_left]
                     dlmd[i, :] = dlmd[i + shift_left, :]
-                    err_X[i] = err_X[i + shift_left]
-                    err_X[m + i] = err_X[m + i + shift_left]
+                    err_X[:, i] = err_X[:, i + shift_left]
+#                    err_X[m + i] = err_X[m + i + shift_left]
                     dX[i] = dX[i + shift_left]
             if shift_left >= 0:
                 for i in range(l - shift_left, nl):
-                    acf[i] = 1.0
-                    acf[m + i] = 1.0
-                    err_lmd[i] = -1.0
-                    err_lmd[m + i] = -1.0
+                    acf[:, i] = 1.0
+#                    acf[m + i] = 1.0
+                    err_lmd[:, i] = -1.0
+#                    err_lmd[m + i] = -1.0
                     dlmd[i, :] = 0
-                    err_X[i] = -1.0
-                    err_X[m + i] = -1.0
+                    err_X[:, i] = -1.0
+#                    err_X[m + i] = -1.0
                     dX[i] = 0
             if shift_right > 0:
                 for i in range(m - 1, l + shift_right - 1, -1):
                     lmd[i] = lmd[i - shift_right]
-                    acf[i] = acf[i - shift_right]
-                    acf[m + i] = acf[m + i - shift_right]
-                    err_lmd[i] = err_lmd[i - shift_right]
-                    err_lmd[m + i] = err_lmd[m + i - shift_right]
+                    acf[:, i] = acf[:, i - shift_right]
+#                    acf[m + i] = acf[m + i - shift_right]
+                    err_lmd[:, i] = err_lmd[:, i - shift_right]
+#                    err_lmd[m + i] = err_lmd[m + i - shift_right]
                     dlmd[i, :] = dlmd[i - shift_right, :]
-                    err_X[i] = err_X[i - shift_right]
-                    err_X[m + i] = err_X[m + i - shift_right]
+                    err_X[:, i] = err_X[:, i - shift_right]
+#                    err_X[m + i] = err_X[m + i - shift_right]
                     dX[i] = dX[i - shift_right]
             if shift_right >= 0:
                 for i in range(l + shift_right - 1, nl - 1, -1):
-                    acf[i] = 1.0
-                    acf[m + i] = 1.0
-                    err_lmd[i] = -1.0
-                    err_lmd[m + i] = -1.0
+                    acf[:, i] = 1.0
+#                    acf[m + i] = 1.0
+                    err_lmd[:, i] = -1.0
+#                    err_lmd[m + i] = -1.0
                     dlmd[i, :] = 0
-                    err_X[i] = -1.0
-                    err_X[m + i] = -1.0
+                    err_X[:, i] = -1.0
+#                    err_X[m + i] = -1.0
                     dX[i] = 0
 
             # estimate changes in eigenvalues and eigenvectors
