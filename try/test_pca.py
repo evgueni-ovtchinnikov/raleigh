@@ -25,7 +25,7 @@ opt.convergence_criteria = MyConvergenceCriteria(1e-4)
 m = 2000
 n = 40
 
-a = 2*numpy.random.rand(m, n) - 1
+a = 2*numpy.random.rand(m, n).astype(numpy.float32) - 1
 for i in range(n):
     s = numpy.linalg.norm(a[:, i])
     a[:, i] /= s

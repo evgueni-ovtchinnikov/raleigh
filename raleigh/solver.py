@@ -221,6 +221,7 @@ class Solver:
         self.res = -numpy.ones((m,), dtype = numpy.float32)
         self.err_lmd = -numpy.ones((2, m,), dtype = numpy.float32)
         self.err_X = -numpy.ones((2, m,), dtype = numpy.float32)
+        delta_res = 0.0
 
         # convergence history data
         dlmd = numpy.zeros((m, RECORDS), dtype = numpy.float32)
@@ -406,6 +407,18 @@ class Solver:
                     print(numpy.array_str(dlmd[ix : ix + nx, :rec].T, \
                                           precision = 2))
             lmd[ix : ix + nx] = new_lmd
+            
+            # estimate residual error
+            H = abs(XAX - conjugate(XAX))
+            delta = numpy.amax(H)
+            if gen:
+                s = math.sqrt(X.dots(X))
+                delta /= numpy.amax(s)
+            elif pro:
+                s = math.sqrt(BX.dots(BX))
+                delta /= numpy.amax(s)
+            delta_res = max(delta_res, delta)
+            print('estimated error in residual: %e' % delta_res)
             
             # compute residuals
             # std: A X - X lmd

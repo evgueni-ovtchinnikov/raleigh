@@ -12,6 +12,18 @@ class Diagonal:
 class Gram:
     def __init__(self, a):
         self.a = a
+        self.type = type(a[0,0])
     def apply(self, x, y):
-        z = numpy.dot(x.data(), self.a.T)
-        y.data()[:,:] = numpy.dot(z, self.a)
+        u = x.data()
+        type_x = type(u[0,0])
+        if type_x is not self.type:
+            mixed_types = True
+            u = u.astype(self.type)
+        else:
+            mixed_types = False
+        z = numpy.dot(u, self.a.T)
+        #z = numpy.dot(x.data(), self.a.T)
+        if mixed_types:
+            y.data()[:,:] = numpy.dot(z, self.a).astype(type_x)
+        else:
+            y.data()[:,:] = numpy.dot(z, self.a)
