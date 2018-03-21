@@ -22,10 +22,17 @@ class MyConvergenceCriteria:
         return err >= 0 and err <= self.tol
         
 class MyStoppingCriteria:
-    def __init__(self, nep):
-        self.nep = nep
+    def __init__(self):
+        self.th = 1.0
+        #self.nep = nep
+    def set_threshold(self, th):
+        self.th = th
     def satisfied(self, solver):
-        return solver.lcon + solver.rcon >= self.nep
+        if solver.rcon < 1:
+            return False
+        return solver.eigenvalues[solver.rcon - 1] \
+            < self.th*solver.eigenvalues[0]
+        #return solver.lcon + solver.rcon >= self.nep
 
 def random_svd(m, n, alpha):
     k = min(m, n)
@@ -44,9 +51,12 @@ numpy.random.seed(1) # make results reproducible
 
 opt = raleigh.solver.Options()
 #opt.block_size = 5
+opt.threads = 4
 opt.verbosity = 2
-opt.convergence_criteria = MyConvergenceCriteria(1e-4)
-opt.stopping_criteria = MyStoppingCriteria(4)
+#opt.convergence_criteria = MyConvergenceCriteria(1e-4)
+opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-6)
+opt.stopping_criteria = MyStoppingCriteria()
+opt.stopping_criteria.set_threshold(0.9)
 m = 2000
 n = 400
 alpha = 0.05

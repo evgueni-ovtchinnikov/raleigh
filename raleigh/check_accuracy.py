@@ -113,16 +113,17 @@ def check_eigenvectors_accuracy \
     sr = numpy.sqrt(sr) # difference on the right
 
     print('eigenvector errors:')
-    msg = '   estimated (first | second, kinematic/residual)' + \
-    '                actual'
+    msg = '       estimated (kinematic/residual)' + \
+          '               actual'
     print(msg)
+    print('     first pass             second pass')
     for i in range(lcon):
         err_ui = err_u[i]
         err_vi = err_v[i]
-        print('%e / %e | %e / %e    %e' % \
-        (err_ui[0], err_ui[1], err_vi[0], err_vi[1], sl[i]))
+        print('  %.1e / %.1e      %.1e / %.1e         %.1e' % \
+        (abs(err_ui[0]), abs(err_ui[1]), abs(err_vi[0]), abs(err_vi[1]), sl[i]))
     for i in range(rcon):
         err_ui = err_u[nconu - rcon + i]
         err_vi = err_v[nconv - rcon + i]
-        print('%e / %e | %e / %e    %e' % \
-        (err_ui[0], err_ui[1], err_vi[0], err_vi[1], sr[i]))
+        print('  %.1e / %.1e      %.1e / %.1e         %.1e' % \
+        (abs(err_ui[0]), abs(err_ui[1]), abs(err_vi[0]), abs(err_vi[1]), sr[i]))

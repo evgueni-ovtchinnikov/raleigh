@@ -68,11 +68,15 @@ def default_block_size(which, extra, init, threads):
     return m
 
 class DefaultConvergenceCriteria:
-    def __init__(self, tol):
-        self.tol_X = tol
+    def __init__(self):
+        self.tolerance = 1e-3
+        self.error = 'kinematic eigenvector error'
+    def set_error_tolerance(self, error, tolerance):
+        self.error = error
+        self.tolerance = tolerance
     def satisfied(self, solver, i):
-        err = solver.convergence_data('kinematic eigenvector error', i)
-        return err >= 0 and err <= self.tol_X
+        err = solver.convergence_data(self.error, i)
+        return err >= 0 and err <= self.tolerance
         
 class DefaultStoppingCriteria:
     def satisfied(self, solver):
@@ -83,7 +87,7 @@ class Options:
         self.max_iter = 100
         self.block_size = -1
         self.threads = -1
-        self.convergence_criteria = DefaultConvergenceCriteria(1e-3)
+        self.convergence_criteria = DefaultConvergenceCriteria()
         self.stopping_criteria = DefaultStoppingCriteria()
         self.verbosity = 0
         
