@@ -408,17 +408,19 @@ class Solver:
                                           precision = 2))
             lmd[ix : ix + nx] = new_lmd
             
-            # estimate residual error
+            # estimate error in residual computation due to the error in
+            # computing AX, to be used in detecting convergence stagnation
             H = abs(XAX - conjugate(XAX))
             delta = numpy.amax(H)
             if gen:
-                s = math.sqrt(X.dots(X))
+                s = numpy.sqrt(X.dots(X))
                 delta /= numpy.amax(s)
             elif pro:
-                s = math.sqrt(BX.dots(BX))
+                s = numpy.sqrt(BX.dots(BX))
                 delta /= numpy.amax(s)
             delta_res = max(delta_res, delta)
-            print('estimated error in residual: %e' % delta_res)
+            if verb > 1:
+                print('estimated error in residual: %e' % delta_res)
             
             # compute residuals
             # std: A X - X lmd
@@ -471,6 +473,7 @@ class Solver:
                     if qi <= 0:
                         continue
                     qi = qi**(1.0/(k - 1))
+                    acf[1, ix + i] = acf[0, ix + i]
                     acf[0, ix + i] = qi # a.c.f. estimate
                     # esimate error based on a.c.f.
                     theta = qi/(1 - qi)
@@ -492,7 +495,8 @@ class Solver:
             if l > 0:
                 i = ix + l
                 t = lmd[i]
-                print('using left pole at lmd[%d] = %e' % (i, t))
+                if verb > 1:
+                    print('using left pole at lmd[%d] = %e' % (i, t))
                 m = block_size
                 for k in range(l):
                     i = ix + k
@@ -509,7 +513,8 @@ class Solver:
             if l > 0:
                 i = ix + nx - l - 1
                 t = lmd[i]
-                print('using right pole at lmd[%d] = %e' % (i, t))
+                if verb > 1:
+                    print('using right pole at lmd[%d] = %e' % (i, t))
                 m = block_size
                 for k in range(l):
                     i = ix + nx - k - 1
@@ -532,7 +537,14 @@ class Solver:
             for i in range(leftX):
                 j = self.lcon + i
                 k = ix + i
-                if options.convergence_criteria.satisfied(self, k):
+                if res[k] < 10*delta_res and acf[0, k] > acf[1, k]:
+                    if verb > -1:
+                        msg = 'left eigenvector %d stagnated,' + \
+                        ' eigenvalue %e, error %e / %e'
+                        print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
+                    lcon += 1
+                    self.cnv[k] = -1
+                elif options.convergence_criteria.satisfied(self, k):
                     if verb > 0:
                         msg = 'left eigenvector %d converged,' + \
                         ' eigenvalue %e, error %e / %e'
@@ -545,7 +557,14 @@ class Solver:
             for i in range(rightX):
                 j = self.rcon + i
                 k = ix + nx - i - 1
-                if options.convergence_criteria.satisfied(self, k):
+                if res[k] < 10*delta_res and acf[0, k] > acf[1, k]:
+                    if verb > -1:
+                        msg = 'right eigenvector %d stagnated,' + \
+                        ' eigenvalue %e, error %e / %e'
+                        print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
+                    rcon += 1
+                    self.cnv[k] = -1
+                elif options.convergence_criteria.satisfied(self, k):
                     if verb > 0:
                         msg = 'right eigenvector %d converged, \n' + \
                         ' eigenvalue %e, error %e / %e'

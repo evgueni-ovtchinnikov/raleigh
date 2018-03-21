@@ -20,8 +20,8 @@ opt = raleigh.solver.Options()
 #opt.block_size = 5
 opt.max_iter = 40
 opt.res_tol = 1e-10
-opt.verbosity = 2
-opt.convergence_criteria = MyConvergenceCriteria(1e-4)
+opt.verbosity = 0 #2
+opt.convergence_criteria = MyConvergenceCriteria(1e-8)
 m = 2000
 n = 40
 

@@ -122,7 +122,7 @@ def check_eigenvectors_accuracy \
         print('%e / %e | %e / %e    %e' % \
         (err_ui[0], err_ui[1], err_vi[0], err_vi[1], sl[i]))
     for i in range(rcon):
-        err_ui = err_u[nconv - rcon + i]
+        err_ui = err_u[nconu - rcon + i]
         err_vi = err_v[nconv - rcon + i]
         print('%e / %e | %e / %e    %e' % \
         (err_ui[0], err_ui[1], err_vi[0], err_vi[1], sr[i]))
