@@ -20,6 +20,12 @@ class MyConvergenceCriteria:
 #        print('lambda[%d] = %e' % (n - 1, lmd_r))
         err = solver.convergence_data('kinematic eigenvector error', i)
         return err >= 0 and err <= self.tol
+        
+class MyStoppingCriteria:
+    def __init__(self, nep):
+        self.nep = nep
+    def satisfied(self, solver):
+        return solver.lcon + solver.rcon >= self.nep
 
 numpy.random.seed(1) # make results reproducible
 
@@ -27,8 +33,9 @@ opt = raleigh.solver.Options()
 #opt.block_size = 5
 opt.verbosity = 2
 opt.convergence_criteria = MyConvergenceCriteria(1e-4)
+opt.stopping_criteria = MyStoppingCriteria(4)
 m = 2000
-n = 40
+n = 400
 
 a = 2*numpy.random.rand(m, n).astype(numpy.float32) - 1
 for i in range(n):
@@ -47,4 +54,5 @@ opA = lambda x, y: operatorA.apply(x, y)
 
 v = NDArrayVectors(n)
 problem = raleigh.solver.Problem(v, opA)
-check_eigenvectors_accuracy(problem, opt, which = (0,3))
+check_eigenvectors_accuracy(problem, opt, which = (0,-1))
+#check_eigenvectors_accuracy(problem, opt, which = (0,3))

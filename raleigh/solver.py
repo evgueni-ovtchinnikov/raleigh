@@ -73,6 +73,10 @@ class DefaultConvergenceCriteria:
     def satisfied(self, solver, i):
         err = solver.convergence_data('kinematic eigenvector error', i)
         return err >= 0 and err <= self.tol_X
+        
+class DefaultStoppingCriteria:
+    def satisfied(self, solver):
+        return False
 
 class Options:
     def __init__(self):
@@ -80,6 +84,7 @@ class Options:
         self.block_size = -1
         self.threads = -1
         self.convergence_criteria = DefaultConvergenceCriteria(1e-3)
+        self.stopping_criteria = DefaultStoppingCriteria()
         self.verbosity = 0
         
 class EstimatedErrors:
@@ -315,10 +320,10 @@ class Solver:
         leftX = left_block_size
         rightX = block_size - leftX
         rec = 0
-        self.ix = 0 # first X
-        self.nx = block_size
-        ix = self.ix
-        nx = self.nx
+        ix = 0 # first X
+        nx = block_size
+#        ix = self.ix
+#        nx = self.nx
         ny = block_size
         nz = 0
 
@@ -549,40 +554,40 @@ class Solver:
             for i in range(leftX):
                 j = self.lcon + i
                 k = ix + i
-                if res[k] < 10*delta_res and acf[0, k] > acf[1, k]:
-                    if verb > -1:
-                        msg = 'left eigenvector %d stagnated,' + \
-                        ' eigenvalue %e, error %e / %e'
-                        print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
-                    lcon += 1
-                    self.cnv[k] = -1
-                elif options.convergence_criteria.satisfied(self, k):
+                if options.convergence_criteria.satisfied(self, k):
                     if verb > 0:
                         msg = 'left eigenvector %d converged,' + \
                         ' eigenvalue %e, error %e / %e'
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     lcon += 1
                     self.cnv[k] = 1
+                elif res[k] < 10*delta_res and acf[0, k] > acf[1, k]:
+                    if verb > -1:
+                        msg = 'left eigenvector %d stagnated,' + \
+                        ' eigenvalue %e, error %e / %e'
+                        print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
+                    lcon += 1
+                    self.cnv[k] = -1
                 else:
                     break
             rcon = 0
             for i in range(rightX):
                 j = self.rcon + i
                 k = ix + nx - i - 1
-                if res[k] < 10*delta_res and acf[0, k] > acf[1, k]:
-                    if verb > -1:
-                        msg = 'right eigenvector %d stagnated,' + \
-                        ' eigenvalue %e, error %e / %e'
-                        print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
-                    rcon += 1
-                    self.cnv[k] = -1
-                elif options.convergence_criteria.satisfied(self, k):
+                if options.convergence_criteria.satisfied(self, k):
                     if verb > 0:
                         msg = 'right eigenvector %d converged, \n' + \
                         ' eigenvalue %e, error %e / %e'
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
                     self.cnv[k] = 1
+                elif res[k] < 10*delta_res and acf[0, k] > acf[1, k]:
+                    if verb > -1:
+                        msg = 'right eigenvector %d stagnated,' + \
+                        ' eigenvalue %e, error %e / %e'
+                        print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
+                    rcon += 1
+                    self.cnv[k] = -1
                 else:
                     break
 
@@ -661,6 +666,8 @@ class Solver:
             left_converged = left >= 0 and self.lcon >= left
             right_converged = right >= 0 and self.rcon >= right
             if left_converged and right_converged:
+                break
+            if options.stopping_criteria.satisfied(self):
                 break
             
             leftX -= lcon
@@ -765,8 +772,13 @@ class Solver:
                     print('dropped %d search directions out of %d' \
                           % (dropped, ny))
             
-            # re-arrange/drop-linear-dependent search directions
             ny -= dropped
+            if ny < 1:
+                if verb > -1:
+                    print('no search directions left, terminating')
+                break
+
+            # re-arrange/drop-linear-dependent search directions
             nxy = nx + ny
             U = U[:nxy, :nxy]
             indy = ind[nx: nxy]
@@ -1011,8 +1023,8 @@ class Solver:
                 Y.mult(QYZ, W)
                 Z.add(W, 1.0) # Z = X*QXZ + Y*QYZ
                 
-            self.nx = nx_new
-            self.ix = ix_new
+            nx = nx_new
+            ix = ix_new
             leftX = leftX_new
             rightX = rightX_new
             left_block_size = left_block_size_new
