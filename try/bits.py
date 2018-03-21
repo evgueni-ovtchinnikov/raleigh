@@ -528,3 +528,28 @@ def sort_eigenpairs(lmd, u, err_lmd, err_X):
 
 #                    err_X[m + i] = -1.0
 
+        cnv = solver.convergence_data('c', i)
+        if cnv:
+            return cnv
+
+        if what[0] == 'c':
+            return self.cnv[which]
+
+        if what[0] == 'r':
+            return self.res[which]
+        if what[0 : 2] == 'va':
+            return self.err_lmd[:, which]
+        if what[0 : 2] == 've':
+            return self.err_X[:, which]
+
+#        l = solver.convergence_data('next left')
+#        r = solver.convergence_data('next right')
+#        print('iterating vectors %d to %d out of %d' % (l, r, n))
+
+#        elif what.find('next') > -1:
+#            if what.find('left') > -1:
+#                return self.ix
+#            elif what.find('right') > -1:
+#                return self.ix + self.nx - 1
+
+opt.res_tol = 1e-10

@@ -11,17 +11,22 @@ class MyConvergenceCriteria:
     def __init__(self, tol):
         self.tol = tol
     def satisfied(self, solver, i):
-        err = solver.convergence_data('ve', i)
-        return err[1] >= 0 and err[1] <= self.tol
+#        lmd = solver.convergence_data('eigenvalue', i)
+#        print('lambda[%d] = %e' % (i, lmd))
+#        lmd_l = solver.convergence_data('eigenvalue', 0)
+#        print('lambda[0] = %e' % lmd_l)
+#        lmd_r = solver.convergence_data('eigenvalue', -1)
+#        n = solver.convergence_data('block size')
+#        print('lambda[%d] = %e' % (n - 1, lmd_r))
+        err = solver.convergence_data('kinematic eigenvector error', i)
+        return err >= 0 and err <= self.tol
 
 numpy.random.seed(1) # make results reproducible
 
 opt = raleigh.solver.Options()
 #opt.block_size = 5
-opt.max_iter = 40
-opt.res_tol = 1e-10
-opt.verbosity = 0 #2
-opt.convergence_criteria = MyConvergenceCriteria(1e-8)
+opt.verbosity = 2
+opt.convergence_criteria = MyConvergenceCriteria(1e-4)
 m = 2000
 n = 40
 

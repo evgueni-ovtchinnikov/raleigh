@@ -71,15 +71,12 @@ class DefaultConvergenceCriteria:
     def __init__(self, tol):
         self.tol_X = tol
     def satisfied(self, solver, i):
-        cnv = solver.convergence_data('c', i)
-        if cnv:
-            return cnv
-        err = solver.convergence_data('ve', i)
-        return err[0] >= 0 and err[0] <= self.tol_X
+        err = solver.convergence_data('kinematic eigenvector error', i)
+        return err >= 0 and err <= self.tol_X
 
 class Options:
     def __init__(self):
-        self.max_iter = 10
+        self.max_iter = 100
         self.block_size = -1
         self.threads = -1
         self.convergence_criteria = DefaultConvergenceCriteria(1e-3)
@@ -127,15 +124,28 @@ class Solver:
     def set_preconditioner(self, P):
         self.__P = P
         
-    def convergence_data(self, what = 'converged', which = 0):
-        if what[0] == 'c':
-            return self.cnv[which]
-        if what[0] == 'r':
+    def convergence_data(self, what = 'residual', which = 0):
+        if what.find('block') > -1:
+            return self.block_size
+        elif what.find('res') > -1 and what.find('vec') == -1:
             return self.res[which]
-        if what[0 : 2] == 'va':
-            return self.err_lmd[:, which]
-        if what[0 : 2] == 've':
-            return self.err_X[:, which]
+        elif what.find('val') > -1:
+            if what.find('err') > -1:
+                err = self.err_lmd[:, which]
+                if what.find('k'):
+                    return err[0]
+                else:
+                    return err[1]
+            else:
+                return self.lmd[which]
+        elif what.find('vec') > -1:
+            err = self.err_X[:, which]
+            if what.find('k') > -1:
+                return err[0]
+            else:
+                return err[1]
+        else:
+            raise ValueError('convergence data %s not found' % what)
 
     def solve \
         (self, eigenvectors, \
@@ -305,8 +315,10 @@ class Solver:
         leftX = left_block_size
         rightX = block_size - leftX
         rec = 0
-        ix = 0 # first X
-        nx = block_size
+        self.ix = 0 # first X
+        self.nx = block_size
+        ix = self.ix
+        nx = self.nx
         ny = block_size
         nz = 0
 
@@ -999,8 +1011,8 @@ class Solver:
                 Y.mult(QYZ, W)
                 Z.add(W, 1.0) # Z = X*QXZ + Y*QYZ
                 
-            nx = nx_new
-            ix = ix_new
+            self.nx = nx_new
+            self.ix = ix_new
             leftX = leftX_new
             rightX = rightX_new
             left_block_size = left_block_size_new
