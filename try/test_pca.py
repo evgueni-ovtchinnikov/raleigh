@@ -27,6 +27,19 @@ class MyStoppingCriteria:
     def satisfied(self, solver):
         return solver.lcon + solver.rcon >= self.nep
 
+def random_svd(m, n, alpha):
+    k = min(m, n)
+    u = numpy.random.randn(m, k).astype(numpy.float32)
+    v = numpy.random.randn(n, k).astype(numpy.float32)
+    s = numpy.random.rand(k).astype(numpy.float32)
+    u, r = numpy.linalg.qr(u)
+    v, r = numpy.linalg.qr(v)
+    s = numpy.sort(s)
+    t = numpy.ones(k)*s[0]
+    s = 2**(-alpha*k*(s - t)).astype(numpy.float32)
+    a = numpy.dot(u*s, v.transpose())
+    return s, u, v, a
+
 numpy.random.seed(1) # make results reproducible
 
 opt = raleigh.solver.Options()
@@ -36,23 +49,19 @@ opt.convergence_criteria = MyConvergenceCriteria(1e-4)
 opt.stopping_criteria = MyStoppingCriteria(4)
 m = 2000
 n = 400
+alpha = 0.05
 
-a = 2*numpy.random.rand(m, n).astype(numpy.float32) - 1
-for i in range(n):
-    s = numpy.linalg.norm(a[:, i])
-    a[:, i] /= s
-##d = numpy.asarray([i/5 + 1 for i in range(m)])
-##a = numpy.ones((m, n))
-##s = numpy.linalg.norm(a[:, 0])
-##a[:, 0] /= s
-##for i in range(1, n):
-##    a[:, i] = d*a[:, i - 1]
-##    s = numpy.linalg.norm(a[:, i])
-##    a[:, i] /= s
+#a = 2*numpy.random.rand(m, n).astype(numpy.float32) - 1
+#for i in range(n):
+#    s = numpy.linalg.norm(a[:, i])
+#    a[:, i] /= s
+
+s, u, v, a = random_svd(m, n, alpha)
+
 operatorA = operators.Gram(a)
 opA = lambda x, y: operatorA.apply(x, y)
 
 v = NDArrayVectors(n)
 problem = raleigh.solver.Problem(v, opA)
-check_eigenvectors_accuracy(problem, opt, which = (0,-1))
-#check_eigenvectors_accuracy(problem, opt, which = (0,3))
+#check_eigenvectors_accuracy(problem, opt, which = (0,-1))
+check_eigenvectors_accuracy(problem, opt, which = (0,3))

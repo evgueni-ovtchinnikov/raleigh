@@ -553,3 +553,12 @@ def sort_eigenpairs(lmd, u, err_lmd, err_X):
 #                return self.ix + self.nx - 1
 
 opt.res_tol = 1e-10
+
+##d = numpy.asarray([i/5 + 1 for i in range(m)])
+##a = numpy.ones((m, n))
+##s = numpy.linalg.norm(a[:, 0])
+##a[:, 0] /= s
+##for i in range(1, n):
+##    a[:, i] = d*a[:, i - 1]
+##    s = numpy.linalg.norm(a[:, i])
+##    a[:, i] /= s
