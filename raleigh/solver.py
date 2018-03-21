@@ -39,7 +39,10 @@ def default_block_size(which, extra, init, threads):
         return 0
     if left <= 0 and right <= 0:
         if init_left == 0 and init_right == 0:
-            return 2*threads
+            if left < 0 and right < 0:
+                return 2*threads
+            else:
+                return threads
         m = init_left + init_right
         m = threads*((m - 1)//threads + 1)
         if left < 0 or right < 0:
@@ -516,7 +519,7 @@ class Solver:
             if l > 0:
                 i = ix + l
                 t = lmd[i]
-                if verb > 1:
+                if verb > 2:
                     print('using left pole at lmd[%d] = %e' % (i, t))
                 m = block_size
                 for k in range(l):
@@ -534,7 +537,7 @@ class Solver:
             if l > 0:
                 i = ix + nx - l - 1
                 t = lmd[i]
-                if verb > 1:
+                if verb > 2:
                     print('using right pole at lmd[%d] = %e' % (i, t))
                 m = block_size
                 for k in range(l):
@@ -660,7 +663,7 @@ class Solver:
                 ncon += rcon
             if ncon > 0:
                 H = Gc - numpy.identity(ncon)
-                if verb > 1:
+                if verb > 2:
                     print('Gram error: %e' % nla.norm(H))
                 # approximate inverse, good enough for Gram error up to 1e-8
                 Gci = 2*numpy.identity(ncon) - Gc

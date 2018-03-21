@@ -3,6 +3,7 @@ import sys
 sys.path.append('..')
 
 from raleigh.check_accuracy import check_eigenvectors_accuracy
+#from raleigh.ndarray_svd import partial_svd
 import operators
 import raleigh.solver
 from raleigh.ndarray_vectors import NDArrayVectors
@@ -26,12 +27,14 @@ class MyStoppingCriteria:
         self.th = 1.0
         #self.nep = nep
     def set_threshold(self, th):
-        self.th = th
+        self.th = th*th
     def satisfied(self, solver):
         if solver.rcon < 1:
             return False
-        return solver.eigenvalues[solver.rcon - 1] \
-            < self.th*solver.eigenvalues[0]
+        return numpy.amin(solver.eigenvalues) < self.th*solver.eigenvalues[0]
+#        print(solver.eigenvalues[solver.rcon - 1]/solver.eigenvalues[0])
+#        return solver.eigenvalues[solver.rcon - 1] \
+#            < self.th*solver.eigenvalues[0]
         #return solver.lcon + solver.rcon >= self.nep
 
 def random_svd(m, n, alpha):
@@ -67,6 +70,9 @@ alpha = 0.05
 #    a[:, i] /= s
 
 s, u, v, a = random_svd(m, n, alpha)
+
+#sigma, u, v = partial_svd(a, opt)
+#print(sigma)
 
 operatorA = operators.Gram(a)
 opA = lambda x, y: operatorA.apply(x, y)
