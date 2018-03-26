@@ -6,7 +6,8 @@ from raleigh.check_accuracy import check_eigenvectors_accuracy
 #from raleigh.ndarray_svd import partial_svd
 import operators
 import raleigh.solver
-from raleigh.ndarray_vectors import NDArrayVectors
+from raleigh.ndarray.vectors import Vectors
+from random_matrix_for_svd import random_matrix_for_svd
 
 class MyConvergenceCriteria:
     def __init__(self, tol):
@@ -37,19 +38,6 @@ class MyStoppingCriteria:
 #            < self.th*solver.eigenvalues[0]
         #return solver.lcon + solver.rcon >= self.nep
 
-def random_svd(m, n, alpha):
-    k = min(m, n)
-    u = numpy.random.randn(m, k).astype(numpy.float32)
-    v = numpy.random.randn(n, k).astype(numpy.float32)
-    s = numpy.random.rand(k).astype(numpy.float32)
-    u, r = numpy.linalg.qr(u)
-    v, r = numpy.linalg.qr(v)
-    s = numpy.sort(s)
-    t = numpy.ones(k)*s[0]
-    s = 2**(-alpha*k*(s - t)).astype(numpy.float32)
-    a = numpy.dot(u*s, v.transpose())
-    return s, u, v, a
-
 numpy.random.seed(1) # make results reproducible
 
 opt = raleigh.solver.Options()
@@ -57,11 +45,11 @@ opt = raleigh.solver.Options()
 opt.threads = 4
 opt.verbosity = 2
 #opt.convergence_criteria = MyConvergenceCriteria(1e-4)
-opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-6)
+opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-8)
 opt.stopping_criteria = MyStoppingCriteria()
-opt.stopping_criteria.set_threshold(0.9)
+opt.stopping_criteria.set_threshold(0.01)
 m = 2000
-n = 400
+n = 100
 alpha = 0.05
 
 #a = 2*numpy.random.rand(m, n).astype(numpy.float32) - 1
@@ -69,7 +57,11 @@ alpha = 0.05
 #    s = numpy.linalg.norm(a[:, i])
 #    a[:, i] /= s
 
-s, u, v, a = random_svd(m, n, alpha)
+#s, u, v, a = random_svd(m, n, alpha)
+
+alpha = 0.01
+sigma = lambda t: 2**(-alpha*t*t).astype(numpy.float32)
+s, u, v, a = random_matrix_for_svd(m, n, sigma, numpy.float32)
 
 #sigma, u, v = partial_svd(a, opt)
 #print(sigma)
@@ -77,7 +69,7 @@ s, u, v, a = random_svd(m, n, alpha)
 operatorA = operators.Gram(a)
 opA = lambda x, y: operatorA.apply(x, y)
 
-v = NDArrayVectors(n)
+v = Vectors(n)
 problem = raleigh.solver.Problem(v, opA)
-#check_eigenvectors_accuracy(problem, opt, which = (0,-1))
-check_eigenvectors_accuracy(problem, opt, which = (0,3))
+check_eigenvectors_accuracy(problem, opt, which = (0,-1))
+#check_eigenvectors_accuracy(problem, opt, which = (0,3))

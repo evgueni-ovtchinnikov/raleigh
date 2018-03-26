@@ -562,3 +562,37 @@ opt.res_tol = 1e-10
 ##    a[:, i] = d*a[:, i - 1]
 ##    s = numpy.linalg.norm(a[:, i])
 ##    a[:, i] /= s
+
+#            u = u.astype(self.type)
+
+#        if type_x is not self.type:
+#            mixed_types = True
+#            u = u.astype(self.type)
+#        else:
+#            mixed_types = False
+#        z = numpy.dot(u, self.a.T)
+#        if mixed_types:
+#            y.data()[:,:] = numpy.dot(z, self.a).astype(type_x)
+#        else:
+#            y.data()[:,:] = numpy.dot(z, self.a)
+
+#    s = numpy.random.rand(k).astype(dt)
+#    s = numpy.sort(s)
+#    t = numpy.ones(k)*s[0]
+##    sigma = lambda t: 2**(-alpha*t).astype(dt)
+#    s = sigma(k*(s - t))
+##    s = 2**(-alpha*k*(s - t)).astype(dt)
+
+#def random_svd(m, n, alpha):
+#    k = min(m, n)
+#    u = numpy.random.randn(m, k).astype(numpy.float32)
+#    v = numpy.random.randn(n, k).astype(numpy.float32)
+#    s = numpy.random.rand(k).astype(numpy.float32)
+#    u, r = numpy.linalg.qr(u)
+#    v, r = numpy.linalg.qr(v)
+#    s = numpy.sort(s)
+#    t = numpy.ones(k)*s[0]
+#    s = 2**(-alpha*k*(s - t)).astype(numpy.float32)
+#    a = numpy.dot(u*s, v.transpose())
+#    return s, u, v, a
+

@@ -6,9 +6,9 @@ Implementation of the abstract class Vectors based on numpy.ndarray
 import numbers
 import numpy
 
-class NDArrayVectors: #(Vectors):
+class Vectors:
     def __init__(self, arg, nvec = 0, data_type = None):
-        if isinstance(arg, NDArrayVectors):
+        if isinstance(arg, Vectors):
             self.__data = arg.__data.copy()
         elif isinstance(arg, numpy.ndarray):
             self.__data = arg
@@ -29,18 +29,18 @@ class NDArrayVectors: #(Vectors):
     def is_complex(self):
         return isinstance(self.__data[0,0], complex)
     def clone(self):
-        return NDArrayVectors(self) #.__data.copy())
+        return Vectors(self) #.__data.copy())
     def new_vectors(self, nv = 0):
         m, n = self.__data.shape
-        return NDArrayVectors(n, nv)
+        return Vectors(n, nv)
 ##        data = numpy.ones((nv, n), dtype = self.__data.dtype)
-##        return NDArrayVectors(data)
+##        return Vectors(data)
     def fill_random(self):
         iv, nv = self.__selected
         m, n = self.__data.shape
         #data = numpy.zeros((nv, n), dtype = self.__data.dtype)
         self.__data[iv : iv + nv,:] = 2*numpy.random.rand(nv, n) - 1
-        #return NDArrayVectors(data)
+        #return Vectors(data)
     def fill_orthogonal(self, m):
         iv, nv = self.__selected
         k, n = self.__data.shape
@@ -68,7 +68,7 @@ class NDArrayVectors: #(Vectors):
         j = i//2
         a[k : m,   : j] = a[:(m - k), : j]
         a[k : m, j : i] = -a[:(m - k), j : i]
-        #return NDArrayVectors(a)
+        #return Vectors(a)
     def nvec(self):
         return self.__selected[1]
     def selected(self):

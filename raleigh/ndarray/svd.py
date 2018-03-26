@@ -4,12 +4,12 @@ Convenience function for Partial SVD of a ndarray via RALEIGH
 
 Created on Wed Mar 21 14:06:26 2018
 
-@author: Evgueni Ovtchinnikov, UKRI
+@author: Evgueni Ovtchinnikov, STFC
 """
 import numpy
 import scipy
-from raleigh.solver import *
-from raleigh.ndarray_vectors import NDArrayVectors
+from raleigh.solver import Problem, Solver, conjugate
+from raleigh.ndarray.vectors import Vectors
 
 class Operator:
     def __init__(self, a):
@@ -18,20 +18,17 @@ class Operator:
     def apply(self, x, y):
         u = x.data()
         type_x = type(u[0,0])
-        if type_x is not self.type:
-            mixed_types = True
-            u = u.astype(self.type)
-        else:
-            mixed_types = False
-        z = numpy.dot(u, self.a.T)
+        mixed_types = type_x is not self.type
         if mixed_types:
+            z = numpy.dot(u.astype(self.type), self.a.T)
             y.data()[:,:] = numpy.dot(z, self.a).astype(type_x)
         else:
+            z = numpy.dot(u, self.a.T)
             y.data()[:,:] = numpy.dot(z, self.a)
 
 def compute_right(a, opt):
     m, n = a.shape
-    v = NDArrayVectors(n)
+    v = Vectors(n)
     operator = Operator(a)
     problem = Problem(v, lambda x, y: operator.apply(x, y))
     solver = Solver(problem)
@@ -49,7 +46,7 @@ def compute_left(a, v):
     u /= sigma
     return sigma, u
 
-def ndarray_svd(a, opt):
+def partial_svd(a, opt):
     v = compute_right(a, opt)
     sigma, u = compute_left(a, v)
     return sigma, u, v
