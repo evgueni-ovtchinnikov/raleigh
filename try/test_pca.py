@@ -66,10 +66,10 @@ s, u, v, a = random_matrix_for_svd(m, n, sigma, numpy.float32)
 #sigma, u, v = partial_svd(a, opt)
 #print(sigma)
 
-operatorA = operators.Gram(a)
-opA = lambda x, y: operatorA.apply(x, y)
+operatorATA = operators.SVD(a)
+op = lambda x, y: operatorATA.apply(x, y)
 
 v = Vectors(n)
-problem = raleigh.solver.Problem(v, opA)
+problem = raleigh.solver.Problem(v, op)
 check_eigenvectors_accuracy(problem, opt, which = (0,-1))
 #check_eigenvectors_accuracy(problem, opt, which = (0,3))

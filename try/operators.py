@@ -9,21 +9,17 @@ class Diagonal:
     def apply(self, x, y):
         y.data()[:,:] = self.d * x.data()
 
-class Gram:
+class SVD:
     def __init__(self, a):
         self.a = a
         self.type = type(a[0,0])
     def apply(self, x, y):
         u = x.data()
         type_x = type(u[0,0])
-        if type_x is not self.type:
-            mixed_types = True
-            u = u.astype(self.type)
-        else:
-            mixed_types = False
-        z = numpy.dot(u, self.a.T)
-        #z = numpy.dot(x.data(), self.a.T)
+        mixed_types = type_x is not self.type
         if mixed_types:
+            z = numpy.dot(u.astype(self.type), self.a.T)
             y.data()[:,:] = numpy.dot(z, self.a).astype(type_x)
         else:
+            z = numpy.dot(u, self.a.T)
             y.data()[:,:] = numpy.dot(z, self.a)

@@ -596,3 +596,14 @@ opt.res_tol = 1e-10
 #    a = numpy.dot(u*s, v.transpose())
 #    return s, u, v, a
 
+#        if type_x is not self.type:
+#            mixed_types = True
+#            u = u.astype(self.type)
+#        else:
+#            mixed_types = False
+#        z = numpy.dot(u, self.a.T)
+#        #z = numpy.dot(x.data(), self.a.T)
+#        if mixed_types:
+#            y.data()[:,:] = numpy.dot(z, self.a).astype(type_x)
+#        else:
+#            y.data()[:,:] = numpy.dot(z, self.a)
