@@ -49,7 +49,7 @@ opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-8)
 opt.stopping_criteria = MyStoppingCriteria()
 opt.stopping_criteria.set_threshold(0.01)
 m = 2000
-n = 100
+n = 200
 alpha = 0.05
 
 #a = 2*numpy.random.rand(m, n).astype(numpy.float32) - 1
