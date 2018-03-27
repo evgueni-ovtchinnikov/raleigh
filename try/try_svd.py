@@ -34,12 +34,12 @@ s, u, v, a = random_matrix_for_svd(m, n, sigma, numpy.float32)
 
 # set solver options
 opt = Options()
-opt.block_size = 32
+#opt.block_size = 32
 opt.max_iter = 300
 opt.verbosity = 2
 opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-6)
 opt.stopping_criteria = MyStoppingCriteria()
-opt.stopping_criteria.set_threshold(0.0) # singular value threshold
+opt.stopping_criteria.set_threshold(0.01) # singular value threshold
 
 # compute partial svd
 sigma, u, v = partial_svd(a, opt)

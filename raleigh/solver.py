@@ -446,7 +446,7 @@ class Solver:
                 s = numpy.sqrt(BX.dots(BX))
                 delta /= numpy.amax(s)
             delta_res = delta
-            delta_res_rel = delta/numpy.amax(abs(da))
+            delta_res_rel = delta/numpy.amax(numpy.sqrt(AX.dots(AX)))
             #delta_res = max(delta_res, delta) # too large
             if verb > 1:
                 print('estimated error in residual (abs, rel): %e %e' \
