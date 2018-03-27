@@ -392,7 +392,7 @@ class Solver:
         else:
             A(X, AX)
             XAX = AX.dot(X)
-        lmd_in, Q = sla.eigh(XAX, XBX, overwrite_a = True, overwrite_b = True)
+        lmdx, Q = sla.eigh(XAX, XBX, overwrite_a = True, overwrite_b = True)
         W.select(m)
         X.mult(Q, W)
         W.copy(X)
@@ -410,11 +410,14 @@ class Solver:
 
             if pro:
                 XAX = AX.dot(BX)
+                da = AX.dots(BX)
             else:
                 XAX = AX.dot(X)
+                da = AX.dots(X)
             XBX = BX.dot(X)
-            da = XAX.diagonal()
-            db = XBX.diagonal()
+            db = BX.dots(X)            
+#            da = XAX.diagonal()
+#            db = XBX.diagonal()
             new_lmd = da/db
             if self.iteration > 0:
                 # compute eigenvalue decrements
@@ -443,9 +446,11 @@ class Solver:
                 s = numpy.sqrt(BX.dots(BX))
                 delta /= numpy.amax(s)
             delta_res = delta
+            delta_res_rel = delta/numpy.amax(abs(da))
             #delta_res = max(delta_res, delta) # too large
             if verb > 1:
-                print('estimated error in residual: %e' % delta_res)
+                print('estimated error in residual (abs, rel): %e %e' \
+                % (delta_res, delta_res_rel))
             
             # compute residuals
             # std: A X - X lmd
@@ -773,10 +778,15 @@ class Solver:
             # do pivoted Cholesky for GB
             U = GB
             ny = Y.nvec()
-            ind, dropped, last_piv = piv_chol(U, nx, 1e-4)
+            if delta_res_rel > 1e-8:
+                eps = 1e-2
+            else:
+                eps = 1e-4
+            ind, dropped, last_piv = piv_chol(U, nx, eps)
             if dropped > 0:
-                #print(ind)
                 if verb > -1:
+                    #print(ind)
+                    #print(last_piv)
                     print('dropped %d search directions out of %d' \
                           % (dropped, ny))
             

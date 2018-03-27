@@ -26,10 +26,11 @@ def piv_chol(A, k, eps):
                 A[:, i], A[:, j] = A[:, j], A[:, i].copy()
                 ind[i], ind[j] = ind[j], ind[i]
             A[i, i : n] -= np.dot(A[:i, i].transpose(), A[:i, i : n])
-        #print('pivot: %e' % A[i,i])
+        last_piv = A[i, i]
+        #print('pivot: %e' % last_piv)
         if A[i, i] <= eps:
             A[i : n, :].fill(0.0)
-            return ind, n - i, A[i, i]
+            return ind, n - i, last_piv
         A[i, i] = math.sqrt(A[i, i])
         A[i, i + 1 : n] /= A[i, i]
         A[i + 1 : n, i].fill(0.0)
@@ -37,7 +38,7 @@ def piv_chol(A, k, eps):
         #print('%e %e %e' % (A[i,i], lmin, lmax))
         if lmin/lmax <= eps:
             A[i : n, :].fill(0.0)
-            return ind, n - i, A[i, i]
+            return ind, n - i, last_piv
     return ind, 0, A[n - 1, n - 1]**2
 
 def estimate_lmin(U):

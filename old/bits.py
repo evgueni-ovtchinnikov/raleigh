@@ -607,3 +607,8 @@ opt.res_tol = 1e-10
 #            y.data()[:,:] = numpy.dot(z, self.a).astype(type_x)
 #        else:
 #            y.data()[:,:] = numpy.dot(z, self.a)
+
+#            if self.iteration == 102:
+#                print(lmdx)
+#                print(da)
+#                print(db)
