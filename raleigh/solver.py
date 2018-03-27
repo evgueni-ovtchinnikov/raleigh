@@ -208,14 +208,14 @@ class Solver:
                 left_total = left + extra_left
             else:
                 left_total = max(left, left_block_size)
-            if verb > 0:
+            if verb > 2:
                 print('left total: %d' % left_total)
         if right >= 0:
             if extra_right >= 0:
                 right_total = right + extra_right
             else:
                 right_total = max(right, block_size - left_block_size)
-            if verb > 0:
+            if verb > 2:
                 print('right_total: %d' % right_total)
         if verb > 0:
             print('left block size %d, right block size %d' % (l, m - l))
@@ -445,8 +445,9 @@ class Solver:
             elif pro:
                 s = numpy.sqrt(BX.dots(BX))
                 delta /= numpy.amax(s)
-            delta_res = delta
-            delta_res_rel = delta/numpy.amax(numpy.sqrt(AX.dots(AX)))
+            if delta > 0:
+                delta_res = delta
+                delta_res_rel = delta/numpy.amax(numpy.sqrt(AX.dots(AX)))
             #delta_res = max(delta_res, delta) # too large
             if verb > 1:
                 print('estimated error in residual (abs, rel): %e %e' \
@@ -563,6 +564,7 @@ class Solver:
                           abs(err_lmd[0, i]), abs(err_lmd[1, i]), \
                           abs(err_X[0, i]), abs(err_X[1, i]), acf[0, i]))
 
+            delta = delta_res*max(10, block_size)
             lcon = 0
             for i in range(leftX):
                 j = self.lcon + i
@@ -574,7 +576,7 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     lcon += 1
                     self.cnv[k] = 1
-                elif res[k] < 10*delta_res and acf[0, k] > acf[1, k]:
+                elif res[k] < delta and acf[0, k] > acf[1, k]:
                     if verb > -1:
                         msg = 'left eigenvector %d stagnated,' + \
                         ' eigenvalue %e, error %e / %e'
@@ -594,7 +596,7 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
                     self.cnv[k] = 1
-                elif res[k] < 10*delta_res and acf[0, k] > acf[1, k]:
+                elif res[k] < delta and acf[0, k] > acf[1, k]:
                     if verb > -1:
                         msg = 'right eigenvector %d stagnated,' + \
                         ' eigenvalue %e, error %e / %e'
@@ -676,11 +678,11 @@ class Solver:
 
             self.lcon += lcon
             self.rcon += rcon
+            if options.stopping_criteria.satisfied(self):
+                break
             left_converged = left >= 0 and self.lcon >= left
             right_converged = right >= 0 and self.rcon >= right
             if left_converged and right_converged:
-                break
-            if options.stopping_criteria.satisfied(self):
                 break
             
             leftX -= lcon
@@ -778,7 +780,7 @@ class Solver:
             # do pivoted Cholesky for GB
             U = GB
             ny = Y.nvec()
-            if delta_res_rel > 1e-8:
+            if delta_res_rel > 1e-9:
                 eps = 1e-2
             else:
                 eps = 1e-4
@@ -842,27 +844,39 @@ class Solver:
             
             lmdxy, Q = sla.eigh(G)
             #print(lmdxy)
-
-            if lcon + rcon > 0:
-                if left < 0:
-                    shift_left_max = lcon
-                else:
-                    shift_left_max = max(0, left_total - self.lcon - leftX)
-                if right < 0:
-                    shift_right_max = rcon
-                else:
-                    shift_right_max = max(0, right_total - self.rcon - rightX)
-                if lcon + rcon <= ny:
-                    shift_left = lcon
-                    shift_right = rcon
-                else:
-                    shift_left = min(lcon, int(round(lr_ratio*ny)))
-                    shift_right = min(rcon, ny - shift_left)
-                shift_left = min(shift_left, shift_left_max)
-                shift_right = min(shift_right, shift_right_max)
+            
+            if left < 0:
+                shift_left = ix
             else:
-                shift_left = 0
-                shift_right = 0
+                shift_left = max(0, left_total - self.lcon - leftX)
+            if right < 0:
+                shift_right = block_size - ix - nx
+            else:
+                shift_right = max(0, right_total - self.rcon - rightX)
+            if shift_left + shift_right > ny:
+                shift_left = min(shift_left, int(round(lr_ratio*ny)))
+                shift_right = min(shift_right, ny - shift_left)
+
+#            if lcon + rcon > 0:
+#                if left < 0:
+#                    shift_left_max = lcon
+#                else:
+#                    shift_left_max = max(0, left_total - self.lcon - leftX)
+#                if right < 0:
+#                    shift_right_max = rcon
+#                else:
+#                    shift_right_max = max(0, right_total - self.rcon - rightX)
+#                if lcon + rcon <= ny:
+#                    shift_left = lcon
+#                    shift_right = rcon
+#                else:
+#                    shift_left = min(lcon, int(round(lr_ratio*ny)))
+#                    shift_right = min(rcon, ny - shift_left)
+#                shift_left = min(shift_left, shift_left_max)
+#                shift_right = min(shift_right, shift_right_max)
+#            else:
+#                shift_left = 0
+#                shift_right = 0
 
             # select new numbers of left and right eigenpairs
             if left > 0 and lcon > 0 and self.lcon >= left: # left side converged

@@ -26,16 +26,22 @@ class Operator:
             z = numpy.dot(u, self.a.T)
             y.data()[:,:] = numpy.dot(z, self.a)
 
-def compute_right(a, opt):
+def compute_right(a, opt, vtc = None, nsv = -1):
     m, n = a.shape
-    v = Vectors(n)
+    if vtc is None:
+        v = Vectors(n)
+    else:
+        v = Vectors(vtc)
     operator = Operator(a)
     problem = Problem(v, lambda x, y: operator.apply(x, y))
     solver = Solver(problem)
-    solver.solve(v, opt, which = (0, -1))
-    return conjugate(v.data())
+    solver.solve(v, opt, which = (0, nsv))
+    vt = v.data()
+    return vt
+#    return conjugate(v.data())
 
-def compute_left(a, v):
+def compute_left(a, vt):
+    v = conjugate(vt)
     u = numpy.dot(a, v)
     vv = numpy.dot(conjugate(v), v)
     uu = -numpy.dot(conjugate(u), u)
@@ -44,9 +50,9 @@ def compute_left(a, v):
     v = numpy.dot(v, x)
     sigma = numpy.linalg.norm(u, axis = 0)
     u /= sigma
-    return sigma, u
+    return sigma, u, conjugate(v)
 
-def partial_svd(a, opt):
-    v = compute_right(a, opt)
-    sigma, u = compute_left(a, v)
-    return sigma, u, v
+def partial_svd(a, opt, vtc = None, nsv = -1):
+    vt = compute_right(a, opt, vtc, nsv)
+    sigma, u, vt = compute_left(a, vt)
+    return sigma, u, vt
