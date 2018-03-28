@@ -243,12 +243,13 @@ class Solver:
         self.res = -numpy.ones((m,), dtype = numpy.float32)
         self.err_lmd = -numpy.ones((2, m,), dtype = numpy.float32)
         self.err_X = -numpy.ones((2, m,), dtype = numpy.float32)
-        delta_res = 0.0
+        err_AX = 0.0
 
         # convergence history data
         dlmd = numpy.zeros((m, RECORDS), dtype = numpy.float32)
         dX = numpy.ones((m,), dtype = numpy.float32)
         acf = numpy.ones((2, m,), dtype = numpy.float32)
+        res_prev = -numpy.ones((m,), dtype = numpy.float32)
 
         # workspace
         X = vector.new_vectors(m)
@@ -410,15 +411,18 @@ class Solver:
 
             if pro:
                 XAX = AX.dot(BX)
-                da = AX.dots(BX)
+                #da = AX.dots(BX)
             else:
                 XAX = AX.dot(X)
-                da = AX.dots(X)
+                #da = AX.dots(X)
             XBX = BX.dot(X)
-            db = BX.dots(X)            
-#            da = XAX.diagonal()
-#            db = XBX.diagonal()
+            #db = BX.dots(X)
+            da = XAX.diagonal()
+            db = XBX.diagonal()
             new_lmd = da/db
+            s = new_lmd - lmdx
+            if verb > 0:
+                print('Ritz values error: %.1e' % numpy.amax(abs(s)))
             if self.iteration > 0:
                 # compute eigenvalue decrements
                 for i in range(nx):
@@ -446,12 +450,12 @@ class Solver:
                 s = numpy.sqrt(BX.dots(BX))
                 delta /= numpy.amax(s)
             if delta > 0:
-                delta_res = delta
-                delta_res_rel = delta/numpy.amax(numpy.sqrt(AX.dots(AX)))
-            #delta_res = max(delta_res, delta) # too large
+                err_AX = delta
+                err_AX_rel = delta/numpy.amax(numpy.sqrt(AX.dots(AX)))
+            #err_AX = max(err_AX, delta) # too large
             if verb > 1:
-                print('estimated error in residual (abs, rel): %e %e' \
-                % (delta_res, delta_res_rel))
+                print('estimated error in AX (abs, rel): %e %e' \
+                % (err_AX, err_AX_rel))
             
             # compute residuals
             # std: A X - X lmd
@@ -481,6 +485,7 @@ class Solver:
                     Xc.mult(Q, Y)
                 W.add(Y, -1.0)
             s = W.dots(W)
+            res_prev[ix : ix + nx] = res[ix : ix + nx]
             res[ix : ix + nx] = numpy.sqrt(s)
     
             # kinematic error estimates
@@ -559,12 +564,13 @@ class Solver:
                 '  a.c.f.'
                 print(msg)
                 for i in range(block_size):
-                    print('%e %.1e  %.1e / %.1e    %.1e / %.1e  %.1e' % \
+                    print('%e %.1e  %.1e / %.1e    %.1e / %.1e  %.1e  %d' % \
                           (lmd[i], res[i], \
                           abs(err_lmd[0, i]), abs(err_lmd[1, i]), \
-                          abs(err_X[0, i]), abs(err_X[1, i]), acf[0, i]))
+                          abs(err_X[0, i]), abs(err_X[1, i]), \
+                          acf[0, i], self.cnv[i]))
 
-            delta = delta_res*max(10, block_size)
+            delta = err_AX*10 #max(10, block_size)
             lcon = 0
             for i in range(leftX):
                 j = self.lcon + i
@@ -576,7 +582,10 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     lcon += 1
                     self.cnv[k] = 1
-                elif res[k] < delta and acf[0, k] > acf[1, k]:
+                elif res[k] >= 0 and \
+                        (res[k] < delta or res[k] < 10*delta and \
+                        abs(res[k] - res_prev[k]) < 0.01*res[k]) and \
+                        acf[0, k] > acf[1, k]:
                     if verb > -1:
                         msg = 'left eigenvector %d stagnated,' + \
                         ' eigenvalue %e, error %e / %e'
@@ -596,7 +605,11 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
                     self.cnv[k] = 1
-                elif res[k] < delta and acf[0, k] > acf[1, k]:
+#                elif res[k] < delta and acf[0, k] > acf[1, k]:
+                elif res[k] >= 0 and \
+                        (res[k] < delta or res[k] < 10*delta and \
+                        abs(res[k] - res_prev[k]) < 0.01*res[k]) and \
+                        acf[0, k] > acf[1, k]:
                     if verb > -1:
                         msg = 'right eigenvector %d stagnated,' + \
                         ' eigenvalue %e, error %e / %e'
@@ -780,7 +793,7 @@ class Solver:
             # do pivoted Cholesky for GB
             U = GB
             ny = Y.nvec()
-            if delta_res_rel > 1e-9:
+            if err_AX_rel > 1e-9:
                 eps = 1e-2
             else:
                 eps = 1e-4
