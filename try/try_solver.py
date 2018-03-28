@@ -36,7 +36,7 @@ solver = raleigh.solver.Solver(problem)
 solver.set_preconditioner(opP)
 #solver.solve(v, opt, which = (3,0), extra = (0,0), init = (w, None))
 #solver.solve(v, opt, which = (3,3), init = (wl, wr)) #, extra = (1,1))
-solver.solve(v, opt, which = (1,1))
+solver.solve(v, opt, which = (1,0))
 print('after %d iterations, %d converged eigenvalues are:' \
       % (solver.iteration, v.nvec()))
 print(solver.eigenvalues)

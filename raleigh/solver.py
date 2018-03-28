@@ -33,7 +33,7 @@ def default_block_size(which, extra, init, threads):
         init_left = int(init[0].nvec())
     if init[1] is not None:
         init_right = int(init[1].nvec())
-    if threads <= 0:
+    if threads <= 8:
         threads = 8
     if left == 0 and right == 0:
         return 0
@@ -180,10 +180,10 @@ class Solver:
             m = default_block_size(which, extra, init, options.threads)
         else:
             if left == 0 or right == 0:
-                if m < 2:
+                if m < 3:
                     if verb > -1:
-                        print('Block size %d too small, will use 2 instead' % m)
-                    m = 2
+                        print('Block size %d too small, will use 3 instead' % m)
+                    m = 3
             else:
                 if m < 4:
                     if verb > -1:
@@ -198,17 +198,21 @@ class Solver:
 
         if left == 0:
             r = 0.0
+            l = 1
         elif right == 0:
             r = 1.0
+            l = m - 1
         elif left > 0 and right > 0:
             r = left/(left + 1.0*right)
+            l = int(round(r*m))
         else:
             r = 0.5
-        l = int(round(r*m))
-        if l == 0 and r > 0.0:
-            l = 1
-        if l == m and r < 1.0:
-            l = m - 1
+            l = m//2
+#        l = int(round(r*m))
+#        if l == 0 and r > 0.0:
+#            l = 1
+#        if l == m and r < 1.0:
+#            l = m - 1
         lr_ratio = r
         left_block_size = l
         
