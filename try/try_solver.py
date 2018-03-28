@@ -4,18 +4,18 @@ sys.path.append('..')
 
 import operators
 import raleigh.solver
-from raleigh.ndarray_vectors import NDArrayVectors
+from raleigh.ndarray.vectors import Vectors
 
 numpy.random.seed(1) # to debug
 
 opt = raleigh.solver.Options()
-#opt.block_size = 5
-opt.max_iter = 40
+opt.block_size = 2
+#opt.max_iter = 40
 opt.res_tol = 1e-4
-opt.verbosity = 2
+opt.verbosity = 3
 n = 40
 #n = 160
-v = NDArrayVectors(n)
+v = Vectors(n)
 #w = v.new_orthogonal_vectors(4)
 #w.select(4)
 wl = v.new_vectors(2)
@@ -33,9 +33,10 @@ opB = lambda x, y: operatorB.apply(x, y)
 opP = lambda x, y: operatorP.apply(x, y)
 problem = raleigh.solver.Problem(v, opA, opB, 'product')
 solver = raleigh.solver.Solver(problem)
-#solver.set_preconditioner(opP)
+solver.set_preconditioner(opP)
 #solver.solve(v, opt, which = (3,0), extra = (0,0), init = (w, None))
-solver.solve(v, opt, which = (3,3), init = (wl, wr)) #, extra = (1,1))
+#solver.solve(v, opt, which = (3,3), init = (wl, wr)) #, extra = (1,1))
+solver.solve(v, opt, which = (1,1))
 print('after %d iterations, %d converged eigenvalues are:' \
       % (solver.iteration, v.nvec()))
 print(solver.eigenvalues)

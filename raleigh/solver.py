@@ -178,10 +178,21 @@ class Solver:
         m = int(options.block_size)
         if m < 0:
             m = default_block_size(which, extra, init, options.threads)
-        elif m < 2:
-            if verb > -1:
-                print('Block size 1 too small, will use 2 instead')
-            m = 2
+        else:
+            if left == 0 or right == 0:
+                if m < 2:
+                    if verb > -1:
+                        print('Block size %d too small, will use 2 instead' % m)
+                    m = 2
+            else:
+                if m < 4:
+                    if verb > -1:
+                        print('Block size %d too small, will use 4 instead' % m)
+                    m = 4
+#        elif m < 2:
+#            if verb > -1:
+#                print('Block size 1 too small, will use 2 instead')
+#            m = 2
         block_size = m
         self.block_size = m
 
@@ -204,17 +215,17 @@ class Solver:
         extra_left = int(extra[0])
         extra_right = int(extra[1])
         if left >= 0:
-            if extra_left >= 0:
+            if extra_left > 0:
                 left_total = left + extra_left
             else:
-                left_total = max(left, left_block_size)
+                left_total = max(left + 1, left_block_size)
             if verb > 2:
                 print('left total: %d' % left_total)
         if right >= 0:
-            if extra_right >= 0:
+            if extra_right > 0:
                 right_total = right + extra_right
             else:
-                right_total = max(right, block_size - left_block_size)
+                right_total = max(right + 1, block_size - left_block_size)
             if verb > 2:
                 print('right_total: %d' % right_total)
         if verb > 0:
@@ -449,7 +460,7 @@ class Solver:
             elif pro:
                 s = numpy.sqrt(BX.dots(BX))
                 delta /= numpy.amax(s)
-            if delta > 0:
+            if delta >= 0:
                 err_AX = delta
                 err_AX_rel = delta/numpy.amax(numpy.sqrt(AX.dots(AX)))
             #err_AX = max(err_AX, delta) # too large
@@ -860,12 +871,16 @@ class Solver:
             
             if left < 0:
                 shift_left = ix
-            else:
+            elif lcon > 0:
                 shift_left = max(0, left_total - self.lcon - leftX)
+            else:
+                shift_left = 0
             if right < 0:
                 shift_right = block_size - ix - nx
-            else:
+            elif rcon > 0:
                 shift_right = max(0, right_total - self.rcon - rightX)
+            else:
+                shift_right = 0
             if shift_left + shift_right > ny:
                 shift_left = min(shift_left, int(round(lr_ratio*ny)))
                 shift_right = min(shift_right, ny - shift_left)
@@ -896,9 +911,12 @@ class Solver:
                 if verb > 0:
                     print('left side converged')
                 leftX_new = 0
-                rightX_new = rightX + shift_right
+                l = left_block_size
+                rightX_new = min(nxy, l + rightX + shift_right)
+                left_block_size_new = l + rightX + shift_right - rightX_new
+                #rightX_new = rightX + shift_right
                 shift_left = -leftX
-                left_block_size_new = ix + leftX + rightX - rightX_new
+                #left_block_size_new = ix + leftX + rightX - rightX_new
                 lr_ratio = 0.0
                 ix_new = left_block_size_new
             elif right > 0 and rcon > 0 and self.rcon >= right: # right side converged
