@@ -633,3 +633,45 @@ opt.res_tol = 1e-10
             if y.data().flags['C_CONTIGUOUS']:
                 print('y is C contiguous')
 
+#        elif m < 2:
+#            if verb > -1:
+#                print('Block size 1 too small, will use 2 instead')
+#            m = 2
+
+#        l = int(round(r*m))
+#        if l == 0 and r > 0.0:
+#            l = 1
+#        if l == m and r < 1.0:
+#            l = m - 1
+
+#                print(dlmd[ix : ix + nx, rec - 1])
+
+#                elif res[k] < delta and acf[0, k] > acf[1, k]:
+
+#            if lcon + rcon > 0:
+#                if left < 0:
+#                    shift_left_max = lcon
+#                else:
+#                    shift_left_max = max(0, left_total - self.lcon - leftX)
+#                if right < 0:
+#                    shift_right_max = rcon
+#                else:
+#                    shift_right_max = max(0, right_total - self.rcon - rightX)
+#                if lcon + rcon <= ny:
+#                    shift_left = lcon
+#                    shift_right = rcon
+#                else:
+#                    shift_left = min(lcon, int(round(lr_ratio*ny)))
+#                    shift_right = min(rcon, ny - shift_left)
+#                shift_left = min(shift_left, shift_left_max)
+#                shift_right = min(shift_right, shift_right_max)
+#            else:
+#                shift_left = 0
+#                shift_right = 0
+
+                #rightX_new = rightX + shift_right
+
+                #left_block_size_new = ix + leftX + rightX - rightX_new
+
+            #print('shifts:', shift_left, shift_right)
+

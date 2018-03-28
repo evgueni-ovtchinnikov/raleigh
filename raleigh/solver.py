@@ -189,10 +189,6 @@ class Solver:
                     if verb > -1:
                         print('Block size %d too small, will use 4 instead' % m)
                     m = 4
-#        elif m < 2:
-#            if verb > -1:
-#                print('Block size 1 too small, will use 2 instead')
-#            m = 2
         block_size = m
         self.block_size = m
 
@@ -208,11 +204,6 @@ class Solver:
         else:
             r = 0.5
             l = m//2
-#        l = int(round(r*m))
-#        if l == 0 and r > 0.0:
-#            l = 1
-#        if l == m and r < 1.0:
-#            l = m - 1
         lr_ratio = r
         left_block_size = l
         
@@ -447,7 +438,6 @@ class Solver:
                     eps = 1e-4*max(abs(new_lmd[i]), abs(lmd[ix + i]))
                     if abs(delta) > eps:
                         dlmd[ix + i, rec - 1] = delta
-#                print(dlmd[ix : ix + nx, rec - 1])
                 if verb > 3:
                     print('eigenvalues shifts history:')
                     print(numpy.array_str(dlmd[ix : ix + nx, :rec].T, \
@@ -620,7 +610,6 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
                     self.cnv[k] = 1
-#                elif res[k] < delta and acf[0, k] > acf[1, k]:
                 elif res[k] >= 0 and \
                         (res[k] < delta or res[k] < 10*delta and \
                         abs(res[k] - res_prev[k]) < 0.01*res[k]) and \
@@ -873,6 +862,7 @@ class Solver:
             lmdxy, Q = sla.eigh(G)
             #print(lmdxy)
             
+            # select new numbers of left and right eigenpairs
             if left < 0:
                 shift_left = ix
             elif lcon > 0:
@@ -888,29 +878,6 @@ class Solver:
             if shift_left + shift_right > ny:
                 shift_left = min(shift_left, int(round(lr_ratio*ny)))
                 shift_right = min(shift_right, ny - shift_left)
-
-#            if lcon + rcon > 0:
-#                if left < 0:
-#                    shift_left_max = lcon
-#                else:
-#                    shift_left_max = max(0, left_total - self.lcon - leftX)
-#                if right < 0:
-#                    shift_right_max = rcon
-#                else:
-#                    shift_right_max = max(0, right_total - self.rcon - rightX)
-#                if lcon + rcon <= ny:
-#                    shift_left = lcon
-#                    shift_right = rcon
-#                else:
-#                    shift_left = min(lcon, int(round(lr_ratio*ny)))
-#                    shift_right = min(rcon, ny - shift_left)
-#                shift_left = min(shift_left, shift_left_max)
-#                shift_right = min(shift_right, shift_right_max)
-#            else:
-#                shift_left = 0
-#                shift_right = 0
-
-            # select new numbers of left and right eigenpairs
             if left > 0 and lcon > 0 and self.lcon >= left: # left side converged
                 if verb > 0:
                     print('left side converged')
@@ -918,9 +885,7 @@ class Solver:
                 l = left_block_size
                 rightX_new = min(nxy, l + rightX + shift_right)
                 left_block_size_new = l + rightX + shift_right - rightX_new
-                #rightX_new = rightX + shift_right
                 shift_left = -leftX
-                #left_block_size_new = ix + leftX + rightX - rightX_new
                 lr_ratio = 0.0
                 ix_new = left_block_size_new
             elif right > 0 and rcon > 0 and self.rcon >= right: # right side converged
@@ -938,7 +903,6 @@ class Solver:
                 left_block_size_new = left_block_size
                 ix_new = ix - shift_left
             nx_new = leftX_new + rightX_new
-            #print('shifts:', shift_left, shift_right)
             if verb > 2:
                 print('left X: %d %d' % (leftX, leftX_new))
                 print('right X: %d %d' % (rightX, rightX_new))
@@ -1025,7 +989,7 @@ class Solver:
                 QXZ = QZ[:nx, :].copy()
             QYZ = QZ[nx:, :].copy()
     
-            # X and 'old search directions' Z and their A- and B-images
+            # update X and 'old search directions' Z and their A- and B-images
             W.select(nx_new)
             Z.select(nx_new)
             if nx > 0:
