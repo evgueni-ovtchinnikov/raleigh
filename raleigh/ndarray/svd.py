@@ -20,10 +20,10 @@ class Operator:
         type_x = type(u[0,0])
         mixed_types = type_x is not self.type
         if mixed_types:
-            z = numpy.dot(u.astype(self.type), self.a.T)
+            z = numpy.dot(u.astype(self.type), conjugate(self.a))
             y.data()[:,:] = numpy.dot(z, self.a).astype(type_x)
         else:
-            z = numpy.dot(u, self.a.T)
+            z = numpy.dot(u, conjugate(self.a))
             y.data()[:,:] = numpy.dot(z, self.a)
 
 def compute_right(a, opt, vtc = None, nsv = -1):

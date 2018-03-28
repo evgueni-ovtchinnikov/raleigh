@@ -38,25 +38,28 @@ class MyStoppingCriteria:
 
 numpy.random.seed(1) # make results reproducible
 
-# generate the matrix
-u = numpy.load('C:/Users/wps46139/Documents/Data/PCA/u10K4K.npy')
-v = numpy.load('C:/Users/wps46139/Documents/Data/PCA/v10K4K.npy')
-m, n = u.shape
-#m = 10000
-#n = 4000
+LOAD = False
+SAVE = False
+
+if LOAD:
+    u = numpy.load('C:/Users/wps46139/Documents/Data/PCA/u10K4K.npy')
+    v = numpy.load('C:/Users/wps46139/Documents/Data/PCA/v10K4K.npy')
+    m, n = u.shape
+else:
+    # generate the matrix
+    m = 1000
+    n = 400
+    u, v = random_singular_vectors(m, n, numpy.float32)
+    if SAVE:
+        numpy.save('u.npy', u)
+        numpy.save('v.npy', v)
 k = min(m, n)
 alpha = 0.05
 sigma = lambda t: 2**(-alpha*t).astype(numpy.float32)
 #alpha = 0.01
 #sigma = lambda t: 2**(-alpha*t*t).astype(numpy.float32)
 s = random_singular_values(k, sigma, numpy.float32)
-#u, v = random_singular_vectors(m, n, numpy.float32)
-#numpy.save('u10K4K.npy', u)
-#numpy.save('v10K4K.npy', v)
 a = numpy.dot(u*s, v.transpose())
-#s, u, v, a = random_matrix_for_svd(m, n, sigma, numpy.float32)
-#numpy.save('rand10K4K.npy', a)
-#a = numpy.load('rand10K4K.npy')
 
 th = 0.01
 block_size = 40
@@ -85,7 +88,8 @@ vt = None
 iter_wr = 0
 start = time.time()
 while True:
-    sigma, u, vt = partial_svd(a, opt, vt, int(round(block_size*0.8)))
+    nsv = int(round(block_size*0.8))
+    sigma, u, vt = partial_svd(a, opt, vt, nsv)
     iter_wr += opt.stopping_criteria.iteration
 #    print(sigma)
     if sigma[-1] < th*sigma[0]:

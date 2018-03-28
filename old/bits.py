@@ -612,3 +612,24 @@ opt.res_tol = 1e-10
 #                print(lmdx)
 #                print(da)
 #                print(db)
+
+#s, u, v, a = random_matrix_for_svd(m, n, sigma, numpy.float32)
+#numpy.save('rand10K4K.npy', a)
+#a = numpy.load('rand10K4K.npy')
+
+#            z = numpy.dot(u.astype(self.type), self.a.T)
+
+#            z = numpy.dot(u, self.a.T)
+
+            if self.a.flags['C_CONTIGUOUS']:
+                print('a is C contiguous')
+            b = conjugate(self.a)
+            if b.flags['C_CONTIGUOUS']:
+                print('a.T is C contiguous')
+
+            if z.flags['C_CONTIGUOUS']:
+                print('z is C contiguous')
+
+            if y.data().flags['C_CONTIGUOUS']:
+                print('y is C contiguous')
+
