@@ -417,14 +417,14 @@ class Solver:
 
             if pro:
                 XAX = AX.dot(BX)
-                #da = AX.dots(BX)
+                da = AX.dots(BX)
             else:
                 XAX = AX.dot(X)
-                #da = AX.dots(X)
+                da = AX.dots(X)
             XBX = BX.dot(X)
-            #db = BX.dots(X)
-            da = XAX.diagonal()
-            db = XBX.diagonal()
+            db = BX.dots(X)
+            #da = XAX.diagonal()
+            #db = XBX.diagonal()
             new_lmd = da/db
             s = new_lmd - lmdx
             if verb > 0:
@@ -579,7 +579,8 @@ class Solver:
             s = math.sqrt(s)
             delta = err_AX*s
             lcon = 0
-            for i in range(leftX):
+            last = 0
+            for i in range(leftX - 1):
                 j = self.lcon + i
                 k = ix + i
                 if options.convergence_criteria.satisfied(self, k):
@@ -598,8 +599,21 @@ class Solver:
                     self.cnv[k] = -1
                 else:
                     break
+                last = i
+            for i in range(last, 0, -1):
+                k = ix + i
+                if lmd[k + 1] - lmd[k] < res[k]:
+                    if verb > 0:
+                        msg = 'eigenvalues %.16e and %.16e too close, ' + \
+                        '%.16e not accepted'
+                        print(msg % (lmd[k], lmd[k + 1], lmd[k]))
+                    lcon -= 1
+                    self.cnv[k] = 0
+                else:
+                    break
             rcon = 0
-            for i in range(rightX):
+            last = 0
+            for i in range(rightX - 1):
                 j = self.rcon + i
                 k = ix + nx - i - 1
                 if options.convergence_criteria.satisfied(self, k):
@@ -616,6 +630,18 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
                     self.cnv[k] = -1
+                else:
+                    break
+                last = i
+            for i in range(last, 0, -1):
+                k = ix + nx - i - 1
+                if lmd[k] - lmd[k - 1] < res[k]:
+                    if verb > 0:
+                        msg = 'eigenvalues %e and %e too close, ' + \
+                        '%e not accepted'
+                        print(msg % (lmd[k], lmd[k - 1], lmd[k]))
+                    rcon -= 1
+                    self.cnv[k] = 0
                 else:
                     break
 
@@ -717,8 +743,15 @@ class Solver:
                 W.copy(Y)
             else:
                 P(W, Y)
+
+#            print('YY:')
+#            print(Y.dots(Y))
             
             if nz > 0:
+#                print('Z:')
+#                print(Z.dots(Z))
+#                print(AZ.dots(AZ))
+#                print(BZ.dots(BZ))
                 # compute the conjugation matrix
                 if pro:
                     W.select(Y.nvec())
@@ -738,17 +771,33 @@ class Solver:
                 Mu[:, 0] = lmdz
                 Den = Mu - Lmd
                 # TODO: avoid division by zero
+#                print('Num:')
+#                print(Num)
+#                print('Den:')
+#                print(Den)
+                select = abs(Den) <= 1e-4*abs(Num)
+                Den[select] = 1e-4*Num[select]
+                Den[Num == 0.0] = 1.0
+#                print('Den:')
+#                print(Den)
                 Beta = Num/Den
+#                print('Beta:')
+#                print(Beta)
                 
                 # conjugate search directions
                 AZ.select(ny)
                 Z.mult(Beta, AZ)
                 Y.add(AZ, -1.0)
                 if pro: # if gen or nz == 0, BY computed later
+                    #B(Z, BZ)
                     BZ.mult(Beta, AZ)
                     W.add(AZ, -1.0)
                     BY.select(ny)
                     W.copy(BY)
+#                    print('BY:')
+#                    print(BY.dots(BY))
+#                print('Y:')
+#                print(Y.dots(Y))
 
             if Xc.nvec() > 0: #and (P is not None or gen):
                 # orthogonalize Y to Xc
@@ -761,6 +810,9 @@ class Solver:
                     Q = numpy.dot(Gci, Y.dot(Xc))
                 Xc.mult(Q, W)
                 Y.add(W, -1.0)
+#                if not std:
+#                    BXc.mult(Q, W)
+#                    BY.add(W, -1.0)
 
             # compute (B-)Gram matrix for (X,Y)
             if std:
@@ -775,6 +827,16 @@ class Solver:
                 if not pro or nz == 0:
                     B(Y, BY)
                 s = numpy.sqrt(BY.dots(Y))
+#                print('YY:')
+#                print(Y.dots(Y))
+#                print('Y:')
+#                print(Y.data())
+#                print('BY:')
+#                print(BY.data())
+#                print('YBY:')
+#                print(BY.dots(Y))
+#                print('YBBY:')
+#                print(BY.dots(BY))
                 Y.scale(s)
                 BY.scale(s)
                 s = numpy.sqrt(BY.dots(Y))
@@ -790,6 +852,10 @@ class Solver:
             else:
                 GB = YBY
 
+            lmdB, Q = sla.eigh(GB)
+            print('lmdB:')
+            print(lmdB)
+
             # do pivoted Cholesky for GB
             U = GB
             ny = Y.nvec()
@@ -800,8 +866,8 @@ class Solver:
             ind, dropped, last_piv = piv_chol(U, nx, eps)
             if dropped > 0:
                 if verb > -1:
-                    #print(ind)
-                    #print(last_piv)
+                    print(ind)
+                    print(last_piv)
                     print('dropped %d search directions out of %d' \
                           % (dropped, ny))
             
@@ -814,6 +880,12 @@ class Solver:
             # re-arrange/drop-linear-dependent search directions
             nxy = nx + ny
             U = U[:nxy, :nxy]
+
+            GB = numpy.dot(U.T, U)
+            lmdB, Q = sla.eigh(GB)
+            print('lmdB:')
+            print(lmdB)
+
             indy = ind[nx: nxy]
             for i in range(ny):
                 indy[i] -= nx
@@ -826,6 +898,10 @@ class Solver:
                 BY.copy(W, indy)
                 W.copy(BY)
                 BY.select(ny)
+
+            B(Y, BY)
+            print('YBY:')
+            print(BY.dots(Y))
     
             # compute A-Gram matrix for (X,Y)
             if pro:
@@ -846,17 +922,29 @@ class Solver:
             else:
                 GA = YAY
 
+            YBY = BY.dot(Y)
+            lmdy, Qy = sla.eigh(YAY, YBY)
+            print('lmdy:')
+            print(lmdy)
+
+            lmdxy, Q = sla.eigh(GA, GB, turbo=False)
+            print('lmdxy:')
+            print(lmdxy)
+
             # solve Rayleigh-Ritz eigenproblem
             G = transform(GA, U)
             YAY = G[nx : nxy, nx : nxy]
             lmdy, Qy = sla.eigh(YAY)
+            print('lmdy:')
+            print(lmdy)
             G[:, nx : nxy] = numpy.dot(G[:, nx : nxy], Qy)
             if nx > 0:
                 G[nx : nxy, :nx] = conjugate(G[:nx, nx : nxy])
             G[nx : nxy, nx : nxy] = numpy.dot(conjugate(Qy), G[nx : nxy, nx : nxy])
             
             lmdxy, Q = sla.eigh(G)
-            #print(lmdxy)
+            print('lmdxy:')
+            print(lmdxy)
             
             # select new numbers of left and right eigenpairs
             if left < 0:
@@ -973,8 +1061,10 @@ class Solver:
             Q = sla.solve_triangular(U, Q)
             QX = numpy.concatenate \
                 ((Q[:, :leftX_new], Q[:, nxy - rightX_new:]), axis = 1)
-            lft = max(leftX, leftX_new)
-            rgt = max(rightX, rightX_new)
+#            lft = max(leftX, leftX_new)
+#            rgt = max(rightX, rightX_new)
+            lft = leftX_new
+            rgt = rightX_new
             nz = nxy - lft - rgt
             lmdz = lmdxy[lft : nxy - rgt]
             QZ = Q[:, lft : nxy - rgt]

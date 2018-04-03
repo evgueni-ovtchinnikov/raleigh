@@ -36,11 +36,19 @@ class MyStoppingCriteria:
         done = vmin < th or self.m > 0 and solver.rcon >= self.m
         return done
 
+def vec_err(u, v):
+    w = v.copy()
+    q = numpy.dot(u.T, v)
+    w = numpy.dot(u, q) - v
+    s = numpy.linalg.norm(w, axis = 0)
+    return s
+
 numpy.random.seed(1) # make results reproducible
 
-LOAD = True
+LOAD = False
 SAVE = False
 WITH_RESTARTS = False
+EXP = 2
 
 if LOAD:
     u0 = numpy.load('C:/Users/wps46139/Documents/Data/PCA/u10K4K.npy')
@@ -55,12 +63,15 @@ else:
         numpy.save('u.npy', u0)
         numpy.save('v.npy', v0)
 k = min(m, n)
-alpha = 0.05
-sigma = lambda t: 2**(-alpha*t).astype(numpy.float32)
-#alpha = 0.01
-#sigma = lambda t: 2**(-alpha*t*t).astype(numpy.float32)
-s = random_singular_values(k, sigma, numpy.float32)
-a = numpy.dot(u0*s, v0.transpose())
+
+if EXP == 1:
+    alpha = 0.05
+    f_sigma = lambda t: 2**(-alpha*t).astype(numpy.float32)
+else:
+    alpha = 0.01
+    f_sigma = lambda t: 2**(-alpha*t*t).astype(numpy.float32)
+sigma0 = random_singular_values(k, f_sigma, numpy.float32)
+a = numpy.dot(u0*sigma0, v0.transpose())
 
 th = 0.01
 block_size = 40
@@ -69,7 +80,7 @@ block_size = 40
 opt = Options()
 opt.block_size = block_size
 opt.max_iter = 300
-opt.verbosity = 1
+opt.verbosity = 2
 opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-4)
 opt.stopping_criteria = MyStoppingCriteria()
 opt.stopping_criteria.set_threshold(th, relative = False)
@@ -78,29 +89,33 @@ opt.stopping_criteria.set_threshold(th, relative = False)
 
 # using sliding window scheme
 start = time.time()
-sigma0, u, vt = partial_svd(a, opt)
+sigma, u, vt = partial_svd(a, opt)
 stop = time.time()
 time_sw = stop - start
 iter_sw = opt.stopping_criteria.iteration
+n_sw = vt.shape[0]
+err_sw = vec_err(v0[:,:n_sw], vt.transpose())
 
 # with restarts
 #opt.stopping_criteria.set_how_many(block_size)
-u = None
-vt = None
+u_wr = None
+vt_wr = None
 iter_wr = 0
 start = time.time()
 while WITH_RESTARTS:
     nsv = int(round(block_size*0.8))
-    sigma, u, vt = partial_svd(a, opt, u, vt, nsv)
-#    print(u.shape)
-#    print(vt.shape)
+    sigma_wr, u_wr, vt_wr = partial_svd(a, opt, u_wr, vt_wr, nsv)
     iter_wr += opt.stopping_criteria.iteration
-#    print(sigma)
-    if sigma[-1] < th*sigma[0]:
+    if sigma_wr[-1] < th*sigma_wr[0]:
         break
 stop = time.time()
 time_wr = stop - start
 
-print(sigma0)
+print(sigma)
 print('iterations: sliding window %d, with restarts %d' % (iter_sw, iter_wr))
 print('time: sliding window %.1e, with restarts %.1e' % (time_sw, time_wr))
+
+print('\nsingular values:')
+print(sigma0[:n_sw + 1])
+print('\nsingular vector errors:')
+print(err_sw)
