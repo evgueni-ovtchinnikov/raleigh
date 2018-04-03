@@ -575,7 +575,9 @@ class Solver:
                           abs(err_X[0, i]), abs(err_X[1, i]), \
                           acf[0, i], self.cnv[i]))
 
-            delta = err_AX*10 #max(10, block_size)
+            s = X.dimension()
+            s = math.sqrt(s)
+            delta = err_AX*s
             lcon = 0
             for i in range(leftX):
                 j = self.lcon + i
@@ -587,10 +589,7 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     lcon += 1
                     self.cnv[k] = 1
-                elif res[k] >= 0 and \
-                        (res[k] < delta or res[k] < 10*delta and \
-                        abs(res[k] - res_prev[k]) < 0.01*res[k]) and \
-                        acf[0, k] > acf[1, k]:
+                elif res[k] >= 0 and res[k] < delta and acf[0, k] > acf[1, k]:
                     if verb > -1:
                         msg = 'left eigenvector %d stagnated,' + \
                         ' eigenvalue %e, error %e / %e'
@@ -610,10 +609,7 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
                     self.cnv[k] = 1
-                elif res[k] >= 0 and \
-                        (res[k] < delta or res[k] < 10*delta and \
-                        abs(res[k] - res_prev[k]) < 0.01*res[k]) and \
-                        acf[0, k] > acf[1, k]:
+                elif res[k] >= 0 and res[k] < delta and acf[0, k] > acf[1, k]:
                     if verb > -1:
                         msg = 'right eigenvector %d stagnated,' + \
                         ' eigenvalue %e, error %e / %e'

@@ -694,3 +694,5 @@ def partial_svd0(a, opt, vtc = None, nsv = -1):
         sigma, u, vt = compute_left(b, vt)
         return sigma, conjugate(vt), conjugate(u)
 
+#                        abs(res[k] - res_prev[k]) < 0.01*res[k]) and \
+

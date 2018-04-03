@@ -38,29 +38,29 @@ class MyStoppingCriteria:
 
 numpy.random.seed(1) # make results reproducible
 
-LOAD = False
+LOAD = True
 SAVE = False
 WITH_RESTARTS = False
 
 if LOAD:
-    u = numpy.load('C:/Users/wps46139/Documents/Data/PCA/u10K4K.npy')
-    v = numpy.load('C:/Users/wps46139/Documents/Data/PCA/v10K4K.npy')
-    m, n = u.shape
+    u0 = numpy.load('C:/Users/wps46139/Documents/Data/PCA/u10K4K.npy')
+    v0 = numpy.load('C:/Users/wps46139/Documents/Data/PCA/v10K4K.npy')
+    m, n = u0.shape
 else:
     # generate the matrix
     m = 1000
     n = 400
-    u, v = random_singular_vectors(m, n, numpy.float32)
+    u0, v0 = random_singular_vectors(m, n, numpy.float32)
     if SAVE:
-        numpy.save('u.npy', u)
-        numpy.save('v.npy', v)
+        numpy.save('u.npy', u0)
+        numpy.save('v.npy', v0)
 k = min(m, n)
 alpha = 0.05
 sigma = lambda t: 2**(-alpha*t).astype(numpy.float32)
 #alpha = 0.01
 #sigma = lambda t: 2**(-alpha*t*t).astype(numpy.float32)
 s = random_singular_values(k, sigma, numpy.float32)
-a = numpy.dot(u*s, v.transpose())
+a = numpy.dot(u0*s, v0.transpose())
 
 th = 0.01
 block_size = 40

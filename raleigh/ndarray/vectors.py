@@ -22,8 +22,8 @@ class Vectors:
             ('wrong argument %s in constructor' % repr(type(arg)))
         m, n = self.__data.shape
         self.__selected = (0, m)
-##    def dimension(self):
-##        return self.__data.shape[1]
+    def dimension(self):
+        return self.__data.shape[1]
 ##    def data_type(self):
 ##        return self.__data.dtype
     def is_complex(self):
@@ -61,9 +61,9 @@ class Vectors:
         if j > n:
             for i in range(k, m):
                 a[i, i] = 1.0
-            return NDArrayVectors(a)
+            return Vectors(a)
         while j <= n:
-            a[:i, i : j] = a[:i, :i]
+            a[:k, i : j] = a[:k, :i]
             i, j = j, 2*j
         j = i//2
         a[k : m,   : j] = a[:(m - k), : j]
