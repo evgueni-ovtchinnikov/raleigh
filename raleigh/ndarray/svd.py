@@ -52,7 +52,7 @@ def compute_left(a, vt):
     u /= sigma
     return sigma, u, conjugate(v)
 
-def partial_svd(a, opt, vtc = None, nsv = -1):
+def partial_svd(a, opt, uc = None, vtc = None, nsv = -1):
     m, n = a.shape
     if m >= n:
         vt = compute_right(a, opt, vtc, nsv)
@@ -60,8 +60,10 @@ def partial_svd(a, opt, vtc = None, nsv = -1):
         return sigma, u, vt
     else:
         b = conjugate(a)
-        if vtc is not None:
-            vtc = conjugate(vtc)
-        vt = compute_right(b, opt, vtc, nsv)
-        sigma, u, vt = compute_left(b, vt)
-        return sigma, conjugate(vt), conjugate(u)
+        if uc is not None:
+            vtc = conjugate(uc)
+        else:
+            vtc = None
+        u = compute_right(b, opt, vtc, nsv)
+        sigma, vt, u = compute_left(b, u)
+        return sigma, conjugate(u), conjugate(vt)

@@ -90,12 +90,9 @@ iter_wr = 0
 start = time.time()
 while True:
     nsv = int(round(block_size*0.8))
-    if m >= n:
-        sigma, u, vt = partial_svd(a, opt, vt, nsv)
-    else:
-        sigma, u, vt = partial_svd(a, opt, u, nsv)
-    print(u.shape)
-    print(vt.shape)
+    sigma, u, vt = partial_svd(a, opt, u, vt, nsv)
+#    print(u.shape)
+#    print(vt.shape)
     iter_wr += opt.stopping_criteria.iteration
 #    print(sigma)
     if sigma[-1] < th*sigma[0]:

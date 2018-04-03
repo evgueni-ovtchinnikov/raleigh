@@ -675,3 +675,22 @@ opt.res_tol = 1e-10
 
             #print('shifts:', shift_left, shift_right)
 
+#    if m >= n:
+#        sigma, u, vt = partial_svd(a, opt, vt, nsv)
+#    else:
+#        sigma, u, vt = partial_svd(a, opt, u, nsv)
+
+def partial_svd0(a, opt, vtc = None, nsv = -1):
+    m, n = a.shape
+    if m >= n:
+        vt = compute_right(a, opt, vtc, nsv)
+        sigma, u, vt = compute_left(a, vt)
+        return sigma, u, vt
+    else:
+        b = conjugate(a)
+        if vtc is not None:
+            vtc = conjugate(vtc)
+        vt = compute_right(b, opt, vtc, nsv)
+        sigma, u, vt = compute_left(b, vt)
+        return sigma, conjugate(vt), conjugate(u)
+
