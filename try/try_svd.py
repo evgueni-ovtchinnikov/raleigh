@@ -40,6 +40,7 @@ numpy.random.seed(1) # make results reproducible
 
 LOAD = False
 SAVE = False
+WITH_RESTARTS = False
 
 if LOAD:
     u = numpy.load('C:/Users/wps46139/Documents/Data/PCA/u10K4K.npy')
@@ -88,7 +89,7 @@ u = None
 vt = None
 iter_wr = 0
 start = time.time()
-while True:
+while WITH_RESTARTS:
     nsv = int(round(block_size*0.8))
     sigma, u, vt = partial_svd(a, opt, u, vt, nsv)
 #    print(u.shape)
