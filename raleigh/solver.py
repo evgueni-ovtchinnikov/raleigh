@@ -358,12 +358,12 @@ class Solver:
 
         # do pivoted Cholesky for XBX to eliminate linear dependent X
         U = XBX
-        ind, dropped, last_piv = piv_chol(U, 0, 1e-8)
+        ind, dropped, last_piv = piv_chol(U, 0, 1e-2)
         if dropped > 0:
             #print(ind)
             if verb > -1:
                 print('dropped %d initial vectors out of %d' % (dropped, nx))
-            # drop-linear-dependent initial vectors
+            # drop linear dependent initial vectors
             nx -= dropped
             if nx > 0:
                 W.select(nx)
@@ -431,8 +431,6 @@ class Solver:
             if self.iteration > 0:
                 # compute eigenvalue decrements
                 for i in range(nx):
-                    if dlmd[ix + i, rec - 1] == 0: # previous data not available
-                        continue
                     delta = lmd[ix + i] - new_lmd[i]
                     eps = 1e-4*max(abs(new_lmd[i]), abs(lmd[ix + i]))
                     if abs(delta) > eps:

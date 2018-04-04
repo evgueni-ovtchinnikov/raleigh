@@ -798,3 +798,5 @@ def partial_svd0(a, opt, vtc = None, nsv = -1):
 #            lft = max(leftX, leftX_new)
 #            rgt = max(rightX, rightX_new)
 
+#                    if dlmd[ix + i, rec - 1] == 0: # previous data not available
+#                        continue
