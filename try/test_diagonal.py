@@ -9,16 +9,17 @@ from raleigh.ndarray.vectors import Vectors
 
 opt = raleigh.solver.Options()
 #opt.block_size = 5
-opt.max_iter = 10
+#opt.max_iter = 10
 #opt.res_tol = 1e-4
-opt.verbosity = 4
+opt.verbosity = 2
 n = 80
 
 u = Vectors(n)
 v = Vectors(n)
 #a = numpy.asarray([i + 1 for i in range(n)])
-m = 10
-a = numpy.concatenate((numpy.ones(m), 2*numpy.ones(n - m)))
+a = numpy.asarray([1e-14*i + 1 for i in range(n)])
+#m = 10
+#a = numpy.concatenate((numpy.ones(m), 2*numpy.ones(n - m)))
 b = numpy.ones(n)
 #b = 2*numpy.ones((1, n))
 operatorA = operators.Diagonal(a)

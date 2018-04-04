@@ -951,6 +951,26 @@ class Solver:
 #            print('lmdxy:')
 #            print(lmdxy)
             
+            # estimate changes in eigenvalues and eigenvectors
+            lmdx = numpy.concatenate \
+                ((lmdxy[:leftX], lmdxy[nxy - rightX:]))
+            lmdy = lmdxy[leftX : nxy - rightX]
+            QX = numpy.concatenate \
+                ((Q[:, :leftX], Q[:, nxy - rightX:]), axis = 1)
+            QYX = QX[nx:, :].copy()
+            lmdX = numpy.ndarray((1, nx))
+            lmdY = numpy.ndarray((ny, 1))
+            lmdX[0, :] = lmdx
+            lmdY[:, 0] = lmdy
+            Delta = (lmdY - lmdX)*QYX*QYX
+            dX[ix : ix + nx] = nla.norm(QYX, axis = 0)
+            if rec == RECORDS:
+                for i in range(rec - 1):
+                    dlmd[:, i] = dlmd[:, i + 1]
+            else:
+                rec += 1
+            dlmd[ix : ix + nx, rec - 1] = numpy.sum(Delta, axis = 0)
+
             # select new numbers of left and right eigenpairs
             if left < 0:
                 shift_left = ix
@@ -1041,24 +1061,25 @@ class Solver:
                     err_X[:, i] = -1.0
                     dX[i] = 0
 
-            # estimate changes in eigenvalues and eigenvectors
-            lmdx = numpy.concatenate \
-                ((lmdxy[:leftX_new], lmdxy[nxy - rightX_new:]))
-            QX = numpy.concatenate \
-                ((Q[:, :leftX_new], Q[:, nxy - rightX_new:]), axis = 1)
-            QYX = QX[nx:, :].copy()
-            lmdX = numpy.ndarray((1, nx_new))
-            lmdY = numpy.ndarray((ny, 1))
-            lmdX[0, :] = lmdx
-            lmdY[:, 0] = lmdy
-            Delta = (lmdY - lmdX)*QYX*QYX
-            dX[ix_new : ix_new + nx_new] = nla.norm(QYX, axis = 0)
-            if rec == RECORDS:
-                for i in range(rec - 1):
-                    dlmd[:, i] = dlmd[:, i + 1]
-            else:
-                rec += 1
-            dlmd[ix_new : ix_new + nx_new, rec - 1] = numpy.sum(Delta, axis = 0)
+#            # estimate changes in eigenvalues and eigenvectors
+#            lmdx = numpy.concatenate \
+#                ((lmdxy[:leftX_new], lmdxy[nxy - rightX_new:]))
+#            lmdy = lmdxy[leftX_new : nxy - rightX_new - 1]
+#            QX = numpy.concatenate \
+#                ((Q[:, :leftX_new], Q[:, nxy - rightX_new:]), axis = 1)
+#            QYX = QX[nx:, :].copy()
+#            lmdX = numpy.ndarray((1, nx_new))
+#            lmdY = numpy.ndarray((ny, 1))
+#            lmdX[0, :] = lmdx
+#            lmdY[:, 0] = lmdy
+#            Delta = (lmdY - lmdX)*QYX*QYX
+#            dX[ix_new : ix_new + nx_new] = nla.norm(QYX, axis = 0)
+#            if rec == RECORDS:
+#                for i in range(rec - 1):
+#                    dlmd[:, i] = dlmd[:, i + 1]
+#            else:
+#                rec += 1
+#            dlmd[ix_new : ix_new + nx_new, rec - 1] = numpy.sum(Delta, axis = 0)
 
             # compute RR coefficients for X and 'old search directions' Z
             # by re-arranging columns of Q
