@@ -787,13 +787,23 @@ class Solver:
 #                print(Num)
 #                print('Den:')
 #                print(Den)
-                select = abs(Den) <= 1e-4*abs(Num)
-                Den[select] = 1e-4*Num[select]
-                Den[Num == 0.0] = 1.0
+#                select = abs(Den) <= 1e-4*abs(Num)
+#                Den[select] = 1e-4*Num[select]
+#                Den[Num == 0.0] = 1.0
+                sy = numpy.sqrt(Y.dots(Y))
+                sz = numpy.sqrt(Z.dots(Z))
+                Beta = numpy.ndarray((nz, ny), dtype = numpy.float64)
+                for iz in range(nz):
+                    for iy in range(ny):
+                        s = sy[iy]/sz[iz]
+                        if abs(Num[iz, iy]) >= 100*s*abs(Den[iz, iy]):
+                            Beta[iz, iy] = 0.0
+                        else:
+                            Beta[iz, iy] = Num[iz, iy]/Den[iz, iy]
 #                print('Den:')
 #                print(Den)
 #                print(Num[Den == 0.0])
-                Beta = Num/Den
+#                Beta = Num/Den
 #                print('Beta:')
 #                print(Beta)
                 
