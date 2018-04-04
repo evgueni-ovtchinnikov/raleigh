@@ -583,8 +583,8 @@ class Solver:
                 k = ix + i
                 if options.convergence_criteria.satisfied(self, k):
                     if verb > 0:
-                        msg = 'left eigenvector %d converged,' + \
-                        ' eigenvalue %e, error %e / %e'
+                        msg = 'left eigenpair %d converged,\n' + \
+                        ' eigenvalue %e, error %.1e / %.1e'
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     lcon += 1
                     self.cnv[k] = 1
@@ -592,8 +592,8 @@ class Solver:
                         dlmd[k, rec - 1] >= dlmd[k, rec - 2]:
                             #acf[0, k] >= acf[1, k]:
                     if verb > -1:
-                        msg = 'left eigenvector %d stagnated,' + \
-                        ' eigenvalue %e, error %e / %e'
+                        msg = 'left eigenpair %d stagnated,\n' + \
+                        ' eigenvalue %e, error %.1e / %.1e'
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     lcon += 1
                     self.cnv[k] = -1
@@ -605,8 +605,8 @@ class Solver:
                 k = ix + i
                 if lmd[k + 1] - lmd[k] < res[k]:
                     if verb > 0:
-                        msg = '%.16e is too close to %.16e,\n' + \
-                        'eigenvalue %d not accepted'
+                        msg = 'eigenvalue %.16e is too close to %.16e,\n' + \
+                        ' eigenpair %d not accepted'
                         print(msg % (lmd[k], lmd[k + 1], j))
                     lcon -= 1
                     self.cnv[k] = 0
@@ -619,8 +619,8 @@ class Solver:
                 k = ix + nx - i - 1
                 if options.convergence_criteria.satisfied(self, k):
                     if verb > 0:
-                        msg = 'right eigenvector %d converged, \n' + \
-                        ' eigenvalue %e, error %e / %e'
+                        msg = 'right eigenpair %d converged,\n' + \
+                        ' eigenvalue %e, error %.1e / %.1e'
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
                     self.cnv[k] = 1
@@ -628,8 +628,8 @@ class Solver:
                         dlmd[k, rec - 1] >= dlmd[k, rec - 2]:
                             #acf[0, k] >= acf[1, k]:
                     if verb > -1:
-                        msg = 'right eigenvector %d stagnated,' + \
-                        ' eigenvalue %e, error %e / %e'
+                        msg = 'right eigenpair %d stagnated,\n' + \
+                        ' eigenvalue %e, error %.1e / %.1e'
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
                     self.cnv[k] = -1
@@ -641,8 +641,8 @@ class Solver:
                 k = ix + nx - i - 1
                 if lmd[k] - lmd[k - 1] < res[k]:
                     if verb > 0:
-                        msg = '%.16e is too close to %.16e,\n' + \
-                        'eigenvalue %d not accepted'
+                        msg = 'eigenvalue %.16e is too close to %.16e,\n' + \
+                        ' eigenpair %d not accepted'
                         print(msg % (lmd[k], lmd[k - 1], j))
                     rcon -= 1
                     self.cnv[k] = 0

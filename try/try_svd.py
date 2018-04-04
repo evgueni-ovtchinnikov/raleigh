@@ -47,7 +47,7 @@ numpy.random.seed(1) # make results reproducible
 
 LOAD = False
 SAVE = False
-WITH_RESTARTS = False
+WITH_RESTARTS = True
 EXP = 2
 
 if LOAD:
@@ -80,7 +80,7 @@ block_size = 40
 opt = Options()
 opt.block_size = block_size
 opt.max_iter = 300
-opt.verbosity = 2
+opt.verbosity = 1
 opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-4)
 opt.stopping_criteria = MyStoppingCriteria()
 opt.stopping_criteria.set_threshold(th, relative = False)
@@ -97,13 +97,13 @@ n_sw = vt.shape[0]
 err_sw = vec_err(v0[:,:n_sw], vt.transpose())
 
 # with restarts
-#opt.stopping_criteria.set_how_many(block_size)
+nsv = int(round(block_size*0.8))
+opt.stopping_criteria.set_how_many(nsv)
 u_wr = None
 vt_wr = None
 iter_wr = 0
 start = time.time()
 while WITH_RESTARTS:
-    nsv = int(round(block_size*0.8))
     sigma_wr, u_wr, vt_wr = partial_svd(a, opt, u_wr, vt_wr, nsv)
     iter_wr += opt.stopping_criteria.iteration
     if sigma_wr[-1] < th*sigma_wr[0]:
