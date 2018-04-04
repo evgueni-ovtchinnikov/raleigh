@@ -249,13 +249,16 @@ class Solver:
         self.res = -numpy.ones((m,), dtype = numpy.float32)
         self.err_lmd = -numpy.ones((2, m,), dtype = numpy.float32)
         self.err_X = -numpy.ones((2, m,), dtype = numpy.float32)
+
+        # data for estimating error in computing residuals
         err_AX = 0.0
+        norm_AX = numpy.zeros((m,), dtype = numpy.float32)
 
         # convergence history data
         dlmd = numpy.zeros((m, RECORDS), dtype = numpy.float32)
         dX = numpy.ones((m,), dtype = numpy.float32)
         acf = numpy.ones((2, m,), dtype = numpy.float32)
-        res_prev = -numpy.ones((m,), dtype = numpy.float32)
+        #res_prev = -numpy.ones((m,), dtype = numpy.float32)
 
         # workspace
         X = vector.new_vectors(m)
@@ -469,11 +472,11 @@ class Solver:
             W.select(nx, ix)
             Y.select(nx)
             AX.copy(W)
+            norm_AX[ix : ix + nx] = numpy.sqrt(W.dots(W))
             if gen:
                 W.add(BX, -lmd[ix : ix + nx])
             else:
                 W.add(X, -lmd[ix : ix + nx])
-            s = W.dots(W)
 
             if Xc.nvec() > 0:
                 # orthogonalize W to Xc
@@ -490,7 +493,7 @@ class Solver:
                     Xc.mult(Q, Y)
                 W.add(Y, -1.0)
             s = W.dots(W)
-            res_prev[ix : ix + nx] = res[ix : ix + nx]
+            #res_prev[ix : ix + nx] = res[ix : ix + nx]
             res[ix : ix + nx] = numpy.sqrt(s)
     
             # kinematic error estimates
@@ -579,6 +582,7 @@ class Solver:
 
             s = X.dimension()
             s = math.sqrt(s)
+            eps = 1e-15
             delta = err_AX*s
             lcon = 0
             last = 0
@@ -592,7 +596,9 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     lcon += 1
                     self.cnv[k] = 1
-                elif res[k] >= 0 and res[k] < delta and acf[0, k] > acf[1, k]:
+                elif res[k] >= 0 and res[k] < max(delta, eps*norm_AX[k]) and \
+                        dlmd[k, rec - 1] >= dlmd[k, rec - 2]:
+                            #acf[0, k] >= acf[1, k]:
                     if verb > -1:
                         msg = 'left eigenvector %d stagnated,' + \
                         ' eigenvalue %e, error %e / %e'
@@ -626,7 +632,9 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
                     self.cnv[k] = 1
-                elif res[k] >= 0 and res[k] < delta and acf[0, k] > acf[1, k]:
+                elif res[k] >= 0 and res[k] < max(delta, eps*norm_AX[k]) and \
+                        dlmd[k, rec - 1] >= dlmd[k, rec - 2]:
+                            #acf[0, k] >= acf[1, k]:
                     if verb > -1:
                         msg = 'right eigenvector %d stagnated,' + \
                         ' eigenvalue %e, error %e / %e'
@@ -1085,6 +1093,8 @@ class Solver:
             # by re-arranging columns of Q
             Q[nx : nxy, :] = numpy.dot(Qy, Q[nx : nxy, :])
             Q = sla.solve_triangular(U, Q)
+            lmdx = numpy.concatenate \
+                ((lmdxy[:leftX_new], lmdxy[nxy - rightX_new:]))
             QX = numpy.concatenate \
                 ((Q[:, :leftX_new], Q[:, nxy - rightX_new:]), axis = 1)
 #            lft = max(leftX, leftX_new)
