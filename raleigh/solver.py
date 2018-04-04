@@ -258,7 +258,6 @@ class Solver:
         dlmd = numpy.zeros((m, RECORDS), dtype = numpy.float32)
         dX = numpy.ones((m,), dtype = numpy.float32)
         acf = numpy.ones((2, m,), dtype = numpy.float32)
-        #res_prev = -numpy.ones((m,), dtype = numpy.float32)
 
         # workspace
         X = vector.new_vectors(m)
@@ -392,9 +391,6 @@ class Solver:
                 BX.select(nx)
             XBX = BX.dot(X)
             
-#        lmdB, Q = sla.eigh(XBX)
-#        print(lmdB)
-            
         # Rayleigh-Ritz in the initial space
         if pro:
             A(BX, AX)
@@ -493,13 +489,11 @@ class Solver:
                     Xc.mult(Q, Y)
                 W.add(Y, -1.0)
             s = W.dots(W)
-            #res_prev[ix : ix + nx] = res[ix : ix + nx]
             res[ix : ix + nx] = numpy.sqrt(s)
     
             # kinematic error estimates
             if rec > 3: # sufficient history available
                 for i in range(nx):
-                    #print('%d %e' % (ix + i, dX[ix + i]))
                     if dX[ix + i] > 0.01:
                         err_X[0, ix + i] = -1.0
                         continue
@@ -756,14 +750,7 @@ class Solver:
             else:
                 P(W, Y)
 
-#            print('YY:')
-#            print(Y.dots(Y))
-            
             if nz > 0:
-#                print('Z:')
-#                print(Z.dots(Z))
-#                print(AZ.dots(AZ))
-#                print(BZ.dots(BZ))
                 # compute the conjugation matrix
                 if pro:
                     W.select(Y.nvec())
@@ -782,14 +769,6 @@ class Solver:
                 Lmd[0, :] = lmd[iy : iy + ny]
                 Mu[:, 0] = lmdz
                 Den = Mu - Lmd
-                # TODO: avoid division by zero
-#                print('Num:')
-#                print(Num)
-#                print('Den:')
-#                print(Den)
-#                select = abs(Den) <= 1e-4*abs(Num)
-#                Den[select] = 1e-4*Num[select]
-#                Den[Num == 0.0] = 1.0
                 sy = numpy.sqrt(Y.dots(Y))
                 sz = numpy.sqrt(Z.dots(Z))
                 Beta = numpy.ndarray((nz, ny), dtype = numpy.float64)
@@ -800,27 +779,16 @@ class Solver:
                             Beta[iz, iy] = 0.0
                         else:
                             Beta[iz, iy] = Num[iz, iy]/Den[iz, iy]
-#                print('Den:')
-#                print(Den)
-#                print(Num[Den == 0.0])
-#                Beta = Num/Den
-#                print('Beta:')
-#                print(Beta)
                 
                 # conjugate search directions
                 AZ.select(ny)
                 Z.mult(Beta, AZ)
                 Y.add(AZ, -1.0)
                 if pro: # if gen or nz == 0, BY computed later
-                    #B(Z, BZ)
                     BZ.mult(Beta, AZ)
                     W.add(AZ, -1.0)
                     BY.select(ny)
                     W.copy(BY)
-#                    print('BY:')
-#                    print(BY.dots(BY))
-#                print('Y:')
-#                print(Y.dots(Y))
 
             if Xc.nvec() > 0: #and (P is not None or gen):
                 # orthogonalize Y to Xc
@@ -841,7 +809,7 @@ class Solver:
             if std:
                 s = numpy.sqrt(Y.dots(Y))
                 Y.scale(s)
-                s = numpy.sqrt(Y.dots(Y))
+                #s = numpy.sqrt(Y.dots(Y))
                 if nx > 0:
                     XBY = Y.dot(X)
                 YBY = Y.dot(Y)
@@ -850,19 +818,9 @@ class Solver:
                 if not pro or nz == 0:
                     B(Y, BY)
                 s = numpy.sqrt(BY.dots(Y))
-#                print('YY:')
-#                print(Y.dots(Y))
-#                print('Y:')
-#                print(Y.data())
-#                print('BY:')
-#                print(BY.data())
-#                print('YBY:')
-#                print(BY.dots(Y))
-#                print('YBBY:')
-#                print(BY.dots(BY))
                 Y.scale(s)
                 BY.scale(s)
-                s = numpy.sqrt(BY.dots(Y))
+                #s = numpy.sqrt(BY.dots(Y))
                 if nx > 0:
                     XBY = BY.dot(X)
                 YBY = BY.dot(Y)
@@ -874,10 +832,6 @@ class Solver:
                 GB = numpy.concatenate((GB, H), axis = 1)
             else:
                 GB = YBY
-
-#            lmdB, Q = sla.eigh(GB)
-#            print('lmdB:')
-#            print(lmdB)
 
             # do pivoted Cholesky for GB
             U = GB
@@ -904,11 +858,6 @@ class Solver:
             nxy = nx + ny
             U = U[:nxy, :nxy]
 
-#            GB = numpy.dot(U.T, U)
-#            lmdB, Q = sla.eigh(GB)
-#            print('lmdB:')
-#            print(lmdB)
-
             indy = ind[nx: nxy]
             for i in range(ny):
                 indy[i] -= nx
@@ -922,10 +871,6 @@ class Solver:
                 W.copy(BY)
                 BY.select(ny)
 
-#            #B(Y, BY)
-#            print('YBY:')
-#            print(BY.dots(Y))
-    
             # compute A-Gram matrix for (X,Y)
             if pro:
                 A(BY, AY)
@@ -945,29 +890,16 @@ class Solver:
             else:
                 GA = YAY
 
-#            YBY = BY.dot(Y)
-#            lmdy, Qy = sla.eigh(YAY, YBY)
-#            print('lmdy:')
-#            print(lmdy)
-#
-#            lmdxy, Q = sla.eigh(GA, GB, turbo=False)
-#            print('lmdxy:')
-#            print(lmdxy)
-
             # solve Rayleigh-Ritz eigenproblem
             G = transform(GA, U)
             YAY = G[nx : nxy, nx : nxy]
             lmdy, Qy = sla.eigh(YAY)
-#            print('lmdy:')
-#            print(lmdy)
             G[:, nx : nxy] = numpy.dot(G[:, nx : nxy], Qy)
             if nx > 0:
                 G[nx : nxy, :nx] = conjugate(G[:nx, nx : nxy])
             G[nx : nxy, nx : nxy] = numpy.dot(conjugate(Qy), G[nx : nxy, nx : nxy])
             
             lmdxy, Q = sla.eigh(G)
-#            print('lmdxy:')
-#            print(lmdxy)
             
             # estimate changes in eigenvalues and eigenvectors
             lmdx = numpy.concatenate \
@@ -1079,26 +1011,6 @@ class Solver:
                     err_X[:, i] = -1.0
                     dX[i] = 0
 
-#            # estimate changes in eigenvalues and eigenvectors
-#            lmdx = numpy.concatenate \
-#                ((lmdxy[:leftX_new], lmdxy[nxy - rightX_new:]))
-#            lmdy = lmdxy[leftX_new : nxy - rightX_new - 1]
-#            QX = numpy.concatenate \
-#                ((Q[:, :leftX_new], Q[:, nxy - rightX_new:]), axis = 1)
-#            QYX = QX[nx:, :].copy()
-#            lmdX = numpy.ndarray((1, nx_new))
-#            lmdY = numpy.ndarray((ny, 1))
-#            lmdX[0, :] = lmdx
-#            lmdY[:, 0] = lmdy
-#            Delta = (lmdY - lmdX)*QYX*QYX
-#            dX[ix_new : ix_new + nx_new] = nla.norm(QYX, axis = 0)
-#            if rec == RECORDS:
-#                for i in range(rec - 1):
-#                    dlmd[:, i] = dlmd[:, i + 1]
-#            else:
-#                rec += 1
-#            dlmd[ix_new : ix_new + nx_new, rec - 1] = numpy.sum(Delta, axis = 0)
-
             # compute RR coefficients for X and 'old search directions' Z
             # by re-arranging columns of Q
             Q[nx : nxy, :] = numpy.dot(Qy, Q[nx : nxy, :])
@@ -1107,8 +1019,6 @@ class Solver:
                 ((lmdxy[:leftX_new], lmdxy[nxy - rightX_new:]))
             QX = numpy.concatenate \
                 ((Q[:, :leftX_new], Q[:, nxy - rightX_new:]), axis = 1)
-#            lft = max(leftX, leftX_new)
-#            rgt = max(rightX, rightX_new)
             lft = leftX_new
             rgt = rightX_new
             nz = nxy - lft - rgt

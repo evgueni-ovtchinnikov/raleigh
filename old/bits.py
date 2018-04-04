@@ -696,3 +696,105 @@ def partial_svd0(a, opt, vtc = None, nsv = -1):
 
 #                        abs(res[k] - res_prev[k]) < 0.01*res[k]) and \
 
+        #res_prev = -numpy.ones((m,), dtype = numpy.float32)
+
+#        lmdB, Q = sla.eigh(XBX)
+#        print(lmdB)
+            
+            #res_prev[ix : ix + nx] = res[ix : ix + nx]
+
+                    #print('%d %e' % (ix + i, dX[ix + i]))
+
+#            print('YY:')
+#            print(Y.dots(Y))
+            
+#                print('Z:')
+#                print(Z.dots(Z))
+#                print(AZ.dots(AZ))
+#                print(BZ.dots(BZ))
+
+                # TODO: avoid division by zero
+#                print('Num:')
+#                print(Num)
+#                print('Den:')
+#                print(Den)
+#                select = abs(Den) <= 1e-4*abs(Num)
+#                Den[select] = 1e-4*Num[select]
+#                Den[Num == 0.0] = 1.0
+
+#                print('Den:')
+#                print(Den)
+#                print(Num[Den == 0.0])
+#                Beta = Num/Den
+#                print('Beta:')
+#                print(Beta)
+
+                    #B(Z, BZ)
+
+#                    print('BY:')
+#                    print(BY.dots(BY))
+#                print('Y:')
+#                print(Y.dots(Y))
+
+#                print('YY:')
+#                print(Y.dots(Y))
+#                print('Y:')
+#                print(Y.data())
+#                print('BY:')
+#                print(BY.data())
+#                print('YBY:')
+#                print(BY.dots(Y))
+#                print('YBBY:')
+#                print(BY.dots(BY))
+
+#            lmdB, Q = sla.eigh(GB)
+#            print('lmdB:')
+#            print(lmdB)
+
+#            GB = numpy.dot(U.T, U)
+#            lmdB, Q = sla.eigh(GB)
+#            print('lmdB:')
+#            print(lmdB)
+
+#            #B(Y, BY)
+#            print('YBY:')
+#            print(BY.dots(Y))
+    
+#            YBY = BY.dot(Y)
+#            lmdy, Qy = sla.eigh(YAY, YBY)
+#            print('lmdy:')
+#            print(lmdy)
+#
+#            lmdxy, Q = sla.eigh(GA, GB, turbo=False)
+#            print('lmdxy:')
+#            print(lmdxy)
+
+#            print('lmdy:')
+#            print(lmdy)
+
+#            print('lmdxy:')
+#            print(lmdxy)
+
+#            # estimate changes in eigenvalues and eigenvectors
+#            lmdx = numpy.concatenate \
+#                ((lmdxy[:leftX_new], lmdxy[nxy - rightX_new:]))
+#            lmdy = lmdxy[leftX_new : nxy - rightX_new - 1]
+#            QX = numpy.concatenate \
+#                ((Q[:, :leftX_new], Q[:, nxy - rightX_new:]), axis = 1)
+#            QYX = QX[nx:, :].copy()
+#            lmdX = numpy.ndarray((1, nx_new))
+#            lmdY = numpy.ndarray((ny, 1))
+#            lmdX[0, :] = lmdx
+#            lmdY[:, 0] = lmdy
+#            Delta = (lmdY - lmdX)*QYX*QYX
+#            dX[ix_new : ix_new + nx_new] = nla.norm(QYX, axis = 0)
+#            if rec == RECORDS:
+#                for i in range(rec - 1):
+#                    dlmd[:, i] = dlmd[:, i + 1]
+#            else:
+#                rec += 1
+#            dlmd[ix_new : ix_new + nx_new, rec - 1] = numpy.sum(Delta, axis = 0)
+
+#            lft = max(leftX, leftX_new)
+#            rgt = max(rightX, rightX_new)
+
