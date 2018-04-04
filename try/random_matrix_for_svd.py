@@ -22,16 +22,10 @@ def random_singular_vectors(m, n, dt):
     v, r = numpy.linalg.qr(v)
     return u, v
 
-#def random_matrix_for_svd(m, n, u, v, sigma, dt):
-#    k = min(m, n)
-#    u = numpy.random.randn(m, k).astype(dt)
-#    v = numpy.random.randn(n, k).astype(dt)
-#    u, r = numpy.linalg.qr(u)
-#    v, r = numpy.linalg.qr(v)
-#    s = random_singular_values(k, sigma, dt)
-#    x = numpy.arange(k)
-#    plt.figure()
-#    plt.plot(x, s)
-#    plt.show()
-#    a = numpy.dot(u*s, v.transpose())
-#    return s, u, v, a
+def random_matrix_for_svd(m, n, sigma, dt):
+    u, v = random_singular_vectors(m, n, dt)
+    k = min(m, n)
+    s = random_singular_values(k, sigma, dt)
+    a = numpy.dot(u*s, v.transpose())
+    return s, u, v, a
+

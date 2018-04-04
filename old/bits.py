@@ -800,3 +800,17 @@ def partial_svd0(a, opt, vtc = None, nsv = -1):
 
 #                    if dlmd[ix + i, rec - 1] == 0: # previous data not available
 #                        continue
+
+#def random_matrix_for_svd(m, n, u, v, sigma, dt):
+#    k = min(m, n)
+#    u = numpy.random.randn(m, k).astype(dt)
+#    v = numpy.random.randn(n, k).astype(dt)
+#    u, r = numpy.linalg.qr(u)
+#    v, r = numpy.linalg.qr(v)
+#    s = random_singular_values(k, sigma, dt)
+#    x = numpy.arange(k)
+#    plt.figure()
+#    plt.plot(x, s)
+#    plt.show()
+#    a = numpy.dot(u*s, v.transpose())
+#    return s, u, v, a
