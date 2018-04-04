@@ -26,7 +26,7 @@ class Operator:
             z = numpy.dot(u, conjugate(self.a))
             y.data()[:,:] = numpy.dot(z, self.a)
 
-def compute_right(a, opt, vtc = None, nsv = -1):
+def compute_right(a, opt, vtc = None):
     m, n = a.shape
     if vtc is None:
         v = Vectors(n)
@@ -35,10 +35,9 @@ def compute_right(a, opt, vtc = None, nsv = -1):
     operator = Operator(a)
     problem = Problem(v, lambda x, y: operator.apply(x, y))
     solver = Solver(problem)
-    solver.solve(v, opt, which = (0, nsv))
+    solver.solve(v, opt, which = (0, -1))
     vt = v.data()
     return vt
-#    return conjugate(v.data())
 
 def compute_left(a, vt):
     v = conjugate(vt)
@@ -52,10 +51,10 @@ def compute_left(a, vt):
     u /= sigma
     return sigma, u, conjugate(v)
 
-def partial_svd(a, opt, uc = None, vtc = None, nsv = -1):
+def partial_svd(a, opt, uc = None, vtc = None):
     m, n = a.shape
     if m >= n:
-        vt = compute_right(a, opt, vtc, nsv)
+        vt = compute_right(a, opt, vtc)
         sigma, u, vt = compute_left(a, vt)
         return sigma, u, vt
     else:
@@ -64,6 +63,6 @@ def partial_svd(a, opt, uc = None, vtc = None, nsv = -1):
             vtc = conjugate(uc)
         else:
             vtc = None
-        u = compute_right(b, opt, vtc, nsv)
+        u = compute_right(b, opt, vtc)
         sigma, vt, u = compute_left(b, u)
         return sigma, conjugate(u), conjugate(vt)

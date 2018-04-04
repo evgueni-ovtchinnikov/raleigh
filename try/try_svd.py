@@ -45,10 +45,10 @@ def vec_err(u, v):
 
 numpy.random.seed(1) # make results reproducible
 
-LOAD = False
+LOAD = True
 SAVE = False
 WITH_RESTARTS = True
-EXP = 2
+EXP = 1
 
 if LOAD:
     u0 = numpy.load('C:/Users/wps46139/Documents/Data/PCA/u10K4K.npy')
@@ -74,7 +74,7 @@ sigma0 = random_singular_values(k, f_sigma, numpy.float32)
 a = numpy.dot(u0*sigma0, v0.transpose())
 
 th = 0.01
-block_size = 40
+block_size = 16
 
 # set solver options
 opt = Options()
@@ -104,7 +104,7 @@ vt_wr = None
 iter_wr = 0
 start = time.time()
 while WITH_RESTARTS:
-    sigma_wr, u_wr, vt_wr = partial_svd(a, opt, u_wr, vt_wr, nsv)
+    sigma_wr, u_wr, vt_wr = partial_svd(a, opt, u_wr, vt_wr)
     iter_wr += opt.stopping_criteria.iteration
     if sigma_wr[-1] < th*sigma_wr[0]:
         break
