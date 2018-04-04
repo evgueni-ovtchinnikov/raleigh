@@ -35,7 +35,7 @@ def piv_chol(A, k, eps):
         A[i, i + 1 : n] /= A[i, i]
         A[i + 1 : n, i].fill(0.0)
         lmin = estimate_lmin(A[: i + 1, : i + 1])
-        print('%e %e %e' % (A[i,i], lmin, lmax))
+        #print('%e %e %e' % (A[i,i], lmin, lmax))
         if lmin/lmax <= eps:
             A[i : n, :].fill(0.0)
             return ind, n - i, last_piv

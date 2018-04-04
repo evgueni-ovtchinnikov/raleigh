@@ -9,9 +9,9 @@ from raleigh.ndarray.vectors import Vectors
 
 opt = raleigh.solver.Options()
 #opt.block_size = 5
-opt.max_iter = 40
-opt.res_tol = 1e-4
-opt.verbosity = 3
+opt.max_iter = 10
+#opt.res_tol = 1e-4
+opt.verbosity = 4
 n = 80
 
 u = Vectors(n)
@@ -28,5 +28,5 @@ opA = lambda x, y: operatorA.apply(x, y)
 opB = lambda x, y: operatorB.apply(x, y)
 opP = lambda x, y: operatorP.apply(x, y)
 problem = raleigh.solver.Problem(v, opA, opB, 'product')
-check_eigenvectors_accuracy(problem, opt, which = (10,10))
+check_eigenvectors_accuracy(problem, opt, which = (5,0))
 #check_eigenvectors_accuracy(problem, opt, which = (3,3))

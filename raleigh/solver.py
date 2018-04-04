@@ -417,14 +417,14 @@ class Solver:
 
             if pro:
                 XAX = AX.dot(BX)
-                da = AX.dots(BX)
+                #da = AX.dots(BX)
             else:
                 XAX = AX.dot(X)
-                da = AX.dots(X)
+                #da = AX.dots(X)
             XBX = BX.dot(X)
-            db = BX.dots(X)
-            #da = XAX.diagonal()
-            #db = XBX.diagonal()
+            #db = BX.dots(X)
+            da = XAX.diagonal()
+            db = XBX.diagonal()
             new_lmd = da/db
             s = new_lmd - lmdx
             if verb > 0:
@@ -496,7 +496,9 @@ class Solver:
             # kinematic error estimates
             if rec > 3: # sufficient history available
                 for i in range(nx):
+                    #print('%d %e' % (ix + i, dX[ix + i]))
                     if dX[ix + i] > 0.01:
+                        err_X[0, ix + i] = -1.0
                         continue
                     k = 0
                     s = 0
@@ -569,7 +571,7 @@ class Solver:
                 '  a.c.f.'
                 print(msg)
                 for i in range(block_size):
-                    print('%e %.1e  %.1e / %.1e    %.1e / %.1e  %.1e  %d' % \
+                    print('%e %.1e  %.1e / %.1e    %.1e / %.1e  %.3e  %d' % \
                           (lmd[i], res[i], \
                           abs(err_lmd[0, i]), abs(err_lmd[1, i]), \
                           abs(err_X[0, i]), abs(err_X[1, i]), \
@@ -601,12 +603,13 @@ class Solver:
                     break
                 last = i
             for i in range(last, 0, -1):
+                j = self.lcon + i
                 k = ix + i
                 if lmd[k + 1] - lmd[k] < res[k]:
                     if verb > 0:
-                        msg = 'eigenvalues %.16e and %.16e too close, ' + \
-                        '%.16e not accepted'
-                        print(msg % (lmd[k], lmd[k + 1], lmd[k]))
+                        msg = '%.16e is too close to %.16e,\n' + \
+                        'eigenvalue %d not accepted'
+                        print(msg % (lmd[k], lmd[k + 1], j))
                     lcon -= 1
                     self.cnv[k] = 0
                 else:
@@ -634,12 +637,13 @@ class Solver:
                     break
                 last = i
             for i in range(last, 0, -1):
+                j = self.rcon + i
                 k = ix + nx - i - 1
                 if lmd[k] - lmd[k - 1] < res[k]:
                     if verb > 0:
-                        msg = 'eigenvalues %e and %e too close, ' + \
-                        '%e not accepted'
-                        print(msg % (lmd[k], lmd[k - 1], lmd[k]))
+                        msg = '%.16e is too close to %.16e,\n' + \
+                        'eigenvalue %d not accepted'
+                        print(msg % (lmd[k], lmd[k - 1], j))
                     rcon -= 1
                     self.cnv[k] = 0
                 else:
@@ -780,6 +784,7 @@ class Solver:
                 Den[Num == 0.0] = 1.0
 #                print('Den:')
 #                print(Den)
+#                print(Num[Den == 0.0])
                 Beta = Num/Den
 #                print('Beta:')
 #                print(Beta)
@@ -810,9 +815,9 @@ class Solver:
                     Q = numpy.dot(Gci, Y.dot(Xc))
                 Xc.mult(Q, W)
                 Y.add(W, -1.0)
-#                if not std:
-#                    BXc.mult(Q, W)
-#                    BY.add(W, -1.0)
+                if pro and nz > 0:
+                    BXc.mult(Q, W)
+                    BY.add(W, -1.0)
 
             # compute (B-)Gram matrix for (X,Y)
             if std:
@@ -852,9 +857,9 @@ class Solver:
             else:
                 GB = YBY
 
-            lmdB, Q = sla.eigh(GB)
-            print('lmdB:')
-            print(lmdB)
+#            lmdB, Q = sla.eigh(GB)
+#            print('lmdB:')
+#            print(lmdB)
 
             # do pivoted Cholesky for GB
             U = GB
@@ -866,8 +871,8 @@ class Solver:
             ind, dropped, last_piv = piv_chol(U, nx, eps)
             if dropped > 0:
                 if verb > -1:
-                    print(ind)
-                    print(last_piv)
+#                    print(ind)
+#                    print(last_piv)
                     print('dropped %d search directions out of %d' \
                           % (dropped, ny))
             
@@ -881,10 +886,10 @@ class Solver:
             nxy = nx + ny
             U = U[:nxy, :nxy]
 
-            GB = numpy.dot(U.T, U)
-            lmdB, Q = sla.eigh(GB)
-            print('lmdB:')
-            print(lmdB)
+#            GB = numpy.dot(U.T, U)
+#            lmdB, Q = sla.eigh(GB)
+#            print('lmdB:')
+#            print(lmdB)
 
             indy = ind[nx: nxy]
             for i in range(ny):
@@ -899,9 +904,9 @@ class Solver:
                 W.copy(BY)
                 BY.select(ny)
 
-            B(Y, BY)
-            print('YBY:')
-            print(BY.dots(Y))
+#            #B(Y, BY)
+#            print('YBY:')
+#            print(BY.dots(Y))
     
             # compute A-Gram matrix for (X,Y)
             if pro:
@@ -922,29 +927,29 @@ class Solver:
             else:
                 GA = YAY
 
-            YBY = BY.dot(Y)
-            lmdy, Qy = sla.eigh(YAY, YBY)
-            print('lmdy:')
-            print(lmdy)
-
-            lmdxy, Q = sla.eigh(GA, GB, turbo=False)
-            print('lmdxy:')
-            print(lmdxy)
+#            YBY = BY.dot(Y)
+#            lmdy, Qy = sla.eigh(YAY, YBY)
+#            print('lmdy:')
+#            print(lmdy)
+#
+#            lmdxy, Q = sla.eigh(GA, GB, turbo=False)
+#            print('lmdxy:')
+#            print(lmdxy)
 
             # solve Rayleigh-Ritz eigenproblem
             G = transform(GA, U)
             YAY = G[nx : nxy, nx : nxy]
             lmdy, Qy = sla.eigh(YAY)
-            print('lmdy:')
-            print(lmdy)
+#            print('lmdy:')
+#            print(lmdy)
             G[:, nx : nxy] = numpy.dot(G[:, nx : nxy], Qy)
             if nx > 0:
                 G[nx : nxy, :nx] = conjugate(G[:nx, nx : nxy])
             G[nx : nxy, nx : nxy] = numpy.dot(conjugate(Qy), G[nx : nxy, nx : nxy])
             
             lmdxy, Q = sla.eigh(G)
-            print('lmdxy:')
-            print(lmdxy)
+#            print('lmdxy:')
+#            print(lmdxy)
             
             # select new numbers of left and right eigenpairs
             if left < 0:
