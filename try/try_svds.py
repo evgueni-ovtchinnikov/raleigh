@@ -75,7 +75,8 @@ opt = Options()
 opt.block_size = block_size
 opt.max_iter = 300
 #opt.verbosity = 2
-opt.convergence_criteria.set_error_tolerance('inematic eigenvector error', 1e-4)
+opt.convergence_criteria.set_error_tolerance \
+    ('kinematic eigenvector error', 1e-4)
 opt.stopping_criteria = MyStoppingCriteria()
 opt.stopping_criteria.set_threshold(th, relative = False)
 #opt.stopping_criteria.set_how_many(block_size)
@@ -83,7 +84,6 @@ opt.stopping_criteria.set_threshold(th, relative = False)
 start = time.time()
 sigma, u, vt = partial_svd(A, opt)
 stop = time.time()
-#print(sigma)
 time_r = stop - start
 iter_r = opt.stopping_criteria.iteration
 n_r = vt.shape[0]
@@ -93,6 +93,9 @@ if EPS == 0:
 #    print(err_r)
     print('\nsingular value errors (raleigh):')
     print(abs(sigma - sigma0[:n_r]))
+else:
+    print('\nsingular values (raleigh):')
+    print(sigma)
 
 sigma = numpy.ndarray((0,), dtype = numpy.float32)
 sigma_max = None
@@ -117,9 +120,8 @@ if EPS == 0:
 #    print(err_s[::-1])
     print('\nsingular value errors (svds):')
     print(abs(sigma - sigma0[:sigma.shape[0]]))
-#    print(abs(s[::-1] - sigma0[:n_s]))
-#print(sigma0[:n_s])
-
-#print(sigma)
+else:
+    print('\nsingular values (svds):')
+    print(sigma)
 
 print('\n time: raleigh %.1e, svds %.1e' % (time_r, time_s))
