@@ -27,14 +27,32 @@ def random_matrix_for_svd(m, n, k, sigma, dt):
     return s, u, v, a
 
 numpy.random.seed(1)
+
 m = 5000
 n = 10000
 l = 400
 alpha = 0.05
 f_sigma = lambda t: 2**(-alpha*t).astype(numpy.float32)
 sigma0, u0, v0, A = random_matrix_for_svd(m, n, l, f_sigma, numpy.float32)
-print('\n exact singular values:')
+print('\n 128 largest singular values of A:')
 print(sigma0[::-1])
 u, sigma, vt = svds(A, k = 128)
-print('\n singular values from svds:')
+print('\n 128 largest singular values from svds:')
+print(sigma)
+
+# another test: this time A is unlikely to have multiple zero singular values
+m = 5000
+n = 40000
+k = 500
+alpha = 0.05
+print('\n generating the matrix, may take a while...')
+f_sigma = lambda t: 2**(-alpha*t).astype(numpy.float32)
+sigma0, u0, v0, A = random_matrix_for_svd(m, n, k, f_sigma, numpy.float32)
+a = 2*numpy.random.rand(m, n).astype(numpy.float32) - 1
+s = numpy.linalg.norm(a, axis = 0)
+a /= s
+A += 1e-3*a
+print('\n computing 144 largest singular values...')
+u, sigma, vt = svds(A, k = 144)
+print('\n 144 largest singular values from svds:')
 print(sigma)
