@@ -48,11 +48,14 @@ opt.verbosity = 2
 opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-8)
 opt.stopping_criteria = MyStoppingCriteria()
 opt.stopping_criteria.set_threshold(0.01)
-m = 2000
-n = 200
+m = 10000
+n = 4000
+k = 200
 alpha = 0.05
 
-#a = 2*numpy.random.rand(m, n).astype(numpy.float32) - 1
+a = 2*numpy.random.rand(m, n).astype(numpy.float32) - 1
+s = numpy.linalg.norm(a, axis = 0)
+a /= s
 #for i in range(n):
 #    s = numpy.linalg.norm(a[:, i])
 #    a[:, i] /= s
@@ -61,7 +64,9 @@ alpha = 0.05
 
 alpha = 0.01
 sigma = lambda t: 2**(-alpha*t*t).astype(numpy.float32)
-s, u, v, a = random_matrix_for_svd(m, n, sigma, numpy.float32)
+s, u, v, b = random_matrix_for_svd(m, n, k, sigma, numpy.float32)
+
+a = 1e-3*a + b
 
 #sigma, u, v = partial_svd(a, opt)
 #print(sigma)

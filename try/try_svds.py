@@ -11,7 +11,8 @@ import time
 sys.path.append('..')
 
 from scipy.sparse.linalg import svds
-from random_matrix_for_svd import random_singular_values, random_singular_vectors
+from random_matrix_for_svd import random_matrix_for_svd
+#from random_matrix_for_svd import random_singular_values, random_singular_vectors
 
 from raleigh.solver import Options
 from raleigh.ndarray.svd import partial_svd
@@ -52,19 +53,23 @@ LOAD = True
 SAVE = False
 EXP = 1
 
-if LOAD:
-    u0 = numpy.load('C:/Users/wps46139/Documents/Data/PCA/u10K4K.npy')
-    v0 = numpy.load('C:/Users/wps46139/Documents/Data/PCA/v10K4K.npy')
-    m, n = u0.shape
-else:
-    # generate the matrix
-    m = 1000
-    n = 400
-    u0, v0 = random_singular_vectors(m, n, numpy.float32)
-    if SAVE:
-        numpy.save('u.npy', u0)
-        numpy.save('v.npy', v0)
-k = min(m, n)
+#if LOAD:
+#    u0 = numpy.load('C:/Users/wps46139/Documents/Data/PCA/u10K4K.npy')
+#    v0 = numpy.load('C:/Users/wps46139/Documents/Data/PCA/v10K4K.npy')
+#    m, n = u0.shape
+#else:
+#    # generate the matrix
+#    m = 1000
+#    n = 400
+#    u0, v0 = random_singular_vectors(m, n, numpy.float32)
+#    if SAVE:
+#        numpy.save('u.npy', u0)
+#        numpy.save('v.npy', v0)
+#k = min(m, n)
+
+m = 5000
+n = 40000
+k = 400
 
 if EXP == 1:
     alpha = 0.05
@@ -72,8 +77,13 @@ if EXP == 1:
 else:
     alpha = 0.01
     f_sigma = lambda t: 2**(-alpha*t*t).astype(numpy.float32)
-sigma0 = random_singular_values(k, f_sigma, numpy.float32)
-A = numpy.dot(u0*sigma0, v0.transpose())
+#sigma0 = random_singular_values(k, f_sigma, numpy.float32)
+sigma0, u0, v0, A = random_matrix_for_svd(m, n, k, f_sigma, numpy.float32)
+a = 2*numpy.random.rand(m, n).astype(numpy.float32) - 1
+s = numpy.linalg.norm(a, axis = 0)
+a /= s
+#A += 1e-3*a
+#A = numpy.dot(u0*sigma0, v0.transpose())
 
 th = 0.01
 block_size = 64

@@ -45,7 +45,7 @@ def vec_err(u, v):
 
 numpy.random.seed(1) # make results reproducible
 
-LOAD = True
+LOAD = False
 SAVE = False
 WITH_RESTARTS = True
 EXP = 1
@@ -58,7 +58,7 @@ else:
     # generate the matrix
     m = 1000
     n = 400
-    u0, v0 = random_singular_vectors(m, n, numpy.float32)
+    u0, v0 = random_singular_vectors(m, n, min(m, n), numpy.float32)
     if SAVE:
         numpy.save('u.npy', u0)
         numpy.save('v.npy', v0)
