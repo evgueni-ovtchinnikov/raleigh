@@ -2,7 +2,6 @@
 """
 Created on Thu Oct 12 16:37:46 2017
 
-@author: wps46139
 """
 
 #        solver.rr[k, j : j + ny, i : i + nx] = \
@@ -814,3 +813,27 @@ def partial_svd0(a, opt, vtc = None, nsv = -1):
 #    plt.show()
 #    a = numpy.dot(u*s, v.transpose())
 #    return s, u, v, a
+
+#from random_matrix_for_svd import random_singular_values, random_singular_vectors
+
+LOAD = True
+SAVE = False
+
+#if LOAD:
+#    u0 = numpy.load('C:/Users/wps46139/Documents/Data/PCA/u10K4K.npy')
+#    v0 = numpy.load('C:/Users/wps46139/Documents/Data/PCA/v10K4K.npy')
+#    m, n = u0.shape
+#else:
+#    # generate the matrix
+#    m = 1000
+#    n = 400
+#    u0, v0 = random_singular_vectors(m, n, numpy.float32)
+#    if SAVE:
+#        numpy.save('u.npy', u0)
+#        numpy.save('v.npy', v0)
+#k = min(m, n)
+
+#sigma0 = random_singular_values(k, f_sigma, numpy.float32)
+
+#A = numpy.dot(u0*sigma0, v0.transpose())
+

@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Mar 26 14:41:23 2018
+Created on Thu Apr  5 11:44:49 2018
 
-@author: Evgueni Ovtchinnikov, STFC
+@author: Evgueni Ovtchinnikov, UKRI
 """
-
 import numpy
-import matplotlib.pyplot as plt
+from scipy.sparse.linalg import svds
 
 def random_singular_values(k, sigma, dt):
     s = numpy.random.rand(k).astype(dt)
@@ -23,7 +22,19 @@ def random_singular_vectors(m, n, k, dt):
 
 def random_matrix_for_svd(m, n, k, sigma, dt):
     u, v = random_singular_vectors(m, n, k, dt)
-    s = random_singular_values(k, sigma, dt)
+    s = random_singular_values(k, sigma, dt).astype(dt)
     a = numpy.dot(u*s, v.transpose())
     return s, u, v, a
 
+numpy.random.seed(1)
+m = 5000
+n = 10000
+l = 400
+alpha = 0.05
+f_sigma = lambda t: 2**(-alpha*t).astype(numpy.float32)
+sigma0, u0, v0, A = random_matrix_for_svd(m, n, l, f_sigma, numpy.float32)
+print('\n exact singular values:')
+print(sigma0[::-1])
+u, sigma, vt = svds(A, k = 128)
+print('\n singular values from svds:')
+print(sigma)
