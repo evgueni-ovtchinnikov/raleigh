@@ -425,11 +425,33 @@ class Solver:
             da = XAX.diagonal()
             db = XBX.diagonal()
             new_lmd = da/db
-            s = new_lmd - lmdx
+
+            # estimate error in residual computation due to the error in
+            # computing AX, to be used in detecting convergence stagnation
+            n = X.dimension()
+            Lmd = numpy.zeros((nx, nx))
+            Lmd[range(nx), range(nx)] = new_lmd
+            RX = XAX - numpy.dot(XBX, Lmd)
+#            delta_R = numpy.amax(RX, axis = 0)
+            delta_R = nla.norm(RX, axis = 0)
+            if gen:
+                s = numpy.sqrt(X.dots(X))
+                delta_R /= s #numpy.amax(s)
+            elif pro:
+                s = numpy.sqrt(BX.dots(BX))
+                delta_R /= s # numpy.amax(s)
+#            print(delta_R)
+#            print(numpy.sqrt(AX.dots(AX)))
+            delta_R_rel = numpy.amax(delta_R/numpy.sqrt(AX.dots(AX)))
+ #           delta_R *= math.sqrt(n)
+            
             if verb > 0:
+                s = new_lmd - lmdx
                 print('Ritz values error: %.1e' % numpy.amax(abs(s)))
                 print('Ritz vectors non-orthonormality: %.1e' % \
                       numpy.amax(abs(XBX - numpy.eye(nx))))
+                print('estimated relative error in residual computation: %.1e' \
+                      % delta_R_rel)
             if self.iteration > 0:
                 # compute eigenvalue decrements
                 for i in range(nx):
@@ -442,32 +464,6 @@ class Solver:
                     print(numpy.array_str(dlmd[ix : ix + nx, :rec].T, \
                                           precision = 2))
             lmd[ix : ix + nx] = new_lmd
-            
-            # estimate error in residual computation due to the error in
-            # computing AX, to be used in detecting convergence stagnation
-            n = X.dimension()
-            Lmd = numpy.zeros((nx, nx))
-            Lmd[range(nx), range(nx)] = new_lmd
-            RX = XAX - numpy.dot(XBX, Lmd)
-            delta_R = numpy.amax(RX, axis = 0)*math.sqrt(n)
-            #print(delta_R)
-
-#            H = abs(XAX - conjugate(XAX))
-#            delta = numpy.amax(H)
-            if gen:
-                s = numpy.sqrt(X.dots(X))
-                delta_R /= s #numpy.amax(s)
-            elif pro:
-                s = numpy.sqrt(BX.dots(BX))
-                delta_R /= s # numpy.amax(s)
-            err_AX_rel = numpy.amax(delta_R/numpy.sqrt(AX.dots(AX)))
-#            if delta >= 0:
-#                err_AX = delta
-#                err_AX_rel = delta/numpy.amax(numpy.sqrt(AX.dots(AX)))
-#            #err_AX = max(err_AX, delta) # too large
-#            if verb > 1:
-#                print('estimated error in AX (abs, rel): %e %e' \
-#                % (err_AX, err_AX_rel))
             
             # compute residuals
             # std: A X - X lmd
@@ -848,7 +844,7 @@ class Solver:
             # do pivoted Cholesky for GB
             U = GB
             ny = Y.nvec()
-            if err_AX_rel > 1e-9:
+            if delta_R_rel > 1e-9:
                 eps = 1e-2
             else:
                 eps = 1e-4

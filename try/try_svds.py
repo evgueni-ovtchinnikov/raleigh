@@ -53,7 +53,7 @@ EPS = 0 # 1e-3
 
 m = 5000
 n = 10000 # 40000
-k = 1000
+k = 500
 
 if EXP == 1:
     alpha = 0.05
@@ -68,7 +68,7 @@ a /= s
 A += EPS*a
 
 th = 0.01
-block_size = 32 #144
+block_size = 128 #144
 
 # set raleigh solver options
 opt = Options()

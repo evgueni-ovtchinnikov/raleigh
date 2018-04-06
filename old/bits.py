@@ -837,3 +837,15 @@ SAVE = False
 
 #A = numpy.dot(u0*sigma0, v0.transpose())
 
+            #print(delta_R)
+
+#            H = abs(XAX - conjugate(XAX))
+#            delta = numpy.amax(H)
+
+#            if delta >= 0:
+#                err_AX = delta
+#                err_AX_rel = delta/numpy.amax(numpy.sqrt(AX.dots(AX)))
+#            #err_AX = max(err_AX, delta) # too large
+#            if verb > 1:
+#                print('estimated error in AX (abs, rel): %e %e' \
+#                % (err_AX, err_AX_rel))
