@@ -49,10 +49,10 @@ def vec_err(u, v):
 numpy.random.seed(1) # make results reproducible
 
 EXP = 1
-EPS = 1e-3
+EPS = 0 # 1e-3
 
 m = 5000
-n = 40000
+n = 10000 # 40000
 k = 500
 
 if EXP == 1:
@@ -74,7 +74,7 @@ block_size = 144
 opt = Options()
 opt.block_size = block_size
 opt.max_iter = 300
-#opt.verbosity = 2
+opt.verbosity = 2
 opt.convergence_criteria.set_error_tolerance \
     ('kinematic eigenvector error', 1e-4)
 opt.stopping_criteria = MyStoppingCriteria()

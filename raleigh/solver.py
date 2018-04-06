@@ -443,21 +443,29 @@ class Solver:
             
             # estimate error in residual computation due to the error in
             # computing AX, to be used in detecting convergence stagnation
-            H = abs(XAX - conjugate(XAX))
-            delta = numpy.amax(H)
+            n = X.dimension()
+            Lmd = numpy.zeros((nx, nx))
+            Lmd[range(nx), range(nx)] = new_lmd
+            RX = XAX - numpy.dot(XBX, Lmd)
+            delta_R = numpy.amax(RX, axis = 0)*math.sqrt(n)
+            #print(delta_R)
+
+#            H = abs(XAX - conjugate(XAX))
+#            delta = numpy.amax(H)
             if gen:
                 s = numpy.sqrt(X.dots(X))
-                delta /= numpy.amax(s)
+                delta_R /= s #numpy.amax(s)
             elif pro:
                 s = numpy.sqrt(BX.dots(BX))
-                delta /= numpy.amax(s)
-            if delta >= 0:
-                err_AX = delta
-                err_AX_rel = delta/numpy.amax(numpy.sqrt(AX.dots(AX)))
-            #err_AX = max(err_AX, delta) # too large
-            if verb > 1:
-                print('estimated error in AX (abs, rel): %e %e' \
-                % (err_AX, err_AX_rel))
+                delta_R /= s # numpy.amax(s)
+            err_AX_rel = numpy.amax(delta_R/numpy.sqrt(AX.dots(AX)))
+#            if delta >= 0:
+#                err_AX = delta
+#                err_AX_rel = delta/numpy.amax(numpy.sqrt(AX.dots(AX)))
+#            #err_AX = max(err_AX, delta) # too large
+#            if verb > 1:
+#                print('estimated error in AX (abs, rel): %e %e' \
+#                % (err_AX, err_AX_rel))
             
             # compute residuals
             # std: A X - X lmd
@@ -572,10 +580,11 @@ class Solver:
                           abs(err_X[0, i]), abs(err_X[1, i]), \
                           acf[0, i], self.cnv[i]))
 
-            s = X.dimension()
-            s = math.sqrt(s)
-            eps = 1e-15
-            delta = err_AX*s
+#            s = X.dimension()
+#            s = math.sqrt(s)
+#            eps = 1e-15
+#            delta = err_AX*s
+#            print(delta)
             lcon = 0
             last = 0
             for i in range(leftX - 1):
@@ -588,8 +597,9 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     lcon += 1
                     self.cnv[k] = 1
-                elif res[k] >= 0 and res[k] < max(delta, eps*norm_AX[k]) and \
-                        dlmd[k, rec - 1] >= dlmd[k, rec - 2]:
+#                elif res[k] >= 0 and res[k] < max(delta_R[i], eps*norm_AX[k]) and \
+                elif res[k] >= 0 and res[k] < delta_R[i] and \
+                        abs(dlmd[k, rec - 1]) >= abs(dlmd[k, rec - 2]):
                             #acf[0, k] >= acf[1, k]:
                     if verb > -1:
                         msg = 'left eigenpair %d stagnated,\n' + \
@@ -624,9 +634,11 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
                     self.cnv[k] = 1
-                elif res[k] >= 0 and res[k] < max(delta, eps*norm_AX[k]) and \
-                        dlmd[k, rec - 1] >= dlmd[k, rec - 2]:
+#                elif res[k] >= 0 and res[k] < max(delta_R[nx - i - 1], eps*norm_AX[k]) and \
+                elif res[k] >= 0 and res[k] < delta_R[nx - i - 1] and \
+                        abs(dlmd[k, rec - 1]) >= abs(dlmd[k, rec - 2]):
                             #acf[0, k] >= acf[1, k]:
+#                    print(res[k], delta_R[nx - i - 1], dlmd[k, rec - 1], dlmd[k, rec - 2])
                     if verb > -1:
                         msg = 'right eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
