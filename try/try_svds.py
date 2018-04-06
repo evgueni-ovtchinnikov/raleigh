@@ -53,7 +53,7 @@ EPS = 0 # 1e-3
 
 m = 5000
 n = 10000 # 40000
-k = 500
+k = 1000
 
 if EXP == 1:
     alpha = 0.05
@@ -68,13 +68,13 @@ a /= s
 A += EPS*a
 
 th = 0.01
-block_size = 144
+block_size = 32 #144
 
 # set raleigh solver options
 opt = Options()
 opt.block_size = block_size
 opt.max_iter = 300
-opt.verbosity = 2
+opt.verbosity = 1
 opt.convergence_criteria.set_error_tolerance \
     ('kinematic eigenvector error', 1e-4)
 opt.stopping_criteria = MyStoppingCriteria()
@@ -86,42 +86,43 @@ sigma, u, vt = partial_svd(A, opt)
 stop = time.time()
 time_r = stop - start
 iter_r = opt.stopping_criteria.iteration
-n_r = vt.shape[0]
+n_r = min(sigma.shape[0], sigma0.shape[0])
+#n_r = vt.shape[0]
 if EPS == 0:
 #    err_r = vec_err(v0[:,:n_r], vt.transpose())
 #    print('\nsingular vector errors (raleigh):')
 #    print(err_r)
     print('\nsingular value errors (raleigh):')
-    print(abs(sigma - sigma0[:n_r]))
+    print(abs(sigma[:n_r] - sigma0[:n_r]))
 else:
     print('\nsingular values (raleigh):')
     print(sigma)
 
-sigma = numpy.ndarray((0,), dtype = numpy.float32)
-sigma_max = None
-start = time.time()
-while True:
-    u, s, vt = svds(A, k = block_size)
-    sigma = numpy.concatenate((sigma, s[::-1]))
-    print(s[0])
-    print(s[::-1])
-    if sigma_max is None:
-        sigma_max = numpy.amax(s) # s[-1]
-    if s[0] <= th*sigma_max:
-        break
-    A -= numpy.dot(u*s, vt)
-stop = time.time()
-time_s = stop - start
-
-if EPS == 0:
-#    n_s = vt.shape[0]
-#    err_s = vec_err(v0[:,:n_s], vt.transpose())
-#    print('\nsingular vector errors (svds):')
-#    print(err_s[::-1])
-    print('\nsingular value errors (svds):')
-    print(abs(sigma - sigma0[:sigma.shape[0]]))
-else:
-    print('\nsingular values (svds):')
-    print(sigma)
-
-print('\n time: raleigh %.1e, svds %.1e' % (time_r, time_s))
+#sigma = numpy.ndarray((0,), dtype = numpy.float32)
+#sigma_max = None
+#start = time.time()
+#while True:
+#    u, s, vt = svds(A, k = block_size)
+#    sigma = numpy.concatenate((sigma, s[::-1]))
+#    print(s[0])
+#    print(s[::-1])
+#    if sigma_max is None:
+#        sigma_max = numpy.amax(s) # s[-1]
+#    if s[0] <= th*sigma_max:
+#        break
+#    A -= numpy.dot(u*s, vt)
+#stop = time.time()
+#time_s = stop - start
+#
+#if EPS == 0:
+##    n_s = vt.shape[0]
+##    err_s = vec_err(v0[:,:n_s], vt.transpose())
+##    print('\nsingular vector errors (svds):')
+##    print(err_s[::-1])
+#    print('\nsingular value errors (svds):')
+#    print(abs(sigma - sigma0[:sigma.shape[0]]))
+#else:
+#    print('\nsingular values (svds):')
+#    print(sigma)
+#
+#print('\n time: raleigh %.1e, svds %.1e' % (time_r, time_s))

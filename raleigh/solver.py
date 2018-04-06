@@ -428,6 +428,8 @@ class Solver:
             s = new_lmd - lmdx
             if verb > 0:
                 print('Ritz values error: %.1e' % numpy.amax(abs(s)))
+                print('Ritz vectors non-orthonormality: %.1e' % \
+                      numpy.amax(abs(XBX - numpy.eye(nx))))
             if self.iteration > 0:
                 # compute eigenvalue decrements
                 for i in range(nx):

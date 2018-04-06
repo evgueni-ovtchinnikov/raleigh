@@ -6,7 +6,7 @@ import numpy as np
 import numpy.linalg as nla
 import scipy.linalg as sla
 
-def piv_chol(A, k, eps):
+def piv_chol(A, k, eps, verb = 0):
     lmax = sla.norm(A, ord = 1)
     n = A.shape[0]
     ind = [i for i in range(n)]
@@ -35,8 +35,9 @@ def piv_chol(A, k, eps):
         A[i, i + 1 : n] /= A[i, i]
         A[i + 1 : n, i].fill(0.0)
         lmin = estimate_lmin(A[: i + 1, : i + 1])
-        #print('%e %e %e' % (A[i,i], lmin, lmax))
-        if lmin/lmax <= eps:
+        if verb > 0:
+            print('%e %e %e' % (A[i,i], lmin, lmax))
+        if i > k and lmin < 0.5 and lmin/lmax <= eps:
             A[i : n, :].fill(0.0)
             return ind, n - i, last_piv
     return ind, 0, A[n - 1, n - 1]**2
