@@ -10,7 +10,7 @@ numpy.random.seed(1) # to debug
 
 opt = raleigh.solver.Options()
 opt.block_size = 2
-#opt.max_iter = 40
+opt.max_iter = 40
 opt.res_tol = 1e-4
 opt.verbosity = 3
 n = 40
@@ -23,7 +23,7 @@ wr = v.new_vectors(2)
 #wl.fill_random()
 #wr.fill_random()
 a = numpy.asarray([i + 1 for i in range(n)])
-b = 2*numpy.ones((1, n))
+b = 200000*numpy.ones((1, n))
 #p = numpy.asarray([1/(i + 1) for i in range(n)])
 operatorA = operators.Diagonal(a)
 operatorB = operators.Diagonal(b)
@@ -33,10 +33,10 @@ opB = lambda x, y: operatorB.apply(x, y)
 opP = lambda x, y: operatorP.apply(x, y)
 problem = raleigh.solver.Problem(v, opA, opB, 'product')
 solver = raleigh.solver.Solver(problem)
-solver.set_preconditioner(opP)
+#solver.set_preconditioner(opP)
 #solver.solve(v, opt, which = (3,0), extra = (0,0), init = (w, None))
 #solver.solve(v, opt, which = (3,3), init = (wl, wr)) #, extra = (1,1))
-solver.solve(v, opt, which = (1,0))
+solver.solve(v, opt, which = (3,3))
 print('after %d iterations, %d converged eigenvalues are:' \
       % (solver.iteration, v.nvec()))
 print(solver.eigenvalues)

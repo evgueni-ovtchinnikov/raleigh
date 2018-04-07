@@ -357,7 +357,7 @@ class Solver:
         XBX = BX.dot(X)
 
         # do pivoted Cholesky for XBX to eliminate linear dependent X
-        U = XBX
+        U = XBX.copy()
         ind, dropped, last_piv = piv_chol(U, 0, 1e-2)
         if dropped > 0:
             #print(ind)
@@ -390,7 +390,7 @@ class Solver:
             if not std:
                 BX.select(nx)
             XBX = BX.dot(X)
-            
+
         # Rayleigh-Ritz in the initial space
         if pro:
             A(BX, AX)
@@ -398,7 +398,7 @@ class Solver:
         else:
             A(X, AX)
             XAX = AX.dot(X)
-        lmdx, Q = sla.eigh(XAX, XBX, overwrite_a = True, overwrite_b = True)
+        lmdx, Q = sla.eigh(XAX, XBX, turbo=False) #, overwrite_a = True, overwrite_b = True)
         W.select(m)
         X.mult(Q, W)
         W.copy(X)
@@ -425,6 +425,7 @@ class Solver:
             da = XAX.diagonal()
             db = XBX.diagonal()
             new_lmd = da/db
+#            print(new_lmd)
 
             # estimate error in residual computation due to the error in
             # computing AX, to be used in detecting convergence stagnation
@@ -437,9 +438,9 @@ class Solver:
             if gen:
                 s = numpy.sqrt(X.dots(X))
                 delta_R /= s #numpy.amax(s)
-            elif pro:
-                s = numpy.sqrt(BX.dots(BX))
-                delta_R /= s # numpy.amax(s)
+#            elif pro:
+#                s = numpy.sqrt(BX.dots(BX))
+#                delta_R /= s # numpy.amax(s)
 #            print(delta_R)
 #            print(numpy.sqrt(AX.dots(AX)))
             delta_R_rel = numpy.amax(delta_R/numpy.sqrt(AX.dots(AX)))
@@ -492,7 +493,13 @@ class Solver:
                 else:
                     Xc.mult(Q, Y)
                 W.add(Y, -1.0)
-            s = W.dots(W)
+
+            if pro:
+                W.copy(Y)
+                B(Y, W)
+                s = W.dots(Y)
+            else:
+                s = W.dots(W)
             res[ix : ix + nx] = numpy.sqrt(s)
     
             # kinematic error estimates
@@ -753,16 +760,17 @@ class Solver:
             XAX = XAX[lcon : lcon + nx, lcon : lcon + nx]
             XBX = XBX[lcon : lcon + nx, lcon : lcon + nx]
 
-            if P is None:
-                W.copy(Y)
-            else:
-                P(W, Y)
+            if not pro:
+                if P is None:
+                    W.copy(Y)
+                else:
+                    P(W, Y)
 
             if nz > 0:
                 # compute the conjugation matrix
                 if pro:
-                    W.select(Y.nvec())
-                    B(Y, W)
+#                    W.select(Y.nvec())
+#                    B(Y, W)
                     ZAY = W.dot(AZ)
                 else:
                     ZAY = Y.dot(AZ)
@@ -797,6 +805,8 @@ class Solver:
                     W.add(AZ, -1.0)
                     BY.select(ny)
                     W.copy(BY)
+            elif pro:
+                W.copy(BY)
 
             if Xc.nvec() > 0: #and (P is not None or gen):
                 # orthogonalize Y to Xc
@@ -823,7 +833,7 @@ class Solver:
                 YBY = Y.dot(Y)
             else:
                 BY.select(Y.nvec())
-                if not pro or nz == 0:
+                if not pro: # or nz == 0:
                     B(Y, BY)
                 s = numpy.sqrt(BY.dots(Y))
                 Y.scale(s)
@@ -934,12 +944,14 @@ class Solver:
                 shift_left = ix
             elif lcon > 0:
                 shift_left = max(0, left_total - self.lcon - leftX)
+                shift_left = min(shift_left, ix)
             else:
                 shift_left = 0
             if right < 0:
                 shift_right = block_size - ix - nx
             elif rcon > 0:
                 shift_right = max(0, right_total - self.rcon - rightX)
+                shift_right = min(shift_right, block_size - ix - nx)
             else:
                 shift_right = 0
             if shift_left + shift_right > ny:
