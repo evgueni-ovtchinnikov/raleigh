@@ -68,15 +68,15 @@ a /= s
 A += EPS*a
 
 th = 0.01
-block_size = 128 #144
+block_size = 170 # 128 #144
 
 # set raleigh solver options
 opt = Options()
 opt.block_size = block_size
-opt.max_iter = 300
+#opt.max_iter = 300
 opt.verbosity = 1
 opt.convergence_criteria.set_error_tolerance \
-    ('kinematic eigenvector error', 1e-4)
+    ('kinematic eigenvector error', 1e-14)
 opt.stopping_criteria = MyStoppingCriteria()
 opt.stopping_criteria.set_threshold(th, relative = False)
 #opt.stopping_criteria.set_how_many(block_size)

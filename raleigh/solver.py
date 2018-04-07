@@ -444,7 +444,8 @@ class Solver:
 #            print(delta_R)
 #            print(numpy.sqrt(AX.dots(AX)))
             delta_R_rel = numpy.amax(delta_R/numpy.sqrt(AX.dots(AX)))
- #           delta_R *= math.sqrt(n)
+            delta_R *= 10
+#            delta_R *= math.sqrt(n)
             
             if verb > 0:
                 s = new_lmd - lmdx
