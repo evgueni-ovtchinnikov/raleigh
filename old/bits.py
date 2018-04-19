@@ -849,3 +849,130 @@ SAVE = False
 #            if verb > 1:
 #                print('estimated error in AX (abs, rel): %e %e' \
 #                % (err_AX, err_AX_rel))
+
+#    #u = Vector(numpy.random.randn(n,k)) 
+#    u = Vector(u)
+#    v = Vector(numpy.zeros((m,k)))
+#    
+#    print(nla.norm(A.dot(u.data())))
+#    arg = ((A, u, v))
+##    mult(arg)
+#    map(mult, arg) # v is 0! see below
+##    mult((A, u, v)) # ok
+#    print(v.norm())
+#    #print(v.data())
+#
+#    arg = ()
+#    for i in range(k):
+#        ui = Vector(u.data()[:,i])
+#        vi = Vector(v.data()[:,i])
+#        arg += ((A, ui, vi),)
+#    
+##    [mult(x) for x in arg]
+##    g = mymap(mult, arg)
+##    for i in g:
+##        pass
+#
+#    g = map(mult, arg)
+#    print(g)
+##    for i in g:
+##        pass
+#
+##    pool = Pool(k)
+##    g = pool.map(mult, arg)
+##    pool.close()
+##    pool.join()
+#
+#    print(v.norm())
+#print(v.data())
+
+##print('A:')
+##print(A)
+#print('u:')
+#print(nla.norm(u))
+#print('v:')
+#print(nla.norm(v))
+#print('w:')
+#print(nla.norm(w))
+
+#arg = ((A, u[:,0], v[:,0]), (A, u[:,1], v[:,1]))
+
+#map(mult, arg)
+
+#output = tuple(map(mult, arg))
+
+#v[:,0] = output[0]
+#v[:,1] = output[1]
+#print(v)
+
+#print(type(output))
+#print(type(output[0]))
+#print(output[0].shape)
+#print(output[0])
+
+#            if self.iteration > 50:
+#                print('iteration: %d' % self.iteration)
+#                print('old lmd:')
+#                print(lmd[56])
+##                print(lmd[ix : ix + nx])
+#                print('new lmd:')
+#                print(new_lmd[56 - ix])
+##                print(new_lmd)
+##                print('da:')
+##                print(da)
+##                print('da0:')
+##                print(da0)
+
+#            delta_R = numpy.amax(RX, axis = 0)
+
+#            elif pro:
+#                s = numpy.sqrt(BX.dots(BX))
+#                delta_R /= s # numpy.amax(s)
+
+#            n = X.dimension()
+
+#            delta_R *= math.sqrt(n)
+
+#                        eps = 1e-4*max(abs(new_lmd[i]), abs(lmd[ix + i]))
+#                        if abs(delta) > eps:
+
+#                        print(self.iteration, ix + i, lmd[ix + i], new_lmd[i])
+
+#                    if err_X[0, ix + i] < 0:
+#                        print(self.iteration)
+#                        print(ix + i, dX[ix + i], qx)
+#                        print(dlmd[ix + i - 2: ix + i + 2,:].T)
+
+#            s = X.dimension()
+#            s = math.sqrt(s)
+#            eps = 1e-15
+#            delta = err_AX*s
+#            print(delta)
+
+#                elif res[k] >= 0 and res[k] < max(delta_R[i], eps*norm_AX[k]) and \
+
+#                elif res[k] >= 0 and res[k] < max(delta_R[nx - i - 1], eps*norm_AX[k]) and \
+
+#                    W.select(Y.nvec())
+#                    B(Y, W)
+
+#            if self.iteration > 50:
+#                print(self.iteration)
+#                print(lmdx[leftX - 1], lmdx[leftX])
+#                print(lmdy[0], lmdy[-1])
+
+#            if self.iteration > 50:
+#                print('iteration %d, next dlmd:' % self.iteration)
+#                print(dlmd[ix : ix + nx, rec - 1])
+
+#    if isinstance(a[0,0], complex):
+
+#                       (U.transpose(), A[:k, k : n], lower = True)
+
+#            A[i, i : n] -= np.dot(A[:i, i].transpose(), A[:i, i : n])
+
+        #if i >= k and lmin < 0.5 and lmin/lmax <= 2*eps:
+
+#    return sla.norm(np.dot(U.T, U), ord = 1)
+
+    #lmax = sla.norm(A, ord = 1)

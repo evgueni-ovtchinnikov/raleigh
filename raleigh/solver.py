@@ -255,6 +255,7 @@ class Solver:
         norm_AX = numpy.zeros((m,), dtype = numpy.float32)
 
         # convergence history data
+        have_prev = numpy.zeros((m,), dtype = numpy.int32)
         dlmd = numpy.zeros((m, RECORDS), dtype = numpy.float32)
         dX = numpy.ones((m,), dtype = numpy.float32)
         acf = numpy.ones((2, m,), dtype = numpy.float32)
@@ -416,12 +417,12 @@ class Solver:
 
             if pro:
                 XAX = AX.dot(BX)
-                #da = AX.dots(BX)
+#                da0 = AX.dots(BX)
             else:
                 XAX = AX.dot(X)
-                #da = AX.dots(X)
+#                da0 = AX.dots(X)
             XBX = BX.dot(X)
-            #db = BX.dots(X)
+#            db0 = BX.dots(X)
             da = XAX.diagonal()
             db = XBX.diagonal()
             new_lmd = da/db
@@ -429,27 +430,21 @@ class Solver:
 
             # estimate error in residual computation due to the error in
             # computing AX, to be used in detecting convergence stagnation
-            n = X.dimension()
             Lmd = numpy.zeros((nx, nx))
             Lmd[range(nx), range(nx)] = new_lmd
             RX = XAX - numpy.dot(XBX, Lmd)
-#            delta_R = numpy.amax(RX, axis = 0)
             delta_R = nla.norm(RX, axis = 0)
             if gen:
                 s = numpy.sqrt(X.dots(X))
                 delta_R /= s #numpy.amax(s)
-#            elif pro:
-#                s = numpy.sqrt(BX.dots(BX))
-#                delta_R /= s # numpy.amax(s)
 #            print(delta_R)
 #            print(numpy.sqrt(AX.dots(AX)))
             delta_R_rel = numpy.amax(delta_R/numpy.sqrt(AX.dots(AX)))
             delta_R *= 10
-#            delta_R *= math.sqrt(n)
             
+            rv_err = numpy.amax(abs(new_lmd - lmdx))
             if verb > 0:
-                s = new_lmd - lmdx
-                print('Ritz values error: %.1e' % numpy.amax(abs(s)))
+                print('Ritz values error: %.1e' % rv_err)
                 print('Ritz vectors non-orthonormality: %.1e' % \
                       numpy.amax(abs(XBX - numpy.eye(nx))))
                 print('estimated relative error in residual computation: %.1e' \
@@ -457,15 +452,16 @@ class Solver:
             if self.iteration > 0:
                 # compute eigenvalue decrements
                 for i in range(nx):
-                    delta = lmd[ix + i] - new_lmd[i]
-                    eps = 1e-4*max(abs(new_lmd[i]), abs(lmd[ix + i]))
-                    if abs(delta) > eps:
-                        dlmd[ix + i, rec - 1] = delta
+                    if have_prev[ix + i]:
+                        delta = lmd[ix + i] - new_lmd[i]
+                        if abs(delta) > 10*rv_err:
+                            dlmd[ix + i, rec - 1] = delta
                 if verb > 3:
                     print('eigenvalues shifts history:')
                     print(numpy.array_str(dlmd[ix : ix + nx, :rec].T, \
                                           precision = 2))
             lmd[ix : ix + nx] = new_lmd
+            have_prev[ix : ix + nx] = 1
             
             # compute residuals
             # std: A X - X lmd
@@ -586,11 +582,6 @@ class Solver:
                           abs(err_X[0, i]), abs(err_X[1, i]), \
                           acf[0, i], self.cnv[i]))
 
-#            s = X.dimension()
-#            s = math.sqrt(s)
-#            eps = 1e-15
-#            delta = err_AX*s
-#            print(delta)
             lcon = 0
             last = 0
             for i in range(leftX - 1):
@@ -603,9 +594,9 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     lcon += 1
                     self.cnv[k] = 1
-#                elif res[k] >= 0 and res[k] < max(delta_R[i], eps*norm_AX[k]) and \
                 elif res[k] >= 0 and res[k] < delta_R[i] and \
-                        abs(dlmd[k, rec - 1]) >= abs(dlmd[k, rec - 2]):
+                        abs(dlmd[k, rec - 1]) > abs(dlmd[k, rec - 2]) and \
+                        abs(dlmd[k, rec - 1]) < 10*abs(dlmd[k, rec - 2]):
                             #acf[0, k] >= acf[1, k]:
                     if verb > -1:
                         msg = 'left eigenpair %d stagnated,\n' + \
@@ -640,12 +631,11 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
                     self.cnv[k] = 1
-#                elif res[k] >= 0 and res[k] < max(delta_R[nx - i - 1], eps*norm_AX[k]) and \
                 elif res[k] >= 0 and res[k] < delta_R[nx - i - 1] and \
-                        abs(dlmd[k, rec - 1]) >= abs(dlmd[k, rec - 2]):
-                            #acf[0, k] >= acf[1, k]:
-#                    print(res[k], delta_R[nx - i - 1], dlmd[k, rec - 1], dlmd[k, rec - 2])
+                        abs(dlmd[k, rec - 1]) > abs(dlmd[k, rec - 2]) and \
+                        abs(dlmd[k, rec - 1]) < 10*abs(dlmd[k, rec - 2]):
                     if verb > -1:
+                        print(res[k], delta_R[nx - i - 1], dlmd[k, rec - 1], dlmd[k, rec - 2])
                         msg = 'right eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
@@ -770,8 +760,6 @@ class Solver:
             if nz > 0:
                 # compute the conjugation matrix
                 if pro:
-#                    W.select(Y.nvec())
-#                    B(Y, W)
                     ZAY = W.dot(AZ)
                 else:
                     ZAY = Y.dot(AZ)
@@ -828,7 +816,6 @@ class Solver:
             if std:
                 s = numpy.sqrt(Y.dots(Y))
                 Y.scale(s)
-                #s = numpy.sqrt(Y.dots(Y))
                 if nx > 0:
                     XBY = Y.dot(X)
                 YBY = Y.dot(Y)
@@ -839,7 +826,6 @@ class Solver:
                 s = numpy.sqrt(BY.dots(Y))
                 Y.scale(s)
                 BY.scale(s)
-                #s = numpy.sqrt(BY.dots(Y))
                 if nx > 0:
                     XBY = BY.dot(X)
                 YBY = BY.dot(Y)
@@ -863,7 +849,7 @@ class Solver:
             if dropped > 0:
                 if verb > -1:
 #                    print(ind)
-#                    print(last_piv)
+#                    print(math.sqrt(last_piv))
                     print('dropped %d search directions out of %d' \
                           % (dropped, ny))
             
@@ -1003,6 +989,7 @@ class Solver:
                     dlmd[i, :] = dlmd[i + shift_left, :]
                     err_X[:, i] = err_X[:, i + shift_left]
                     dX[i] = dX[i + shift_left]
+                    have_prev[i] = have_prev[i + shift_left]
             if shift_left >= 0:
                 for i in range(l - shift_left, nl):
                     cnv[i] = 0
@@ -1012,6 +999,7 @@ class Solver:
                     dlmd[i, :] = 0
                     err_X[:, i] = -1.0
                     dX[i] = 0
+                    have_prev[i] = 0
             if shift_right > 0:
                 for i in range(m - 1, l + shift_right - 1, -1):
                     cnv[i] = cnv[i - shift_right]
@@ -1022,6 +1010,7 @@ class Solver:
                     dlmd[i, :] = dlmd[i - shift_right, :]
                     err_X[:, i] = err_X[:, i - shift_right]
                     dX[i] = dX[i - shift_right]
+                    have_prev[i] = have_prev[i - shift_right]
             if shift_right >= 0:
                 for i in range(l + shift_right - 1, nl - 1, -1):
                     cnv[i] = 0
@@ -1031,6 +1020,7 @@ class Solver:
                     dlmd[i, :] = 0
                     err_X[:, i] = -1.0
                     dX[i] = 0
+                    have_prev[i] = 0
 
             # compute RR coefficients for X and 'old search directions' Z
             # by re-arranging columns of Q

@@ -68,7 +68,7 @@ a /= s
 A += EPS*a
 
 th = 0.01
-block_size = 170 # 128 #144
+block_size = 150 # 128 #144
 
 # set raleigh solver options
 opt = Options()
@@ -88,6 +88,7 @@ time_r = stop - start
 iter_r = opt.stopping_criteria.iteration
 n_r = min(sigma.shape[0], sigma0.shape[0])
 #n_r = vt.shape[0]
+print('\n%d singular values converged in %d iterations' % (sigma.shape[0], iter_r))
 if EPS == 0:
 #    err_r = vec_err(v0[:,:n_r], vt.transpose())
 #    print('\nsingular vector errors (raleigh):')
