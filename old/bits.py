@@ -976,3 +976,30 @@ SAVE = False
 #    return sla.norm(np.dot(U.T, U), ord = 1)
 
     #lmax = sla.norm(A, ord = 1)
+
+            if rv_err > 0.1*dlmd_av:
+                print('restarting...')
+                A(X, AX)
+                if not std:
+                    B(X, BX)
+                if pro:
+                    XAX = AX.dot(BX)
+                else:
+                    XAX = AX.dot(X)
+                XBX = BX.dot(X)
+                new_lmd, Q = sla.eigh(XAX, XBX, turbo=False)
+                #print(new_lmd)
+                W.select(nx)
+                if not std:
+                    BX.mult(Q, W)
+                    W.copy(BX)
+                X.mult(Q, W)
+                W.copy(X)
+                AX.mult(Q, W)
+                W.copy(AX)
+                nz = 0
+                rec = 0
+                last_restart = self.iteration
+
+        last_restart = 0
+

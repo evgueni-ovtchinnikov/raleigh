@@ -73,7 +73,7 @@ block_size = 150 # 128 #144
 # set raleigh solver options
 opt = Options()
 opt.block_size = block_size
-#opt.max_iter = 300
+opt.max_iter = 300
 opt.verbosity = 1
 opt.convergence_criteria.set_error_tolerance \
     ('kinematic eigenvector error', 1e-14)

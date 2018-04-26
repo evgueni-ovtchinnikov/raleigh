@@ -409,6 +409,8 @@ class Solver:
             BX.mult(Q, Z)
             Z.copy(BX)
 
+        lmd_min = lmdx[0]
+        lmd_max = lmdx[nx - 1]
         # main CG loop
         for self.iteration in range(options.max_iter):
 
@@ -439,16 +441,24 @@ class Solver:
                 delta_R /= s #numpy.amax(s)
 #            print(delta_R)
 #            print(numpy.sqrt(AX.dots(AX)))
+            delta_R_abs = numpy.amax(delta_R)
             delta_R_rel = numpy.amax(delta_R/numpy.sqrt(AX.dots(AX)))
             delta_R *= 10
             
+            lmd_min = min(lmd_min, new_lmd[0])
+            lmd_max = max(lmd_max, new_lmd[-1])
             rv_err = numpy.amax(abs(new_lmd - lmdx))
+            ntot = nx + self.lcon + self.rcon
+            dlmd_av = (lmdx[leftX - 1] - lmd_min + lmd_max - lmdx[leftX])/ntot
             if verb > 0:
+                print('average eigenvalue gap: %.1e' % dlmd_av)
                 print('Ritz values error: %.1e' % rv_err)
                 print('Ritz vectors non-orthonormality: %.1e' % \
                       numpy.amax(abs(XBX - numpy.eye(nx))))
-                print('estimated relative error in residual computation: %.1e' \
-                      % delta_R_rel)
+                msg = 'estimated error in residual computation (abs, rel):' + \
+                ' %.1e %.1e'
+                print(msg % (delta_R_abs, delta_R_rel))
+
             if self.iteration > 0:
                 # compute eigenvalue decrements
                 for i in range(nx):
@@ -460,8 +470,11 @@ class Solver:
                     print('eigenvalues shifts history:')
                     print(numpy.array_str(dlmd[ix : ix + nx, :rec].T, \
                                           precision = 2))
+                have_prev[ix : ix + nx] = 1
+            else:
+                have_prev[ix : ix + nx] = 0
+
             lmd[ix : ix + nx] = new_lmd
-            have_prev[ix : ix + nx] = 1
             
             # compute residuals
             # std: A X - X lmd
@@ -471,10 +484,20 @@ class Solver:
             Y.select(nx)
             AX.copy(W)
             norm_AX[ix : ix + nx] = numpy.sqrt(W.dots(W))
-            if gen:
-                W.add(BX, -lmd[ix : ix + nx])
+            # unstable
+#            if gen:
+#                W.add(BX, -lmd[ix : ix + nx])
+#            else:
+#                W.add(X, -lmd[ix : ix + nx])
+            if pro:
+                Q = W.dot(BX)
             else:
-                W.add(X, -lmd[ix : ix + nx])
+                Q = W.dot(X)
+            if gen:
+                BX.mult(Q, Y)
+            else:
+                X.mult(Q, Y)
+            W.add(Y, -1.0)
 
             if Xc.nvec() > 0:
                 # orthogonalize W to Xc
@@ -757,7 +780,10 @@ class Solver:
                 else:
                     P(W, Y)
 
+#            print('max(XBY): %.1e' % numpy.amax(Y.dot(X)))
+
             if nz > 0:
+#                print('max(ZBY): %.1e' % numpy.amax(Y.dot(Z)))
                 # compute the conjugation matrix
                 if pro:
                     ZAY = W.dot(AZ)
@@ -797,8 +823,11 @@ class Solver:
             elif pro:
                 W.copy(BY)
 
+#            print('max(XBY): %.1e' % numpy.amax(Y.dot(X)))
+            
             if Xc.nvec() > 0: #and (P is not None or gen):
-                # orthogonalize Y to Xc
+#                print('max(XcBX): %.1e' % numpy.amax(X.dot(Xc)))
+               # orthogonalize Y to Xc
                 # std: W := W - Xc Xc* W (not needed if P is None)
                 # gen: W := W - Xc BXc* W
                 # pro: W := W - Xc BXc* W (not needed if P is None)
@@ -829,6 +858,8 @@ class Solver:
                 if nx > 0:
                     XBY = BY.dot(X)
                 YBY = BY.dot(Y)
+                
+#            print('max(XBY): %.1e' % numpy.amax(XBY))
 
             if nx > 0:
                 YBX = conjugate(XBY)
@@ -842,7 +873,7 @@ class Solver:
             U = GB
             ny = Y.nvec()
             if delta_R_rel > 1e-9:
-                eps = 1e-2
+                eps = 1e-8 #1e-2
             else:
                 eps = 1e-4
             ind, dropped, last_piv = piv_chol(U, nx, eps)
