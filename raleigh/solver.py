@@ -433,7 +433,7 @@ class Solver:
             # estimate error in residual computation due to the error in
             # computing AX, to be used in detecting convergence stagnation
             Lmd = numpy.zeros((nx, nx))
-            Lmd[range(nx), range(nx)] = new_lmd
+            Lmd[range(nx), range(nx)] = lmdx #new_lmd
             RX = XAX - numpy.dot(XBX, Lmd)
             delta_R = nla.norm(RX, axis = 0)
             if gen:
@@ -442,7 +442,10 @@ class Solver:
 #            print(delta_R)
 #            print(numpy.sqrt(AX.dots(AX)))
             delta_R_abs = numpy.amax(delta_R)
-            delta_R_rel = numpy.amax(delta_R/numpy.sqrt(AX.dots(AX)))
+            s = numpy.sqrt(AX.dots(AX))
+#            print(delta_R)
+#            print(s)
+            delta_R_rel = numpy.amax(delta_R/s)
             delta_R *= 10
             
             lmd_min = min(lmd_min, new_lmd[0])
@@ -618,9 +621,9 @@ class Solver:
                     lcon += 1
                     self.cnv[k] = 1
                 elif res[k] >= 0 and res[k] < delta_R[i] and \
-                        abs(dlmd[k, rec - 1]) > abs(dlmd[k, rec - 2]) and \
-                        abs(dlmd[k, rec - 1]) < 10*abs(dlmd[k, rec - 2]):
-                            #acf[0, k] >= acf[1, k]:
+                            acf[0, k] >= acf[1, k]:
+#                        abs(dlmd[k, rec - 1]) > abs(dlmd[k, rec - 2]) and \
+#                        abs(dlmd[k, rec - 1]) < 10*abs(dlmd[k, rec - 2]):                            
                     if verb > -1:
                         msg = 'left eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
@@ -630,18 +633,18 @@ class Solver:
                 else:
                     break
                 last = i
-            for i in range(last, 0, -1):
-                j = self.lcon + i
-                k = ix + i
-                if lmd[k + 1] - lmd[k] < res[k]:
-                    if verb > 0:
-                        msg = 'eigenvalue %.16e is too close to %.16e,\n' + \
-                        ' eigenpair %d not accepted'
-                        print(msg % (lmd[k], lmd[k + 1], j))
-                    lcon -= 1
-                    self.cnv[k] = 0
-                else:
-                    break
+#            for i in range(last, 0, -1):
+#                j = self.lcon + i
+#                k = ix + i
+#                if lmd[k + 1] - lmd[k] < res[k]:
+#                    if verb > 0:
+#                        msg = 'eigenvalue %.16e is too close to %.16e,\n' + \
+#                        ' eigenpair %d not accepted'
+#                        print(msg % (lmd[k], lmd[k + 1], j))
+#                    lcon -= 1
+#                    self.cnv[k] = 0
+#                else:
+#                    break
             rcon = 0
             last = 0
             for i in range(rightX - 1):
@@ -655,10 +658,11 @@ class Solver:
                     rcon += 1
                     self.cnv[k] = 1
                 elif res[k] >= 0 and res[k] < delta_R[nx - i - 1] and \
-                        abs(dlmd[k, rec - 1]) > abs(dlmd[k, rec - 2]) and \
-                        abs(dlmd[k, rec - 1]) < 10*abs(dlmd[k, rec - 2]):
+                        acf[0, k] >= acf[1, k]:
+                        #abs(dlmd[k, rec - 1]) > abs(dlmd[k, rec - 2]) and \
+                        #abs(dlmd[k, rec - 1]) < 10*abs(dlmd[k, rec - 2]):
                     if verb > -1:
-                        print(res[k], delta_R[nx - i - 1], dlmd[k, rec - 1], dlmd[k, rec - 2])
+#                        print(res[k], delta_R[nx - i - 1], dlmd[k, rec - 1], dlmd[k, rec - 2])
                         msg = 'right eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
@@ -667,18 +671,18 @@ class Solver:
                 else:
                     break
                 last = i
-            for i in range(last, 0, -1):
-                j = self.rcon + i
-                k = ix + nx - i - 1
-                if lmd[k] - lmd[k - 1] < res[k]:
-                    if verb > 0:
-                        msg = 'eigenvalue %.16e is too close to %.16e,\n' + \
-                        ' eigenpair %d not accepted'
-                        print(msg % (lmd[k], lmd[k - 1], j))
-                    rcon -= 1
-                    self.cnv[k] = 0
-                else:
-                    break
+#            for i in range(last, 0, -1):
+#                j = self.rcon + i
+#                k = ix + nx - i - 1
+#                if lmd[k] - lmd[k - 1] < res[k]:
+#                    if verb > 0:
+#                        msg = 'eigenvalue %.16e is too close to %.16e,\n' + \
+#                        ' eigenpair %d not accepted'
+#                        print(msg % (lmd[k], lmd[k - 1], j))
+#                    rcon -= 1
+#                    self.cnv[k] = 0
+#                else:
+#                    break
 
             # move converged X to Xc, update Gram matrix for Xc
             ncon = Xc.nvec()
@@ -872,10 +876,11 @@ class Solver:
             # do pivoted Cholesky for GB
             U = GB
             ny = Y.nvec()
-            if delta_R_rel > 1e-9:
-                eps = 1e-8 #1e-2
-            else:
-                eps = 1e-4
+            eps = 1e-6
+#            if delta_R_rel > 1e-9:
+#                eps = 1e-4 #1e-2
+#            else:
+#                eps = 1e-8
             ind, dropped, last_piv = piv_chol(U, nx, eps)
             if dropped > 0:
                 if verb > -1:

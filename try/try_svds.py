@@ -48,6 +48,9 @@ def vec_err(u, v):
 
 numpy.random.seed(1) # make results reproducible
 
+dtype = numpy.float32
+#dtype = numpy.float64
+
 EXP = 1
 EPS = 0 # 1e-3
 
@@ -57,26 +60,27 @@ k = 500
 
 if EXP == 1:
     alpha = 0.05
-    f_sigma = lambda t: 2**(-alpha*t).astype(numpy.float32)
+    f_sigma = lambda t: 2**(-alpha*t).astype(dtype)
 else:
     alpha = 0.01
-    f_sigma = lambda t: 2**(-alpha*t*t).astype(numpy.float32)
-sigma0, u0, v0, A = random_matrix_for_svd(m, n, k, f_sigma, numpy.float32)
-a = 2*numpy.random.rand(m, n).astype(numpy.float32) - 1
+    f_sigma = lambda t: 2**(-alpha*t*t).astype(dtype)
+sigma0, u0, v0, A = random_matrix_for_svd(m, n, k, f_sigma, dtype)
+a = 2*numpy.random.rand(m, n).astype(dtype) - 1
 s = numpy.linalg.norm(a, axis = 0)
 a /= s
 A += EPS*a
 
 th = 0.01
-block_size = 150 # 128 #144
+block_size = 32 #150 # 128 #144
+vec_tol = 1e-4 #-26
 
 # set raleigh solver options
 opt = Options()
 opt.block_size = block_size
-opt.max_iter = 300
-opt.verbosity = 1
+opt.max_iter = 400
+#opt.verbosity = 2
 opt.convergence_criteria.set_error_tolerance \
-    ('kinematic eigenvector error', 1e-14)
+    ('kinematic eigenvector error', vec_tol)
 opt.stopping_criteria = MyStoppingCriteria()
 opt.stopping_criteria.set_threshold(th, relative = False)
 #opt.stopping_criteria.set_how_many(block_size)
@@ -86,44 +90,58 @@ sigma, u, vt = partial_svd(A, opt)
 stop = time.time()
 time_r = stop - start
 iter_r = opt.stopping_criteria.iteration
+sigma = sigma[sigma > th*sigma[0]]
 n_r = min(sigma.shape[0], sigma0.shape[0])
 #n_r = vt.shape[0]
 print('\n%d singular values converged in %d iterations' % (sigma.shape[0], iter_r))
 if EPS == 0:
-#    err_r = vec_err(v0[:,:n_r], vt.transpose())
-#    print('\nsingular vector errors (raleigh):')
-#    print(err_r)
+    err_r = vec_err(v0[:,:n_r], vt.transpose()[:,:n_r])
+    print('\nsingular vector errors (raleigh):')
+    print(err_r)
     print('\nsingular value errors (raleigh):')
     print(abs(sigma[:n_r] - sigma0[:n_r]))
 else:
     print('\nsingular values (raleigh):')
     print(sigma)
 
-#sigma = numpy.ndarray((0,), dtype = numpy.float32)
-#sigma_max = None
-#start = time.time()
-#while True:
-#    u, s, vt = svds(A, k = block_size)
-#    sigma = numpy.concatenate((sigma, s[::-1]))
-#    print(s[0])
+print(type(sigma[0]))
+print(type(vt[0,0]))
+print(type(v0[0,0]))
+
+sigma = numpy.ndarray((0,), dtype = dtype)
+vt = numpy.ndarray((0, n), dtype = dtype)
+sigma_max = None
+start = time.time()
+while True:
+    u, s, vti = svds(A, k = block_size, tol = vec_tol)
+    sigma = numpy.concatenate((sigma, s[::-1]))
+    vt = numpy.concatenate((vt, vti[::-1, :]))
+    print(s[0])
 #    print(s[::-1])
-#    if sigma_max is None:
-#        sigma_max = numpy.amax(s) # s[-1]
-#    if s[0] <= th*sigma_max:
-#        break
-#    A -= numpy.dot(u*s, vt)
-#stop = time.time()
-#time_s = stop - start
-#
-#if EPS == 0:
-##    n_s = vt.shape[0]
-##    err_s = vec_err(v0[:,:n_s], vt.transpose())
-##    print('\nsingular vector errors (svds):')
-##    print(err_s[::-1])
-#    print('\nsingular value errors (svds):')
+    if sigma_max is None:
+        sigma_max = numpy.amax(s) # s[-1]
+    if s[0] <= th*sigma_max:
+        break
+    A -= numpy.dot(u*s, vti)
+stop = time.time()
+time_s = stop - start
+
+sigma = sigma[sigma > th*sigma[0]]
+n_s = min(sigma.shape[0], sigma0.shape[0])
+if EPS == 0:
+    #n_s = vt.shape[0]
+    err_s = vec_err(v0[:,:n_s], vt.transpose()[:,:n_s])
+    print('\nsingular vector errors (svds):')
+    print(err_s) #[::-1])
+#    print(err_s.shape, n_s)
+    print('\nsingular value errors (svds):')
+    print(abs(sigma[:n_s] - sigma0[:n_s]))
 #    print(abs(sigma - sigma0[:sigma.shape[0]]))
 #else:
-#    print('\nsingular values (svds):')
-#    print(sigma)
-#
-#print('\n time: raleigh %.1e, svds %.1e' % (time_r, time_s))
+print('\nsingular values (svds):')
+print(sigma)
+
+print(type(sigma[0]))
+print(type(vt[0,0]))
+
+print('\n time: raleigh %.1e, svds %.1e' % (time_r, time_s))
