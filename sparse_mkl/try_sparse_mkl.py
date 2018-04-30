@@ -21,7 +21,7 @@ print('generating matrix of density %.2e...' % den)
 A = scsp.random(mA, nA, den, form, dtype = dt)
 
 maxk = 16
-k = 4
+k = 6
 
 ntests = 20
 
@@ -35,10 +35,12 @@ ptr_ia  = indptr.ctypes.data_as(ctypes.POINTER(ctypes.c_int))
 ptr_u = ctypes.c_void_p(x.ctypes.data)
 ptr_v = ctypes.c_void_p(y.ctypes.data)
 
-start = time.time()
-for t in range(ntests):
-    dll.scsrmm(ctypes.c_int(mA), ctypes.c_int(nA), ctypes.c_int(k), \
-               ptr_ia, ptr_ja, ptr_a, ptr_u, ptr_v)
-stop = time.time()
-time_scsrmm = stop - start
-print('time: %.1e' % (time_scsrmm/k))
+print('testing...')
+for k in range(1, 17):
+    start = time.time()
+    for t in range(ntests):
+        dll.scsrmm(ctypes.c_int(mA), ctypes.c_int(nA), ctypes.c_int(k), \
+                   ptr_ia, ptr_ja, ptr_a, ptr_u, ptr_v)
+    stop = time.time()
+    time_scsrmm = stop - start
+    print('vectors: %d, time per vector: %.1e' % (k, time_scsrmm/k))
