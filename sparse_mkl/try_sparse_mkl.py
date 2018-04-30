@@ -9,6 +9,7 @@ v = numpy.ones((n,), dtype = numpy.float32)
 #dll = ctypes.cdll.LoadLibrary('./x64/Release/try_dll.dll')
 dll = ctypes.CDLL('./sparse_mkl.dll', mode = ctypes.RTLD_GLOBAL)
 
+dll.set_mkl_dynamic(0)
 nthreads = dll.num_mkl_threads
 nthreads.restype = ctypes.c_int
 nt = nthreads()

@@ -11,6 +11,12 @@
 #endif
 
 extern "C"
+EXPORTED_FUNCTION void set_mkl_dynamic(int flag)
+{
+	return mkl_set_dynamic(flag);
+}
+
+extern "C"
 EXPORTED_FUNCTION int num_mkl_threads()
 {
 	return mkl_get_max_threads();
