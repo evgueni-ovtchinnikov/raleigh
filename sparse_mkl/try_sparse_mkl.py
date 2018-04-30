@@ -9,13 +9,21 @@ v = numpy.ones((n,), dtype = numpy.float32)
 #dll = ctypes.cdll.LoadLibrary('./x64/Release/try_dll.dll')
 dll = ctypes.CDLL('./sparse_mkl.dll', mode = ctypes.RTLD_GLOBAL)
 
+nthreads = dll.num_mkl_threads
+nthreads.restype = ctypes.c_int
+nt = nthreads()
+print('max mkl threads: %d' % nt)
+dll.set_num_mkl_threads(nt - 1)
+nt = nthreads()
+print('using %d mkl threads' % nt)
+
 numpy.random.seed(1) # make results reproducible
 form = 'csr'
-dt = numpy.float32
+dt = numpy.float64
 
 mA = 40000
 nA = 30000
-nnz = 200
+nnz = 100
 den = nnz/min(mA, nA)
 print('generating matrix of density %.2e...' % den)
 A = scsp.random(mA, nA, den, form, dtype = dt)
@@ -36,11 +44,18 @@ ptr_u = ctypes.c_void_p(x.ctypes.data)
 ptr_v = ctypes.c_void_p(y.ctypes.data)
 
 print('testing...')
+start = time.time()
+for t in range(ntests):
+    dll.dcsrmv(ctypes.c_int(mA), ptr_ia, ptr_ja, ptr_a, ptr_u, ptr_v)
+stop = time.time()
+time_csrmv = stop - start
+print('matrix-vector time: %.1e' % time_csrmv)
+
 for k in range(1, 17):
     start = time.time()
     for t in range(ntests):
-        dll.scsrmm(ctypes.c_int(mA), ctypes.c_int(nA), ctypes.c_int(k), \
+        dll.dcsrmm(ctypes.c_int(mA), ctypes.c_int(nA), ctypes.c_int(k), \
                    ptr_ia, ptr_ja, ptr_a, ptr_u, ptr_v)
     stop = time.time()
-    time_scsrmm = stop - start
-    print('vectors: %d, time per vector: %.1e' % (k, time_scsrmm/k))
+    time_csrmm = stop - start
+    print('vectors: %d, time per vector: %.1e' % (k, time_csrmm/k))

@@ -11,6 +11,32 @@
 #endif
 
 extern "C"
+EXPORTED_FUNCTION int num_mkl_threads()
+{
+	return mkl_get_max_threads();
+}
+
+extern "C"
+EXPORTED_FUNCTION void set_num_mkl_threads(int t)
+{
+	return mkl_set_num_threads(t);
+}
+
+extern "C"
+EXPORTED_FUNCTION void scsrmv
+(int m, int* ia, int* ja, float* a, float* u, float* v)
+{
+	mkl_scsrgemv("N", &m, a, ia, ja, u, v);
+}
+
+extern "C"
+EXPORTED_FUNCTION void dcsrmv
+(int m, int* ia, int* ja, double* a, double* u, double* v)
+{
+	mkl_dcsrgemv("N", &m, a, ia, ja, u, v);
+}
+
+extern "C"
 EXPORTED_FUNCTION void scsrmm
 (int m, int n, int k, int* ia, int* ja, float* a, float* u, float* v)
 {
