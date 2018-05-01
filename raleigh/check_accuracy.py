@@ -96,6 +96,31 @@ def check_eigenvectors_accuracy \
     u.select(rcon, nconu - rcon)
     v.select(rcon, nconv - rcon)
     w = u.new_vectors(rcon)
+
+    q = u.dot(u)
+    q = q - numpy.eye(q.shape[0])
+    print(numpy.linalg.norm(q))
+    q = v.dot(v)
+    q = q - numpy.eye(q.shape[0])
+    print(numpy.linalg.norm(q))
+    
+    z = u.new_vectors(rcon)
+    A = problem.A()
+    A(u, w)
+    q = w.dot(u)
+    p = q - numpy.diag(lmdu[nconu - rcon :])
+    print(numpy.linalg.norm(p))
+    u.mult(q, z)
+    z.add(w, -1.0)
+    t = z.dots(z)
+    t = numpy.sqrt(t)
+    w.add(u, -lmdu[nconu - rcon :])
+    s = w.dots(w)
+    s = numpy.sqrt(s)
+    for i in range(rcon):
+        print('%e  %.1e  %.1e  %.1e' % \
+        (lmdu[nconu - rcon + i], res_u[nconu - rcon + i], s[i], t[i]))
+
     if std:
         q = v.dot(u)
         u.mult(q, w)
@@ -113,17 +138,38 @@ def check_eigenvectors_accuracy \
     sr = numpy.sqrt(sr) # difference on the right
 
     print('eigenvector errors:')
-    msg = '       estimated (kinematic/residual)' + \
-          '               actual'
+    msg = ' eigenvalue  estimated (kinematic/residual)' + \
+          '   actual'
     print(msg)
-    print('     first pass             second pass')
+#    print('     first pass             second pass')
     for i in range(lcon):
+        lmdu_i = lmdu[i]
         err_ui = err_u[i]
+        err_uik = abs(err_ui[0])
+        err_uir = abs(err_ui[1])
         err_vi = err_v[i]
-        print('  %.1e / %.1e      %.1e / %.1e         %.1e' % \
-        (abs(err_ui[0]), abs(err_ui[1]), abs(err_vi[0]), abs(err_vi[1]), sl[i]))
+        err_vik = abs(err_vi[0])
+        err_vir = abs(err_vi[1])
+        err_ik = max(err_uik, err_vik)
+        err_ir = max(err_uir, err_vir)
+        print('%e        %.1e / %.1e        %.1e' % \
+        (lmdu_i, err_ik, err_ir, sr[i]))
+#        print('  %.1e / %.1e      %.1e / %.1e         %.1e' % \
+#        (abs(err_ui[0]), abs(err_ui[1]), abs(err_vi[0]), abs(err_vi[1]), sl[i]))
     for i in range(rcon):
+        lmdu_i = lmdu[nconu - rcon + i]
         err_ui = err_u[nconu - rcon + i]
+        err_uik = abs(err_ui[0])
+        err_uir = abs(err_ui[1])
+#        res_ui = res_u[nconu - rcon + i]
+#        lmdv_i = lmdv[nconv - rcon + i]
         err_vi = err_v[nconv - rcon + i]
-        print('  %.1e / %.1e      %.1e / %.1e         %.1e' % \
-        (abs(err_ui[0]), abs(err_ui[1]), abs(err_vi[0]), abs(err_vi[1]), sr[i]))
+        err_vik = abs(err_vi[0])
+        err_vir = abs(err_vi[1])
+#        res_vi = res_v[nconv - rcon + i]
+        err_ik = max(err_uik, err_vik)
+        err_ir = max(err_uir, err_vir)
+        print('%e        %.1e / %.1e        %.1e' % \
+        (lmdu_i, err_ik, err_ir, sr[i]))
+#        print('%e %.1e  %.1e / %.1e      %e %.1e  %.1e / %.1e     %.1e' % \
+#        (lmdu_i, res_ui, err_uik, err_uir, lmdv_i, res_vi, err_vik, err_vir, sr[i]))

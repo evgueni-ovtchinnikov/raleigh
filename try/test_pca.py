@@ -53,7 +53,9 @@ n = 4000
 k = 200
 alpha = 0.05
 
-a = 2*numpy.random.rand(m, n).astype(numpy.float32) - 1
+dt = numpy.float32
+
+a = 2*numpy.random.rand(m, n).astype(dt) - 1
 s = numpy.linalg.norm(a, axis = 0)
 a /= s
 #for i in range(n):
@@ -63,8 +65,8 @@ a /= s
 #s, u, v, a = random_svd(m, n, alpha)
 
 alpha = 0.01
-sigma = lambda t: 2**(-alpha*t*t).astype(numpy.float32)
-s, u, v, b = random_matrix_for_svd(m, n, k, sigma, numpy.float32)
+sigma = lambda t: 2**(-alpha*t*t).astype(dt)
+s, u, v, b = random_matrix_for_svd(m, n, k, sigma, dt)
 
 a = 1e-3*a + b
 
