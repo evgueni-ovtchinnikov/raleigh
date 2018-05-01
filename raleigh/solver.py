@@ -524,7 +524,7 @@ class Solver:
             else:
                 s = W.dots(W)
             res[ix : ix + nx] = numpy.sqrt(s)
-    
+
             # kinematic error estimates
             if rec > 3: # sufficient history available
                 for i in range(nx):

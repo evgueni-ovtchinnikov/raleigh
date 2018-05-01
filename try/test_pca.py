@@ -43,9 +43,9 @@ numpy.random.seed(1) # make results reproducible
 opt = raleigh.solver.Options()
 #opt.block_size = 5
 opt.threads = 4
-opt.verbosity = 2
+#opt.verbosity = 2
 #opt.convergence_criteria = MyConvergenceCriteria(1e-4)
-opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-8)
+opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-4) #1e-8)
 opt.stopping_criteria = MyStoppingCriteria()
 opt.stopping_criteria.set_threshold(0.01)
 m = 10000
@@ -67,8 +67,10 @@ a /= s
 alpha = 0.01
 sigma = lambda t: 2**(-alpha*t*t).astype(dt)
 s, u, v, b = random_matrix_for_svd(m, n, k, sigma, dt)
+v0 = Vectors(v.T)
 
-a = 1e-3*a + b
+eps = 0.001
+a = eps*a + b
 
 #sigma, u, v = partial_svd(a, opt)
 #print(sigma)
@@ -78,5 +80,8 @@ op = lambda x, y: operatorATA.apply(x, y)
 
 v = Vectors(n)
 problem = raleigh.solver.Problem(v, op)
-check_eigenvectors_accuracy(problem, opt, which = (0,-1))
+if eps == 0:
+    check_eigenvectors_accuracy(problem, opt, which = (0,-1), v_ex = v0)
+else:
+    check_eigenvectors_accuracy(problem, opt, which = (0,-1))
 #check_eigenvectors_accuracy(problem, opt, which = (0,3))

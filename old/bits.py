@@ -1003,3 +1003,69 @@ SAVE = False
 
         last_restart = 0
 
+            if not pro:
+                A(X, Y)
+                Y.add(X, -lmd[ix : ix + nx])
+                t = Y.dots(Y)
+                for i in range(nx):
+                    ri = math.sqrt(r[i])
+                    si = math.sqrt(s[i])
+                    ti = math.sqrt(t[i])
+                    if ti > si:
+                        print(lmd[ix + i], ri, si, ti)
+
+#            if (self.iteration + 1) % 10 == 0:
+#                A(X, AX)
+#                A(Z, AZ)
+#            W.select(nx)
+#            A(X, W)
+#            W.add(AX, -1.0)
+#            s = numpy.sqrt(W.dots(W))
+#            print('AX error: %.1e' % numpy.amax(s))
+
+#    p = u.dot(u)
+#    q = p - numpy.eye(p.shape[0])
+#    print(numpy.linalg.norm(q))
+#    q = v.dot(v)
+#    q = q - numpy.eye(q.shape[0])
+#    print(numpy.linalg.norm(q))
+#    
+#    z = u.new_vectors(rcon)
+
+#    A(u, w)
+#    q = w.dot(u)
+#    lmd, Q = sla.eigh(q, p)
+#    u.mult(Q, z)
+#    z.copy(u)
+#    w.mult(Q, z)
+#    z.copy(w)
+#
+#    q = w.dot(u)
+#    p = q - numpy.diag(lmdu[nconu - rcon :])
+#    print(numpy.linalg.norm(p))
+#    u.mult(q, z)
+#    z.add(w, -1.0)
+#    t = z.dots(z)
+#    t = numpy.sqrt(t)
+#    w.add(u, -lmdu[nconu - rcon :])
+#    s = w.dots(w)
+#    s = numpy.sqrt(s)
+
+#    print('     first pass             second pass')
+
+#        print('  %.1e / %.1e      %.1e / %.1e         %.1e' % \
+#        (abs(err_ui[0]), abs(err_ui[1]), abs(err_vi[0]), abs(err_vi[1]), sl[i]))
+
+#        res_ui = res_u[nconu - rcon + i]
+#        lmdv_i = lmdv[nconv - rcon + i]
+
+#        res_vi = res_v[nconv - rcon + i]
+
+#        print('%e %.1e  %.1e / %.1e      %e %.1e  %.1e / %.1e     %.1e' % \
+#        (lmdu_i, res_ui, err_uik, err_uir, lmdv_i, res_vi, err_vik, err_vir, sr[i]))
+
+#    q = v.dot(u)
+#    u.mult(q, w)
+#    w.add(v, -1.0)
+#    t = w.dots(w)
+#    t = numpy.sqrt(t)
