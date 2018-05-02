@@ -39,23 +39,26 @@ class MyStoppingCriteria:
 numpy.random.seed(1) # make results reproducible
 
 opt = raleigh.solver.Options()
-opt.block_size = 128
+opt.block_size = 144
 opt.threads = 4
-#opt.verbosity = 2
+opt.verbosity = 2
 opt.max_iter = 200
 #opt.convergence_criteria = MyConvergenceCriteria(1e-4)
-opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-26) #1e-8)
+opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-16) #1e-8)
 opt.stopping_criteria = MyStoppingCriteria()
 opt.stopping_criteria.set_threshold(0.01)
+opt.detect_stagnation = False
+
 m = 10000
 n = 4000
 k = 200
 #alpha = 0.05
 EXP = 1
 
-dt = numpy.float64
+dt_op = numpy.float32
+dt_v = numpy.float64
 
-a = 2*numpy.random.rand(m, n).astype(dt) - 1
+a = 2*numpy.random.rand(m, n).astype(dt_op) - 1
 s = numpy.linalg.norm(a, axis = 0)
 a /= s
 #for i in range(n):
@@ -68,11 +71,11 @@ a /= s
 #sigma = lambda t: 2**(-alpha*t*t).astype(dt)
 if EXP == 1:
     alpha = 0.05
-    f_sigma = lambda t: 2**(-alpha*t).astype(dt)
+    f_sigma = lambda t: 2**(-alpha*t).astype(dt_op)
 else:
     alpha = 0.01
-    f_sigma = lambda t: 2**(-alpha*t*t).astype(dt)
-s, u, v, b = random_matrix_for_svd(m, n, k, f_sigma, dt)
+    f_sigma = lambda t: 2**(-alpha*t*t).astype(dt_op)
+s, u, v, b = random_matrix_for_svd(m, n, k, f_sigma, dt_op)
 v0 = Vectors(v[:,::-1].T)
 
 eps = 0 #.001
@@ -84,7 +87,7 @@ a = eps*a + b
 operatorATA = operators.SVD(a)
 op = lambda x, y: operatorATA.apply(x, y)
 
-v = Vectors(n, data_type = dt)
+v = Vectors(n, data_type = dt_v)
 problem = raleigh.solver.Problem(v, op)
 if eps == 0:
     check_eigenvectors_accuracy(problem, opt, which = (0,-1), v_ex = v0)

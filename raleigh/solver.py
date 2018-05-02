@@ -92,6 +92,7 @@ class Options:
         self.threads = -1
         self.convergence_criteria = DefaultConvergenceCriteria()
         self.stopping_criteria = DefaultStoppingCriteria()
+        self.detect_stagnation = True
         self.verbosity = 0
         
 class EstimatedErrors:
@@ -309,6 +310,7 @@ class Solver:
         X.scale(s)
             
         # shorcuts
+        detect_stagn = options.detect_stagnation
         lmd = self.lmd
         res = self.res
         A = self.__problem.A()
@@ -622,7 +624,7 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     lcon += 1
                     self.cnv[k] = 1
-                elif res[k] >= 0 and res[k] < delta_R[i] and \
+                elif detect_stagn and res[k] >= 0 and res[k] < delta_R[i] and \
                             acf[0, k] >= acf[1, k]:
                     if verb > -1:
                         msg = 'left eigenpair %d stagnated,\n' + \
@@ -657,7 +659,8 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
                     self.cnv[k] = 1
-                elif res[k] >= 0 and res[k] < delta_R[nx - i - 1] and \
+                elif detect_stagn and res[k] >= 0 and \
+                        res[k] < delta_R[nx - i - 1] and \
                         acf[0, k] >= acf[1, k]:
                     if verb > -1:
                         msg = 'right eigenpair %d stagnated,\n' + \
@@ -874,10 +877,11 @@ class Solver:
             U = GB
             ny = Y.nvec()
 #            eps = 1e-6
-            if delta_R_rel > 1e-9:
+            if data_type == numpy.float32:
+#            if delta_R_rel > 1e-9:
                 eps = 1e-3
             else:
-                eps = 1e-6
+                eps = 1e-8
             ind, dropped, last_piv = piv_chol(U, nx, eps)
             if dropped > 0:
                 if verb > -1:
