@@ -22,7 +22,7 @@ def RayleighRitz(A, u):
     print(numpy.linalg.norm(q))
     A(u, v)
     q = v.dot(u)
-    lmd = numpy.diag(q)
+#    lmd = numpy.diag(q)
     lmd, Q = sla.eigh(q, p)
     u.mult(Q, w)
     w.copy(u)
@@ -66,22 +66,29 @@ def check_eigenvectors_accuracy \
         print('no eigenpairs converged')
         return
 
-    # run second time
-    v = problem.vector().new_vectors()
-    solver.solve(v, opt, which, extra, init)
-    print('after %d iterations, %d + %d eigenvalues converged:' \
-          % (solver.iteration, solver.lcon, solver.rcon))
-    lmdv = solver.eigenvalues
-    lmdv, v, err_lmdv, err_v, res_v = sort_eigenpairs_and_errors\
-        (lmdv, v, solver.eigenvalue_errors, solver.eigenvector_errors, \
-        solver.residual_norms)
-    print(lmdv)
-    lconv = solver.lcon
-    rconv = solver.rcon
-    nconv = lconv + rconv
-    if nconv < 1:
-        print('no eigenpairs converged')
-        return
+    if v_ex is None:
+        # run second time
+        v = problem.vector().new_vectors()
+        solver.solve(v, opt, which, extra, init)
+        print('after %d iterations, %d + %d eigenvalues converged:' \
+              % (solver.iteration, solver.lcon, solver.rcon))
+        lmdv = solver.eigenvalues
+        lmdv, v, err_lmdv, err_v, res_v = sort_eigenpairs_and_errors\
+            (lmdv, v, solver.eigenvalue_errors, solver.eigenvector_errors, \
+            solver.residual_norms)
+        print(lmdv)
+        lconv = solver.lcon
+        rconv = solver.rcon
+        nconv = lconv + rconv
+        if nconv < 1:
+            print('no eigenpairs converged')
+            return
+    else:
+        v = v_ex
+        n_ex = v_ex.nvec()
+        lconv = n_ex
+        rconv = n_ex
+        nconv = n_ex
         
 #    for i in range(nconu):
 #        print('eigenvalue: %e, residual norm: %.1e' % (lmdu[i], res_u[i]))
@@ -121,28 +128,26 @@ def check_eigenvectors_accuracy \
     v.select(rcon, nconv - rcon)
     w = u.new_vectors(rcon)
 
-    A = problem.A()
-    u.copy(w)
-    s, t = RayleighRitz(A, u)
-#    r = w.dots(u)
-#    w.add(u, -r)
-#    print(numpy.sqrt(w.dots(w)))
-#    for i in range(rcon):
-#        print('%e  %.1e  %.1e  %.1e' % \
-#        (lmdu[nconu - rcon + i], res_u[nconu - rcon + i], s[i], t[i]))
-    s, t = RayleighRitz(A, v)
-#    for i in range(rcon):
-#        print('%e  %.1e  %.1e  %.1e' % \
-#        (lmdv[nconv - rcon + i], res_v[nconv - rcon + i], s[i], t[i]))
+#    A = problem.A()
+##    u.copy(w)
+#    s, t = RayleighRitz(A, u)
+##    r = w.dots(u)
+##    w.add(u, -r)
+##    print(numpy.sqrt(w.dots(w)))
+##    for i in range(rcon):
+##        print('%e  %.1e  %.1e  %.1e' % \
+##        (lmdu[nconu - rcon + i], res_u[nconu - rcon + i], s[i], t[i]))
+#    s, t = RayleighRitz(A, v)
+##    for i in range(rcon):
+##        print('%.1e  %.1e' % (s[i], t[i]))
+##    for i in range(rcon):
+##        print('%e  %.1e  %.1e  %.1e' % \
+##        (lmdv[nconv - rcon + i], res_v[nconv - rcon + i], s[i], t[i]))
 
-    if v_ex is None:
-        v_ex = v
-    else:
-        v_ex.select(rcon)
     if std:
-        q = v_ex.dot(u)
+        q = v.dot(u)
         u.mult(q, w)
-        w.add(v_ex, -1.0)
+        w.add(v, -1.0)
         sr = w.dots(w)
     else:
         x = u.new_vectors(rcon)
@@ -163,9 +168,13 @@ def check_eigenvectors_accuracy \
         err_ui = err_u[i]
         err_uik = abs(err_ui[0])
         err_uir = abs(err_ui[1])
-        err_vi = err_v[i]
-        err_vik = abs(err_vi[0])
-        err_vir = abs(err_vi[1])
+        if v_ex is None:
+            err_vi = err_v[i]
+            err_vik = abs(err_vi[0])
+            err_vir = abs(err_vi[1])
+        else:
+            err_vik = 0
+            err_vir = 0
         err_ik = max(err_uik, err_vik)
         err_ir = max(err_uir, err_vir)
         print('%e        %.1e / %.1e        %.1e' % \
@@ -175,9 +184,13 @@ def check_eigenvectors_accuracy \
         err_ui = err_u[nconu - rcon + i]
         err_uik = abs(err_ui[0])
         err_uir = abs(err_ui[1])
-        err_vi = err_v[nconv - rcon + i]
-        err_vik = abs(err_vi[0])
-        err_vir = abs(err_vi[1])
+        if v_ex is None:
+            err_vi = err_v[nconv - rcon + i]
+            err_vik = abs(err_vi[0])
+            err_vir = abs(err_vi[1])
+        else:
+            err_vik = 0
+            err_vir = 0
         err_ik = max(err_uik, err_vik)
         err_ir = max(err_uir, err_vir)
         print('%e        %.1e / %.1e        %.1e' % \

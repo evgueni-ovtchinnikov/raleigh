@@ -32,10 +32,8 @@ class MyStoppingCriteria:
     def satisfied(self, solver):
         if solver.rcon < 1:
             return False
-        return numpy.amin(solver.eigenvalues) < self.th*solver.eigenvalues[0]
-#        print(solver.eigenvalues[solver.rcon - 1]/solver.eigenvalues[0])
-#        return solver.eigenvalues[solver.rcon - 1] \
-#            < self.th*solver.eigenvalues[0]
+        return numpy.amin(solver.eigenvalues) < \
+                self.th*numpy.amax(solver.eigenvalues)
         #return solver.lcon + solver.rcon >= self.nep
 
 numpy.random.seed(1) # make results reproducible
@@ -45,7 +43,7 @@ opt = raleigh.solver.Options()
 opt.threads = 4
 #opt.verbosity = 2
 #opt.convergence_criteria = MyConvergenceCriteria(1e-4)
-opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-4) #1e-8)
+opt.convergence_criteria.set_error_tolerance('kin eigenvector error', 1e-6) #1e-8)
 opt.stopping_criteria = MyStoppingCriteria()
 opt.stopping_criteria.set_threshold(0.01)
 m = 10000
@@ -67,9 +65,9 @@ a /= s
 alpha = 0.01
 sigma = lambda t: 2**(-alpha*t*t).astype(dt)
 s, u, v, b = random_matrix_for_svd(m, n, k, sigma, dt)
-v0 = Vectors(v.T)
+v0 = Vectors(v[:,::-1].T)
 
-eps = 0.001
+eps = 0 #.001
 a = eps*a + b
 
 #sigma, u, v = partial_svd(a, opt)
