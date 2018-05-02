@@ -24,15 +24,15 @@ class Vectors:
         self.__selected = (0, m)
     def dimension(self):
         return self.__data.shape[1]
-##    def data_type(self):
-##        return self.__data.dtype
+    def data_type(self):
+        return self.__data.dtype
     def is_complex(self):
         return isinstance(self.__data[0,0], complex)
     def clone(self):
         return Vectors(self) #.__data.copy())
     def new_vectors(self, nv = 0):
         m, n = self.__data.shape
-        return Vectors(n, nv)
+        return Vectors(n, nv, self.__data.dtype)
 ##        data = numpy.ones((nv, n), dtype = self.__data.dtype)
 ##        return Vectors(data)
     def fill_random(self):

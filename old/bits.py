@@ -1069,3 +1069,7 @@ SAVE = False
 #    w.add(v, -1.0)
 #    t = w.dots(w)
 #    t = numpy.sqrt(t)
+
+                        #abs(dlmd[k, rec - 1]) > abs(dlmd[k, rec - 2]) and \
+                        #abs(dlmd[k, rec - 1]) < 10*abs(dlmd[k, rec - 2]):
+

@@ -233,7 +233,7 @@ class Solver:
         std = (problem_type == 's')
         gen = (problem_type == 'g')
         pro = (problem_type == 'p')
-        #self.__data_type = vector.data_type()
+        data_type = vector.data_type()
 
         #output
         self.lcon = 0
@@ -562,7 +562,8 @@ class Solver:
             l = 0
             for k in range(1, leftX):
                 i = ix + k
-                if dX[i] > 0.01:
+#                if dX[i] > 0.01:
+                if abs(err_X[0, i]) > 0.01:
                     break
                 if lmd[i] - lmd[i - 1] > res[i]:
                     l = k
@@ -580,14 +581,15 @@ class Solver:
             l = 0
             for k in range(1, rightX):
                 i = ix + nx - k - 1
-                if dX[i] > 0.01:
+#                if dX[i] > 0.01:
+                if abs(err_X[0, i]) > 0.01:
                     break
                 if lmd[i + 1] - lmd[i] > res[i]:
                     l = k
             if l > 0:
                 i = ix + nx - l - 1
                 t = lmd[i]
-                if verb > 2:
+                if verb > 1:
                     print('using right pole at lmd[%d] = %e' % (i, t))
                 m = block_size
                 for k in range(l):
@@ -622,8 +624,6 @@ class Solver:
                     self.cnv[k] = 1
                 elif res[k] >= 0 and res[k] < delta_R[i] and \
                             acf[0, k] >= acf[1, k]:
-#                        abs(dlmd[k, rec - 1]) > abs(dlmd[k, rec - 2]) and \
-#                        abs(dlmd[k, rec - 1]) < 10*abs(dlmd[k, rec - 2]):                            
                     if verb > -1:
                         msg = 'left eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
@@ -659,10 +659,7 @@ class Solver:
                     self.cnv[k] = 1
                 elif res[k] >= 0 and res[k] < delta_R[nx - i - 1] and \
                         acf[0, k] >= acf[1, k]:
-                        #abs(dlmd[k, rec - 1]) > abs(dlmd[k, rec - 2]) and \
-                        #abs(dlmd[k, rec - 1]) < 10*abs(dlmd[k, rec - 2]):
                     if verb > -1:
-#                        print(res[k], delta_R[nx - i - 1], dlmd[k, rec - 1], dlmd[k, rec - 2])
                         msg = 'right eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
@@ -748,11 +745,11 @@ class Solver:
                     Gc = numpy.concatenate((Gc, Gl))
                 ncon += rcon
             if ncon > 0:
-                H = Gc - numpy.identity(ncon)
+                H = Gc - numpy.identity(ncon, dtype = data_type)
                 if verb > 2:
                     print('Gram error: %e' % nla.norm(H))
                 # approximate inverse, good enough for Gram error up to 1e-8
-                Gci = 2*numpy.identity(ncon) - Gc
+                Gci = 2*numpy.identity(ncon, dtype = data_type) - Gc
 
             self.lcon += lcon
             self.rcon += rcon
@@ -806,7 +803,7 @@ class Solver:
                 Den = Mu - Lmd
                 sy = numpy.sqrt(Y.dots(Y))
                 sz = numpy.sqrt(Z.dots(Z))
-                Beta = numpy.ndarray((nz, ny), dtype = numpy.float64)
+                Beta = numpy.ndarray((nz, ny), dtype = data_type)
                 for iz in range(nz):
                     for iy in range(ny):
                         s = sy[iy]/sz[iz]
@@ -876,11 +873,11 @@ class Solver:
             # do pivoted Cholesky for GB
             U = GB
             ny = Y.nvec()
-            eps = 1e-6
-#            if delta_R_rel > 1e-9:
-#                eps = 1e-4 #1e-2
-#            else:
-#                eps = 1e-8
+#            eps = 1e-6
+            if delta_R_rel > 1e-9:
+                eps = 1e-3
+            else:
+                eps = 1e-6
             ind, dropped, last_piv = piv_chol(U, nx, eps)
             if dropped > 0:
                 if verb > -1:
