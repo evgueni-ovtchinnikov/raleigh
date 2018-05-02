@@ -2,7 +2,7 @@ import numpy
 import scipy.linalg as sla
 import raleigh.solver
 
-def sort_eigenpairs_and_errors(lmd, u, err_lmd, err_X, res):
+def sort_eigenpairs_and_errors(lmd, u, err_lmd, err_X, res, cnv_stat):
     ind = numpy.argsort(lmd)
     w = u.new_vectors(u.nvec())
     lmd = lmd[ind]
@@ -11,7 +11,8 @@ def sort_eigenpairs_and_errors(lmd, u, err_lmd, err_X, res):
     err_lmd.reorder(ind)
     err_X.reorder(ind)
     res = res[ind]
-    return lmd, u, err_lmd, err_X, res
+    cnv_stat = cnv_stat[ind]
+    return lmd, u, err_lmd, err_X, res, cnv_stat
 
 def RayleighRitz(A, u):
     m = u.nvec()
@@ -52,12 +53,12 @@ def check_eigenvectors_accuracy \
     # run first time
     u = problem.vector().new_vectors()
     solver.solve(u, opt, which, extra, init)
-    print('after %d iterations, %d + %d eigenvalues converged:' \
-          % (solver.iteration, solver.lcon, solver.rcon))
+    print('%d + %d eigenvalues computed in %d iterations:' \
+          % (solver.lcon, solver.rcon, solver.iteration))
     lmdu = solver.eigenvalues
-    lmdu, u, err_lmdu, err_u, res_u = sort_eigenpairs_and_errors\
+    lmdu, u, err_lmdu, err_u, res_u, cnv_u = sort_eigenpairs_and_errors\
         (lmdu, u, solver.eigenvalue_errors, solver.eigenvector_errors, \
-        solver.residual_norms)
+        solver.residual_norms, solver.convergence_status)
     print(lmdu)
     lconu = solver.lcon
     rconu = solver.rcon
@@ -70,12 +71,12 @@ def check_eigenvectors_accuracy \
         # run second time
         v = problem.vector().new_vectors()
         solver.solve(v, opt, which, extra, init)
-        print('after %d iterations, %d + %d eigenvalues converged:' \
-              % (solver.iteration, solver.lcon, solver.rcon))
+        print('%d + %d eigenvalues computed in %d iterations:' \
+              % (solver.lcon, solver.rcon, solver.iteration))
         lmdv = solver.eigenvalues
-        lmdv, v, err_lmdv, err_v, res_v = sort_eigenpairs_and_errors\
+        lmdv, v, err_lmdv, err_v, res_v, cnv_v = sort_eigenpairs_and_errors\
             (lmdv, v, solver.eigenvalue_errors, solver.eigenvector_errors, \
-            solver.residual_norms)
+            solver.residual_norms, solver.convergence_status)
         print(lmdv)
         lconv = solver.lcon
         rconv = solver.rcon
@@ -161,7 +162,8 @@ def check_eigenvectors_accuracy \
     sr = numpy.sqrt(sr) # difference on the right
 
     print('eigenvector errors:')
-    msg = ' eigenvalue   estimate (kinematic/residual)   actual'
+    msg = ' eigenvalue   estimate (kinematic/residual)   actual' + \
+        '       status'
     print(msg)
     for i in range(lcon):
         lmdu_i = lmdu[i]
@@ -177,15 +179,22 @@ def check_eigenvectors_accuracy \
             err_vir = 0
         err_ik = max(err_uik, err_vik)
         err_ir = max(err_uir, err_vir)
-        print('%e        %.1e / %.1e        %.1e' % \
-        (lmdu_i, err_ik, err_ir, sr[i]))
-    for i in range(rcon):
-        lmdu_i = lmdu[nconu - rcon + i]
-        err_ui = err_u[nconu - rcon + i]
+        if cnv_u[i] > 0:
+            st = 'converged at'
+        elif cnv_u[i] < 0:
+            st = 'stagnated at'
+        else:
+            st = ' '
+        print('%e        %.1e / %.1e        %.1e    %s %d' % \
+            (lmdu_i, err_ik, err_ir, sr[i], st, abs(cnv_u[i]) - 1))
+    for j in range(rcon):
+        i = nconu - rcon + j
+        lmdu_i = lmdu[i]
+        err_ui = err_u[i]
         err_uik = abs(err_ui[0])
         err_uir = abs(err_ui[1])
         if v_ex is None:
-            err_vi = err_v[nconv - rcon + i]
+            err_vi = err_v[i]
             err_vik = abs(err_vi[0])
             err_vir = abs(err_vi[1])
         else:
@@ -193,5 +202,11 @@ def check_eigenvectors_accuracy \
             err_vir = 0
         err_ik = max(err_uik, err_vik)
         err_ir = max(err_uir, err_vir)
-        print('%e        %.1e / %.1e        %.1e' % \
-        (lmdu_i, err_ik, err_ir, sr[i]))
+        if cnv_u[i] > 0:
+            st = 'converged at'
+        elif cnv_u[i] < 0:
+            st = 'stagnated at'
+        else:
+            st = ' '
+        print('%e        %.1e / %.1e        %.1e    %s %d' % \
+            (lmdu_i, err_ik, err_ir, sr[i], st, abs(cnv_u[i]) - 1))

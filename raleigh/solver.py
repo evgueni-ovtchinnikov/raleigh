@@ -243,6 +243,7 @@ class Solver:
         self.eigenvalue_errors = EstimatedErrors()
         self.eigenvector_errors = EstimatedErrors()
         self.residual_norms = numpy.ndarray((0,), dtype = numpy.float32)
+        self.convergence_status = numpy.ndarray((0,), dtype = numpy.int32)
 
         # convergence data
         self.cnv = numpy.zeros((m,), dtype = numpy.int32)
@@ -558,47 +559,49 @@ class Solver:
                     qx = math.sqrt(qi)
                     err_X[0, ix + i] = dX[ix + i]*qx/(1 - qx)
 
-            # residual-based error estimates:
-            # asymptotic Lehmann for eigenvalues
-            # generalized (extended gap) Davis-Kahan for eigenvectors
-            l = 0
-            for k in range(1, leftX):
-                i = ix + k
-#                if dX[i] > 0.01:
-                if abs(err_X[0, i]) > 0.01:
-                    break
-                if lmd[i] - lmd[i - 1] > res[i]:
-                    l = k
-            if l > 0:
-                i = ix + l
-                t = lmd[i]
-                if verb > 2:
-                    print('using left pole at lmd[%d] = %e' % (i, t))
-                m = block_size
-                for k in range(l):
+            if not gen:
+                # residual-based error estimates:
+                # asymptotic Lehmann for eigenvalues
+                # generalized (extended gap) Davis-Kahan for eigenvectors;
+                # not valid for the generalized eigenvalue problem
+                l = 0
+                for k in range(1, leftX):
                     i = ix + k
-                    s = res[i]
-                    err_lmd[1, i] = s*s/(t - lmd[i])
-                    err_X[1, i] = s/(t - lmd[i])
-            l = 0
-            for k in range(1, rightX):
-                i = ix + nx - k - 1
-#                if dX[i] > 0.01:
-                if abs(err_X[0, i]) > 0.01:
-                    break
-                if lmd[i + 1] - lmd[i] > res[i]:
-                    l = k
-            if l > 0:
-                i = ix + nx - l - 1
-                t = lmd[i]
-                if verb > 1:
-                    print('using right pole at lmd[%d] = %e' % (i, t))
-                m = block_size
-                for k in range(l):
+    #                if dX[i] > 0.01:
+                    if abs(err_X[0, i]) > 0.01:
+                        break
+                    if lmd[i] - lmd[i - 1] > res[i]:
+                        l = k
+                if l > 0:
+                    i = ix + l
+                    t = lmd[i]
+                    if verb > 2:
+                        print('using left pole at lmd[%d] = %e' % (i, t))
+                    m = block_size
+                    for k in range(l):
+                        i = ix + k
+                        s = res[i]
+                        err_lmd[1, i] = s*s/(t - lmd[i])
+                        err_X[1, i] = s/(t - lmd[i])
+                l = 0
+                for k in range(1, rightX):
                     i = ix + nx - k - 1
-                    s = res[i]
-                    err_lmd[1, i] = s*s/(lmd[i] - t)
-                    err_X[1, i] = s/(lmd[i] - t)
+    #                if dX[i] > 0.01:
+                    if abs(err_X[0, i]) > 0.01:
+                        break
+                    if lmd[i + 1] - lmd[i] > res[i]:
+                        l = k
+                if l > 0:
+                    i = ix + nx - l - 1
+                    t = lmd[i]
+                    if verb > 1:
+                        print('using right pole at lmd[%d] = %e' % (i, t))
+                    m = block_size
+                    for k in range(l):
+                        i = ix + nx - k - 1
+                        s = res[i]
+                        err_lmd[1, i] = s*s/(lmd[i] - t)
+                        err_X[1, i] = s/(lmd[i] - t)
 
             if verb > 1:
                 msg = 'eigenvalue   residual  ' + \
@@ -623,7 +626,7 @@ class Solver:
                         ' eigenvalue %e, error %.1e / %.1e'
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     lcon += 1
-                    self.cnv[k] = 1
+                    self.cnv[k] = self.iteration + 1
                 elif detect_stagn and res[k] >= 0 and res[k] < delta_R[i] and \
                             acf[0, k] >= acf[1, k]:
                     if verb > -1:
@@ -631,7 +634,7 @@ class Solver:
                         ' eigenvalue %e, error %.1e / %.1e'
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     lcon += 1
-                    self.cnv[k] = -1
+                    self.cnv[k] = -self.iteration - 1
                 else:
                     break
                 last = i
@@ -658,7 +661,7 @@ class Solver:
                         ' eigenvalue %e, error %.1e / %.1e'
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
-                    self.cnv[k] = 1
+                    self.cnv[k] = self.iteration + 1
                 elif detect_stagn and res[k] >= 0 and \
                         res[k] < delta_R[nx - i - 1] and \
                         acf[0, k] >= acf[1, k]:
@@ -667,7 +670,7 @@ class Solver:
                         ' eigenvalue %e, error %.1e / %.1e'
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
-                    self.cnv[k] = -1
+                    self.cnv[k] = -self.iteration - 1
                 else:
                     break
                 last = i
@@ -693,6 +696,8 @@ class Solver:
                 self.eigenvector_errors.append(err_X[:, ix : ix + lcon])
                 self.residual_norms = numpy.concatenate \
                     ((self.residual_norms, res[ix : ix + lcon]))
+                self.convergence_status = numpy.concatenate \
+                    ((self.convergence_status, self.cnv[ix : ix + lcon]))
                 X.select(lcon, ix)
                 if std and ncon > 0:
                     if ncon > 0:
@@ -724,6 +729,8 @@ class Solver:
                 self.eigenvector_errors.append(err_X[:, jx - rcon : jx])
                 self.residual_norms = numpy.concatenate \
                     ((self.residual_norms, res[jx - rcon : jx]))
+                self.convergence_status = numpy.concatenate \
+                    ((self.convergence_status, self.cnv[jx - rcon : jx]))
                 X.select(rcon, jx - rcon)
                 if std and ncon > 0:
                     if ncon > 0:

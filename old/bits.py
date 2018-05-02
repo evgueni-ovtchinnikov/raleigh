@@ -1073,3 +1073,5 @@ SAVE = False
                         #abs(dlmd[k, rec - 1]) > abs(dlmd[k, rec - 2]) and \
                         #abs(dlmd[k, rec - 1]) < 10*abs(dlmd[k, rec - 2]):
 
+                    first_rec = max(0, rec - self.iteration//3 - 2)
+#                    for r in range(rec - 1, first_rec, -1):
