@@ -39,15 +39,15 @@ class MyStoppingCriteria:
 numpy.random.seed(1) # make results reproducible
 
 opt = raleigh.solver.Options()
-opt.block_size = 64
+opt.block_size = 192
 opt.threads = 4
-opt.verbosity = 1
+opt.verbosity = 2
 #opt.max_iter = 200
 #opt.convergence_criteria = MyConvergenceCriteria(1e-4)
-opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-5) #1e-8)
+opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-25) #1e-8)
 opt.stopping_criteria = MyStoppingCriteria()
 opt.stopping_criteria.set_threshold(0.01)
-#opt.detect_stagnation = False
+opt.detect_stagnation = False
 
 m = 10000
 n = 4000
@@ -56,7 +56,7 @@ k = 200
 EXP = 1
 
 dt_op = numpy.float32
-dt_v = numpy.float64
+dt_v = numpy.float32
 
 a = 2*numpy.random.rand(m, n).astype(dt_op) - 1
 s = numpy.linalg.norm(a, axis = 0)

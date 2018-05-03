@@ -491,19 +491,19 @@ class Solver:
             AX.copy(W)
             norm_AX[ix : ix + nx] = numpy.sqrt(W.dots(W))
             # unstable
-#            if gen:
-#                W.add(BX, -lmd[ix : ix + nx])
-#            else:
-#                W.add(X, -lmd[ix : ix + nx])
-            if pro:
-                Q = W.dot(BX)
-            else:
-                Q = W.dot(X)
             if gen:
-                BX.mult(Q, Y)
+                W.add(BX, -lmd[ix : ix + nx])
             else:
-                X.mult(Q, Y)
-            W.add(Y, -1.0)
+                W.add(X, -lmd[ix : ix + nx])
+#            if pro:
+#                Q = W.dot(BX)
+#            else:
+#                Q = W.dot(X)
+#            if gen:
+#                BX.mult(Q, Y)
+#            else:
+#                X.mult(Q, Y)
+#            W.add(Y, -1.0)
 
             if Xc.nvec() > 0:
                 # orthogonalize W to Xc
@@ -835,6 +835,15 @@ class Solver:
                 W.copy(BY)
 
 #            print('max(XBY): %.1e' % numpy.amax(Y.dot(X)))
+            if not std:
+                Q = Y.dot(BX)
+            else:
+                Q = Y.dot(X)
+            X.mult(Q, W)
+            Y.add(W, -1.0)
+            if pro: # and nz > 0:
+                BX.mult(Q, W)
+                BY.add(W, -1.0)
             
             if Xc.nvec() > 0: #and (P is not None or gen):
 #                print('max(XcBX): %.1e' % numpy.amax(X.dot(Xc)))
@@ -848,7 +857,7 @@ class Solver:
                     Q = numpy.dot(Gci, Y.dot(Xc))
                 Xc.mult(Q, W)
                 Y.add(W, -1.0)
-                if pro and nz > 0:
+                if pro: # and nz > 0:
                     BXc.mult(Q, W)
                     BY.add(W, -1.0)
 
@@ -883,10 +892,8 @@ class Solver:
             # do pivoted Cholesky for GB
             U = GB
             ny = Y.nvec()
-#            eps = 1e-6
             if data_type == numpy.float32:
-#            if delta_R_rel > 1e-9:
-                eps = 1e-3
+                eps = 1e-4
             else:
                 eps = 1e-8
             ind, dropped, last_piv = piv_chol(U, nx, eps)
