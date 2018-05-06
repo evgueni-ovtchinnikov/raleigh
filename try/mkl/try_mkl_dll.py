@@ -86,6 +86,13 @@ def test1():
 #    mkl_nk = ctypes.c_int(n*(k - 2))
     mkl_incu = ctypes.c_int(1)
     mkl_incv = ctypes.c_int(1)
+
+#    print(type(u.ctypes.data))
+#    ptr_u1 = ctypes.c_void_p(u.ctypes.data + 4)
+#    ptr_u = u.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+#    print(u[0,0], ptr_u[0])
+#    return
+
     uij = u[i:j,:]
     vij = u[i:j,:]
 #    ptr_u = uij.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
@@ -96,7 +103,8 @@ def test1():
 #    uij[0,0] = 999
 #    print(u[i,0])
 #    print(ptr_u[0])
-    ptr_u = ctypes.c_void_p(uij.ctypes.data)
+    ptr_u = ctypes.c_void_p(u.ctypes.data + 4*n)
+#    ptr_u = ctypes.c_void_p(uij.ctypes.data)
     ptr_v = ctypes.c_void_p(vij.ctypes.data)
     ptr_q = ctypes.c_void_p(q.ctypes.data)
     r = norm(mkl_n, ptr_v, mkl_incv)
@@ -106,7 +114,7 @@ def test1():
     print(r)
     r = dot(mkl_n, ptr_u, mkl_incu, ptr_v, mkl_incv)
     print(math.sqrt(r))
-    
+
 #    print('matrix dot...')
 #    start = time.time()
 #    for t in range(l):
@@ -131,6 +139,7 @@ def test1():
              mkl_alpha, ptr_u, mkl_n, ptr_q, mkl_k, mkl_beta, ptr_v, mkl_n)
     stop = time.time()
     time_axpy_mkl = stop - start
+#    return
 
 #    print('matrix copy...')
 #    start = time.time()
@@ -171,7 +180,8 @@ def test1():
     start = time.time()
     for t in range(l):
         for i in range(k):
-            s[i] = numpy.dot(u[i,:], v[i,:])
+            s[i] = numpy.dot(u[i,:], u[i,:])
+#            s[i] = numpy.dot(u[i,:], v[i,:])
     s = numpy.sqrt(abs(s))
     stop = time.time()
     time_dots = stop - start
@@ -179,28 +189,49 @@ def test1():
 
     print('vector dots (mkl)...')
     start = time.time()
-#    ui = u[i,:]
-#    vi = v[i,:]
-#    ptr_u = ui.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-#    ptr_v = vi.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-    for i in range(k):
-        ui = u[i,:]
-        vi = v[i,:]
-        ptr_ui = ctypes.c_void_p(ui.ctypes.data)
-        ptr_vi = ctypes.c_void_p(vi.ctypes.data)
-#        ptr_ui = ui.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-#        ptr_vi = vi.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
-        for t in range(l):
-            s[i] = dot(mkl_n, ptr_ui, mkl_incu, ptr_vi, mkl_incv)
-# checking if dot is really called each time and not once!
-#            if t % 2:
-#                s[i] = t + dot(mkl_n, ptr_ui, mkl_incu, ptr_vi, mkl_incv)
-#            else:
-#                s[i] = t + dot(mkl_n, ptr_u, mkl_incu, ptr_v, mkl_incv)
+    for t in range(l):
+        pu = u.ctypes.data
+#        pv = v.ctypes.data
+        for i in range(k):
+#            ui = u[i,:]
+#            vi = v[i,:]
+#            ptr_ui = ctypes.c_void_p(ui.ctypes.data)
+#            ptr_vi = ctypes.c_void_p(vi.ctypes.data)
+#            ptr_ui = ctypes.c_void_p(u.ctypes.data + 4*n*i)
+#            ptr_vi = ctypes.c_void_p(v.ctypes.data + 4*n*i)
+            ptr_ui = ctypes.c_void_p(pu)
+#            ptr_vi = ctypes.c_void_p(pv)
+            s[i] = dot(mkl_n, ptr_ui, mkl_incu, ptr_ui, mkl_incv)
+#            s[i] = dot(mkl_n, ptr_ui, mkl_incu, ptr_vi, mkl_incv)
+            pu += 4*n
+#            pv += 4*n
     s = numpy.sqrt(abs(s))
     stop = time.time()
     time_dots_mkl = stop - start
 #    print(s)
+#    start = time.time()
+##    ui = u[i,:]
+##    vi = v[i,:]
+##    ptr_u = ui.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+##    ptr_v = vi.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+#    for i in range(k):
+#        ui = u[i,:]
+#        vi = v[i,:]
+#        ptr_ui = ctypes.c_void_p(ui.ctypes.data)
+#        ptr_vi = ctypes.c_void_p(vi.ctypes.data)
+##        ptr_ui = ui.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+##        ptr_vi = vi.ctypes.data_as(ctypes.POINTER(ctypes.c_float))
+#        for t in range(l):
+#            s[i] = dot(mkl_n, ptr_ui, mkl_incu, ptr_vi, mkl_incv)
+## checking if dot is really called each time and not once!
+##            if t % 2:
+##                s[i] = t + dot(mkl_n, ptr_ui, mkl_incu, ptr_vi, mkl_incv)
+##            else:
+##                s[i] = t + dot(mkl_n, ptr_u, mkl_incu, ptr_v, mkl_incv)
+#    s = numpy.sqrt(abs(s))
+#    stop = time.time()
+#    time_dots_mkl = stop - start
+##    print(s)
 
     print('vector axpys...')
     start = time.time()
@@ -212,17 +243,25 @@ def test1():
 
     print('vector axpys (mkl)...')
     start = time.time()
-    for i in range(k):
-        ui = u[i,:]
-        vi = v[i,:]
-        ptr_ui = ctypes.c_void_p(ui.ctypes.data)
-        ptr_vi = ctypes.c_void_p(vi.ctypes.data)
-        for t in range(l):
+    for t in range(l):
+        pu = u.ctypes.data
+        pv = v.ctypes.data
+        for i in range(k):
+#            ui = u[i,:]
+#            vi = v[i,:]
+#            ptr_ui = ctypes.c_void_p(ui.ctypes.data)
+#            ptr_vi = ctypes.c_void_p(vi.ctypes.data)
+#            ptr_ui = ctypes.c_void_p(u.ctypes.data + 4*n*i)
+#            ptr_vi = ctypes.c_void_p(v.ctypes.data + 4*n*i)
+            ptr_ui = ctypes.c_void_p(pu)
+            ptr_vi = ctypes.c_void_p(pv)
             if dt == numpy.float32:
                 mkl_s = ctypes.c_float(s[i])
             else:
                 mkl_s = ctypes.c_double(s[i])
             axpy(mkl_n, mkl_s, ptr_ui, mkl_incu, ptr_vi, mkl_incv)
+            pu += 4*n
+            pv += 4*n
     stop = time.time()
     time_axpys_mkl = stop - start
 
@@ -237,16 +276,20 @@ def test1():
 
     print('vectors scaling (mkl)...')
     start = time.time()
-    for i in range(k):
-        ui = u[i,:]
-        ptr_ui = ctypes.c_void_p(ui.ctypes.data)
-        for t in range(l):
+    for t in range(l):
+        pu = u.ctypes.data
+        for i in range(k):
+#            ui = u[i,:]
+#            ptr_ui = ctypes.c_void_p(ui.ctypes.data)
+#            ptr_ui = ctypes.c_void_p(u.ctypes.data + 4*n*i)
+            ptr_ui = ctypes.c_void_p(pu)
             if s[i] != 0.0:
                 if dt == numpy.float32:
                     mkl_s = ctypes.c_float(1.0/s[i])
                 else:
                     mkl_s = ctypes.c_double(1.0/s[i])
                 scal(mkl_n, mkl_s, ptr_ui, mkl_incu)
+            pu += 4*n
     stop = time.time()
     time_scal_mkl = stop - start
 
