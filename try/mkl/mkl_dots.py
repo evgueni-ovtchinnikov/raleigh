@@ -5,7 +5,7 @@ from sys import platform
 if platform == 'win32':
     mkl = ctypes.CDLL('mkl_rt.dll', mode = ctypes.RTLD_GLOBAL)
 else:
-    mkl = ctypes.CDLL('mkl_rt.so', mode = ctypes.RTLD_GLOBAL)
+    mkl = ctypes.CDLL('libmkl_rt.so', mode = ctypes.RTLD_GLOBAL)
 
 numpy.random.seed(1) # make results reproducible
 

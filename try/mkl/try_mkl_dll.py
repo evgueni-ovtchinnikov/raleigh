@@ -19,7 +19,7 @@ print(platform)
 if platform == 'win32':
     mkl = ctypes.CDLL('mkl_rt.dll', mode = ctypes.RTLD_GLOBAL)
 else:
-    mkl = ctypes.CDLL('mkl_rt.so', mode = ctypes.RTLD_GLOBAL)
+    mkl = ctypes.CDLL('libmkl_rt.so', mode = ctypes.RTLD_GLOBAL)
 
 print(mkl.mkl_get_max_threads())
 #print(mkl.CblasColMajor)
