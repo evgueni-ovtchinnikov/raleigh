@@ -6,17 +6,26 @@ if platform == 'win32':
     mkl = ctypes.CDLL('mkl_rt.dll', mode = ctypes.RTLD_GLOBAL)
 else:
     mkl = ctypes.CDLL('libmkl_rt.so', mode = ctypes.RTLD_GLOBAL)
+len = 128
+version = ctypes.create_string_buffer(len)
+mkl.mkl_get_version_string(version, ctypes.c_int(len))
+print(version.value.decode('ascii'))
+nthreads = mkl.mkl_get_max_threads
+nthreads.restype = ctypes.c_int
+nt = nthreads()
+print('max mkl threads: %d' % nt)
 
 numpy.random.seed(1) # make results reproducible
 
-n = 40000
+n = 100000
 k = 32
-l = 2500
-dt = numpy.float32
+l = 1000
+dtype = numpy.float32
+dsize = 4
 
-u = numpy.random.randn(k, n).astype(dt)
-v = numpy.random.randn(k, n).astype(dt)
-s = numpy.zeros((k,))
+u = numpy.random.randn(k, n).astype(dtype)
+v = numpy.random.randn(k, n).astype(dtype)
+s = numpy.zeros((k,), dtype = dtype)
 
 dot = mkl.cblas_sdot
 dot.restype = ctypes.c_float
@@ -26,26 +35,27 @@ inc = ctypes.c_int(1)
 
 start = time.time()
 for t in range(l):
-    pu = u.ctypes.data
-    pv = v.ctypes.data
+    data_u = u.ctypes.data
+    data_v = v.ctypes.data
     for i in range(k):
-        ptr_ui = ctypes.c_void_p(pu)
-        ptr_vi = ctypes.c_void_p(pv)
+        ptr_ui = ctypes.c_void_p(data_u)
+        ptr_vi = ctypes.c_void_p(data_v)
         s[i] = dot(mkl_n, ptr_ui, inc, ptr_vi, inc)
-        pu += 4*n
-        pv += 4*n
+        data_u += dsize*n
+        data_v += dsize*n
 stop = time.time()
 print('time: %.1e' % (stop - start))
 
 start = time.time()
-pu = u.ctypes.data
-pv = v.ctypes.data
+data_u = u.ctypes.data
+data_v = v.ctypes.data
 for i in range(k):
-    ptr_ui = ctypes.c_void_p(pu)
-    ptr_vi = ctypes.c_void_p(pv)
+    ptr_ui = ctypes.c_void_p(data_u)
+    ptr_vi = ctypes.c_void_p(data_v)
     for t in range(l):
+        # much faster than the above apprently because data sits in cache
         s[i] = dot(mkl_n, ptr_ui, inc, ptr_vi, inc)
-    pu += 4*n
-    pv += 4*n
+    data_u += dsize*n
+    data_v += dsize*n
 stop = time.time()
 print('time: %.1e' % (stop - start))

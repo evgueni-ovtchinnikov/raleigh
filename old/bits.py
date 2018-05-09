@@ -1075,3 +1075,8 @@ SAVE = False
 
                     first_rec = max(0, rec - self.iteration//3 - 2)
 #                    for r in range(rec - 1, first_rec, -1):
+
+#        ptr_ui = ctypes.c_void_p(pu)
+#        ptr_vi = ctypes.c_void_p(pv)
+
+#        s[i] = dot(mkl_n, ptr_ui, inc, ptr_vi, inc)
