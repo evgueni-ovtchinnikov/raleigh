@@ -277,6 +277,8 @@ class Solver:
         else:
             BX = X
             BY = Y
+        AZ = AY
+        BZ = BY
 
         # copy initial vectors if present
         l = left_block_size
@@ -335,8 +337,8 @@ class Solver:
             Gci = 2*numpy.identity(nc) - Gc
 
         # initialize
-        AZ = None
-        BZ = None
+#        AZ = None
+#        BZ = None
         leftX = left_block_size
         rightX = block_size - leftX
         rec = 0
@@ -353,8 +355,7 @@ class Solver:
             # gen: X := X - Xc BXc* X
             # pro: X := X - Xc BXc* X
             Q = numpy.dot(Gci, X.dot(BXc))
-            Xc.mult(Q, W)
-            X.add(W, -1.0)
+            X.add(Xc, -1.0, Q)
 
         if not std:
             B(X, BX)
@@ -384,10 +385,10 @@ class Solver:
             if Xc.nvec() > 0:
                 # orthogonalize X to Xc
                 Q = numpy.dot(Gci, X.dot(BXc))
-                Xc.mult(Q, W)
+                Xc.multiply(Q, W)
                 X.add(W, -1.0)
                 if not std:
-                    BXc.mult(Q, W)
+                    BXc.multiply(Q, W)
                     BX.add(W, -1.0)
             nx = m
             X.select(nx)
@@ -404,12 +405,12 @@ class Solver:
             XAX = AX.dot(X)
         lmdx, Q = sla.eigh(XAX, XBX, turbo=False) #, overwrite_a = True, overwrite_b = True)
         W.select(m)
-        X.mult(Q, W)
+        X.multiply(Q, W)
         W.copy(X)
-        AX.mult(Q, W)
+        AX.multiply(Q, W)
         W.copy(AX)
         if not std:
-            BX.mult(Q, Z)
+            BX.multiply(Q, Z)
             Z.copy(BX)
 
         lmd_min = lmdx[0]
@@ -455,7 +456,15 @@ class Solver:
             lmd_max = max(lmd_max, new_lmd[-1])
             rv_err = numpy.amax(abs(new_lmd - lmdx))
             ntot = nx + self.lcon + self.rcon
-            dlmd_av = (lmdx[leftX - 1] - lmd_min + lmd_max - lmdx[leftX])/ntot
+            if leftX > 0:
+                sl = lmdx[leftX - 1] - lmd_min
+            else:
+                sl = 0
+            if leftX < nx:
+                sr = lmd_max - lmdx[leftX]
+            else:
+                sr = 0
+            dlmd_av = (sl + sr)/ntot
             if verb > 0:
                 print('average eigenvalue gap: %.1e' % dlmd_av)
                 print('Ritz values error: %.1e' % rv_err)
@@ -490,20 +499,10 @@ class Solver:
             Y.select(nx)
             AX.copy(W)
             norm_AX[ix : ix + nx] = numpy.sqrt(W.dots(W))
-            # unstable
             if gen:
                 W.add(BX, -lmd[ix : ix + nx])
             else:
                 W.add(X, -lmd[ix : ix + nx])
-#            if pro:
-#                Q = W.dot(BX)
-#            else:
-#                Q = W.dot(X)
-#            if gen:
-#                BX.mult(Q, Y)
-#            else:
-#                X.mult(Q, Y)
-#            W.add(Y, -1.0)
 
             if Xc.nvec() > 0:
                 # orthogonalize W to Xc
@@ -515,10 +514,9 @@ class Solver:
                 else:
                     Q = numpy.dot(Gci, W.dot(Xc))
                 if gen:
-                    BXc.mult(Q, Y)
+                    W.add(BXc, -1.0, Q)
                 else:
-                    Xc.mult(Q, Y)
-                W.add(Y, -1.0)
+                    W.add(Xc, -1.0, Q)
 
             if pro:
                 W.copy(Y)
@@ -628,7 +626,7 @@ class Solver:
                     lcon += 1
                     self.cnv[k] = self.iteration + 1
                 elif detect_stagn and res[k] >= 0 and res[k] < delta_R[i] and \
-                            acf[0, k] >= acf[1, k]:
+                            acf[0, k] > acf[1, k]:
                     if verb > -1:
                         msg = 'left eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
@@ -664,7 +662,7 @@ class Solver:
                     self.cnv[k] = self.iteration + 1
                 elif detect_stagn and res[k] >= 0 and \
                         res[k] < delta_R[nx - i - 1] and \
-                        acf[0, k] >= acf[1, k]:
+                        acf[0, k] > acf[1, k]:
                     if verb > -1:
                         msg = 'right eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
@@ -791,10 +789,7 @@ class Solver:
                 else:
                     P(W, Y)
 
-#            print('max(XBY): %.1e' % numpy.amax(Y.dot(X)))
-
             if nz > 0:
-#                print('max(ZBY): %.1e' % numpy.amax(Y.dot(Z)))
                 # compute the conjugation matrix
                 if pro:
                     ZAY = W.dot(AZ)
@@ -824,42 +819,28 @@ class Solver:
                 
                 # conjugate search directions
                 AZ.select(ny)
-                Z.mult(Beta, AZ)
-                Y.add(AZ, -1.0)
+                Y.add(Z, -1.0, Beta)
                 if pro: # if gen or nz == 0, BY computed later
-                    BZ.mult(Beta, AZ)
-                    W.add(AZ, -1.0)
+                    W.add(BZ, -1.0, Beta)
                     BY.select(ny)
                     W.copy(BY)
             elif pro:
                 W.copy(BY)
 
-#            print('max(XBY): %.1e' % numpy.amax(Y.dot(X)))
-            if not std:
-                Q = Y.dot(BX)
-            else:
-                Q = Y.dot(X)
-            X.mult(Q, W)
-            Y.add(W, -1.0)
-            if pro: # and nz > 0:
-                BX.mult(Q, W)
-                BY.add(W, -1.0)
+            Q = Y.dot(BX)
+            Y.add(X, -1.0, Q)
+            if pro:
+                BY.add(BX, -1.0, Q)
             
             if Xc.nvec() > 0: #and (P is not None or gen):
-#                print('max(XcBX): %.1e' % numpy.amax(X.dot(Xc)))
                # orthogonalize Y to Xc
                 # std: W := W - Xc Xc* W (not needed if P is None)
                 # gen: W := W - Xc BXc* W
                 # pro: W := W - Xc BXc* W (not needed if P is None)
-                if not std:
-                    Q = numpy.dot(Gci, Y.dot(BXc))
-                else:
-                    Q = numpy.dot(Gci, Y.dot(Xc))
-                Xc.mult(Q, W)
-                Y.add(W, -1.0)
-                if pro: # and nz > 0:
-                    BXc.mult(Q, W)
-                    BY.add(W, -1.0)
+                Q = numpy.dot(Gci, Y.dot(BXc))
+                Y.add(Xc, -1.0, Q)
+                if pro:
+                    BY.add(BXc, -1.0, Q)
 
             # compute (B-)Gram matrix for (X,Y)
             if std:
@@ -879,8 +860,6 @@ class Solver:
                     XBY = BY.dot(X)
                 YBY = BY.dot(Y)
                 
-#            print('max(XBY): %.1e' % numpy.amax(XBY))
-
             if nx > 0:
                 YBX = conjugate(XBY)
                 GB = numpy.concatenate((XBX, YBX))
@@ -1097,66 +1076,50 @@ class Solver:
             W.select(nx_new)
             Z.select(nx_new)
             if nx > 0:
-                AX.mult(QXX, W)
-                AY.mult(QYX, Z)
-                W.add(Z, 1.0) # W = AX*QXX + AY*QYX
+                AX.multiply(QXX, W)
+                W.add(AY, 1.0, QYX)
             else:
-                AY.mult(QYX, W)
-            Z.select(nz)
+                AY.multiply(QYX, W)
             if nz > 0:
-                AY.mult(QYZ, Z)
-                AZ = AY
+                Z.select(nz)
+                AY.multiply(QYZ, Z)
                 AZ.select(nz)
                 if nx > 0:
-                    AX.mult(QXZ, AZ)
-                else:
-                    AZ.zero()
+                    Z.add(AX, 1.0, QXZ)
+                Z.copy(AZ)
             AX.select(nx_new, ix_new)
             W.copy(AX)
-            if nz > 0:
-                AZ.add(Z, 1.0) # Z = AX*QXZ + AY*QYZ
             if not std:
                 Z.select(nx_new)
                 if nx > 0:
-                    BX.mult(QXX, W)
-                    BY.mult(QYX, Z)
-                    W.add(Z, 1.0)
+                    BX.multiply(QXX, W)
+                    W.add(BY, 1.0, QYX)
                 else:
-                    BY.mult(QYX, W)
-                Z.select(nz)
+                    BY.multiply(QYX, W)
                 if nz > 0:
-                    BY.mult(QYZ, Z)
-                    BZ = BY
+                    Z.select(nz)
+                    BY.multiply(QYZ, Z)
                     BZ.select(nz)
                     if nx > 0:
-                        BX.mult(QXZ, BZ)
-                    else:
-                        BZ.zero()
+                        Z.add(BX, 1.0, QXZ)
+                    Z.copy(BZ)
                 BX.select(nx_new, ix_new)
                 W.copy(BX)
-                if nz > 0:
-                    BZ.add(Z, 1.0)
             else:
                 BZ = Z
             Z.select(nx_new)
             if nx > 0:
-                X.mult(QXX, W)
-                Y.mult(QYX, Z)
-                W.add(Z, 1.0) # W = X*QXX + Y*QYX
+                X.multiply(QXX, W)
+                W.add(Y, 1.0, QYX)
             else:
-                Y.mult(QYX, W)
-            Z.select(nz)
+                Y.multiply(QYX, W)
             if nz > 0:
+                Z.select(nz)
+                Y.multiply(QYZ, Z)
                 if nx > 0:
-                    X.mult(QXZ, Z)
-                else:
-                    Z.zero()
+                    Z.add(X, 1.0, QXZ)
             X.select(nx_new, ix_new)
             W.copy(X)
-            if nz > 0:
-                W.select(nz)
-                Y.mult(QYZ, W)
-                Z.add(W, 1.0) # Z = X*QXZ + Y*QYZ
                 
             nx = nx_new
             ix = ix_new

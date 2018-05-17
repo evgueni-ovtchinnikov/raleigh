@@ -1080,3 +1080,95 @@ SAVE = False
 #        ptr_vi = ctypes.c_void_p(pv)
 
 #        s[i] = dot(mkl_n, ptr_ui, inc, ptr_vi, inc)
+
+            delta_R = numpy.ndarray((nx,))
+            delta_R[0] = RX[1,0]
+            delta_R[1:] = numpy.diag(RX, 1)
+#            delta_R = numpy.amax(RX, axis = 0)
+
+#            for i in range(nx):
+#                for j in range(nx):
+#                    if XAX[i,i] > 4*XAX[j,j] or XAX[i,i] < 0.25*XAX[j,j]:
+#                        RX[i,j] = 0
+
+#                    BXc.mult(Q, Y)
+#                    Xc.mult(Q, Y)
+#                W.add(Y, -1.0)
+
+#            print('max(XBY): %.1e' % numpy.amax(Y.dot(X)))
+
+#                print('max(ZBY): %.1e' % numpy.amax(Y.dot(Z)))
+
+#                Z.mult(Beta, AZ)
+#                Y.add(AZ, -1.0)
+
+#                    BZ.mult(Beta, AZ)
+#                    W.add(AZ, -1.0)
+
+#            print('max(XBY): %.1e' % numpy.amax(Y.dot(X)))
+
+#            X.mult(Q, W)
+#            Y.add(W, -1.0)
+
+#                BX.mult(Q, W)
+#                BY.add(W, -1.0)
+
+#                print('max(XcBX): %.1e' % numpy.amax(X.dot(Xc)))
+
+#                Xc.mult(Q, W)
+#                Y.add(W, -1.0)
+
+#                    BXc.mult(Q, W)
+#                    BY.add(W, -1.0)
+
+#            print('max(XBY): %.1e' % numpy.amax(XBY))
+
+#                AY.mult(QYX, Z)
+#                W.add(Z, 1.0) # W = AX*QXX + AY*QYX
+
+#                    AX.mult(QXZ, AZ)
+#                else:
+#                    AZ.zero()
+
+#            if nz > 0:
+#                AZ.add(Z, 1.0) # AZ = AX*QXZ + AY*QYZ
+
+#                    BY.mult(QYX, Z)
+#                    W.add(Z, 1.0)
+
+#                        BX.mult(QXZ, BZ)
+#                    else:
+#                        BZ.zero()
+
+#                if nz > 0:
+#                    BZ.add(Z, 1.0)
+
+#                Y.mult(QYX, Z)
+#                W.add(Z, 1.0) # W = X*QXX + Y*QYX
+
+#                    X.mult(QXZ, Z)
+#                else:
+#                    Z.zero()
+#            if nz > 0:
+#                Z.add(Y, 1.0, QYZ)
+
+#                W.select(nz)
+#                Y.mult(QYZ, W)
+#                Z.add(W, 1.0) # Z = X*QXZ + Y*QYZ
+
+                #AZ = AY
+
+#            Xc.multiply(Q, W)
+#            X.add(W, -1.0)
+
+#            if not std:
+#                Q = Y.dot(BX)
+#            else:
+#                Q = Y.dot(X)
+
+#                if not std:
+#                    Q = numpy.dot(Gci, Y.dot(BXc))
+#                else:
+#                    Q = numpy.dot(Gci, Y.dot(Xc))
+
+                    #BZ = BY
