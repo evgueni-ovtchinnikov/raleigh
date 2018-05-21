@@ -11,11 +11,21 @@ import scipy.linalg as sla
 
 RECORDS = 20
 
+def is_complex(v):
+    return type(v) is numpy.complex64 or type(v) is numpy.complex128
+
 def conjugate(a):
-    if isinstance(a[0,0], complex):
+#    if numpy.iscomplex(a[0,0]): # lying!!!
+    if is_complex(a[0,0]):
         return a.conj().T
     else:
         return a.T
+
+def real(a):
+    if is_complex(a[0]):
+        return a.real
+    else:
+        return a
 
 def transform(A, U):
     B = sla.solve_triangular(conjugate(U), conjugate(A), lower = True)
@@ -403,7 +413,10 @@ class Solver:
         else:
             A(X, AX)
             XAX = AX.dot(X)
+#        XAX = 0.5*(XAX + conjugate(XAX))
+#        print(XAX)
         lmdx, Q = sla.eigh(XAX, XBX, turbo=False) #, overwrite_a = True, overwrite_b = True)
+        print(lmdx)
         W.select(m)
         X.multiply(Q, W)
         W.copy(X)
@@ -423,15 +436,17 @@ class Solver:
 
             if pro:
                 XAX = AX.dot(BX)
-#                da0 = AX.dots(BX)
+#                da = AX.dots(BX)
             else:
                 XAX = AX.dot(X)
-#                da0 = AX.dots(X)
+#                da = AX.dots(X)
             XBX = BX.dot(X)
-#            db0 = BX.dots(X)
+#            db = BX.dots(X)
+#            print(db)
             da = XAX.diagonal()
             db = XBX.diagonal()
-            new_lmd = da/db
+            new_lmd = real(da/db)
+#            print(lmdx)
 #            print(new_lmd)
 
             # estimate error in residual computation due to the error in
@@ -441,12 +456,12 @@ class Solver:
             RX = XAX - numpy.dot(XBX, Lmd)
             delta_R = nla.norm(RX, axis = 0)
             if gen:
-                s = numpy.sqrt(X.dots(X))
+                s = numpy.sqrt(abs(X.dots(X)))
                 delta_R /= s #numpy.amax(s)
 #            print(delta_R)
 #            print(numpy.sqrt(AX.dots(AX)))
             delta_R_abs = numpy.amax(delta_R)
-            s = numpy.sqrt(AX.dots(AX))
+            s = numpy.sqrt(abs(AX.dots(AX)))
 #            print(delta_R)
 #            print(s)
             delta_R_rel = numpy.amax(delta_R/s)
@@ -498,7 +513,7 @@ class Solver:
             W.select(nx, ix)
             Y.select(nx)
             AX.copy(W)
-            norm_AX[ix : ix + nx] = numpy.sqrt(W.dots(W))
+            norm_AX[ix : ix + nx] = numpy.sqrt(abs(W.dots(W)))
             if gen:
                 W.add(BX, -lmd[ix : ix + nx])
             else:
@@ -518,13 +533,15 @@ class Solver:
                 else:
                     W.add(Xc, -1.0, Q)
 
+#            print('Y.nvec: %d' % Y.nvec())
+#            print('W.nvec: %d' % W.nvec())
             if pro:
                 W.copy(Y)
                 B(Y, W)
                 s = W.dots(Y)
             else:
                 s = W.dots(W)
-            res[ix : ix + nx] = numpy.sqrt(s)
+            res[ix : ix + nx] = numpy.sqrt(abs(s))
 
             # kinematic error estimates
             if rec > 3: # sufficient history available
@@ -806,8 +823,8 @@ class Solver:
                 Lmd[0, :] = lmd[iy : iy + ny]
                 Mu[:, 0] = lmdz
                 Den = Mu - Lmd
-                sy = numpy.sqrt(Y.dots(Y))
-                sz = numpy.sqrt(Z.dots(Z))
+                sy = numpy.sqrt(abs(Y.dots(Y)))
+                sz = numpy.sqrt(abs(Z.dots(Z)))
                 Beta = numpy.ndarray((nz, ny), dtype = data_type)
                 for iz in range(nz):
                     for iy in range(ny):
@@ -825,6 +842,7 @@ class Solver:
                     BY.select(ny)
                     W.copy(BY)
             elif pro:
+                BY.select(ny)
                 W.copy(BY)
 
             Q = Y.dot(BX)
@@ -844,7 +862,7 @@ class Solver:
 
             # compute (B-)Gram matrix for (X,Y)
             if std:
-                s = numpy.sqrt(Y.dots(Y))
+                s = numpy.sqrt(abs(Y.dots(Y)))
                 Y.scale(s)
                 if nx > 0:
                     XBY = Y.dot(X)
@@ -853,7 +871,7 @@ class Solver:
                 BY.select(Y.nvec())
                 if not pro: # or nz == 0:
                     B(Y, BY)
-                s = numpy.sqrt(BY.dots(Y))
+                s = numpy.sqrt(abs(BY.dots(Y)))
                 Y.scale(s)
                 BY.scale(s)
                 if nx > 0:
@@ -871,7 +889,7 @@ class Solver:
             # do pivoted Cholesky for GB
             U = GB
             ny = Y.nvec()
-            if data_type == numpy.float32:
+            if data_type == numpy.float32 or data_type == numpy.complex64:
                 eps = 1e-4
             else:
                 eps = 1e-8
@@ -954,7 +972,7 @@ class Solver:
                     dlmd[:, i] = dlmd[:, i + 1]
             else:
                 rec += 1
-            dlmd[ix : ix + nx, rec - 1] = numpy.sum(Delta, axis = 0)
+            dlmd[ix : ix + nx, rec - 1] = real(numpy.sum(Delta, axis = 0))
 
             # select new numbers of left and right eigenpairs
             if left < 0:

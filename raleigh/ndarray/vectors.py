@@ -27,7 +27,7 @@ except:
     HAVE_MKL = False
 
 class Vectors:
-    def __init__(self, arg, nvec = 0, data_type = None):
+    def __init__(self, arg, nvec = 0, data_type = None, with_mkl = True):
         if isinstance(arg, Vectors):
             self.__data = arg.__data.copy()
         elif isinstance(arg, numpy.ndarray):
@@ -40,8 +40,8 @@ class Vectors:
         else:
             raise ValueError \
             ('wrong argument %s in constructor' % repr(type(arg)))
-        self.__with_mkl = HAVE_MKL
-        if self.__with_mkl:
+        self.__with_mkl = HAVE_MKL and with_mkl
+        if HAVE_MKL: #self.__with_mkl:
             dt = self.__data.dtype
             if dt == numpy.float32:
                 self.__dsize = 4
@@ -67,6 +67,36 @@ class Vectors:
                 self.__inner.restype = ctypes.c_double
                 self.__mkl_one = ctypes.c_double(1.0)
                 self.__mkl_zero = ctypes.c_double(0.0)
+            elif dt == numpy.complex64:
+                self.__dsize = 8
+                self.__gemm = mkl.cblas_cgemm
+                self.__axpy = mkl.cblas_caxpy
+                self.__copy = mkl.cblas_ccopy
+                self.__scal = mkl.cblas_cscal
+                self.__norm = mkl.cblas_scnrm2
+                self.__norm.restype = ctypes.c_float
+                self.__inner = mkl.cblas_cdotc_sub
+                self.__cmplx_val = numpy.zeros((2,), dtype = numpy.float32)
+                self.__cmplx_one = numpy.zeros((2,), dtype = numpy.float32)
+                self.__cmplx_one[0] = 1.0
+                self.__cmplx_zero = numpy.zeros((2,), dtype = numpy.float32)
+                self.__mkl_one = ctypes.c_void_p(self.__cmplx_one.ctypes.data)
+                self.__mkl_zero = ctypes.c_void_p(self.__cmplx_zero.ctypes.data)
+            elif dt == numpy.complex128:
+                self.__dsize = 16
+                self.__gemm = mkl.cblas_zgemm
+                self.__axpy = mkl.cblas_zaxpy
+                self.__copy = mkl.cblas_zcopy
+                self.__scal = mkl.cblas_zscal
+                self.__norm = mkl.cblas_dznrm2
+                self.__norm.restype = ctypes.c_double
+                self.__inner = mkl.cblas_zdotc_sub
+                self.__cmplx_val = numpy.zeros((2,), dtype = numpy.float64)
+                self.__cmplx_one = numpy.zeros((2,), dtype = numpy.float64)
+                self.__cmplx_one[0] = 1.0
+                self.__cmplx_zero = numpy.zeros((2,), dtype = numpy.float64)
+                self.__mkl_one = ctypes.c_void_p(self.__cmplx_one.ctypes.data)
+                self.__mkl_zero = ctypes.c_void_p(self.__cmplx_zero.ctypes.data)
             else:
                 raise ValueError('data type %s not supported' % repr(dt))
         m, n = self.__data.shape
@@ -77,6 +107,10 @@ class Vectors:
             return ctypes.c_float(v)
         elif dt == numpy.float64:
             return ctypes.c_double(v)
+        elif dt == numpy.complex64 or dt == numpy.complex128:
+            self.__cmplx_val[0] = v.real
+            self.__cmplx_val[1] = v.imag
+            return ctypes.c_void_p(self.__cmplx_val.ctypes.data)
         else:
             raise ValueError('data type %s not supported' % repr(dt))
     def dimension(self):
@@ -93,7 +127,10 @@ class Vectors:
     def data_type(self):
         return self.__data.dtype
     def is_complex(self):
-        return isinstance(self.__data[0,0], complex)
+        v = self.__data[0,0]
+        return type(v) is numpy.complex64 or type(v) is numpy.complex128
+##        return numpy.iscomplex(self.__data[0,0])
+##        return isinstance(self.__data[0,0], complex)
     def clone(self):
         return Vectors(self) #.__data.copy())
     def new_vectors(self, nv = 0):
@@ -104,9 +141,9 @@ class Vectors:
     def zero(self):
         f, n = self.__selected;
         self.__data[f : f + n, :] = 0.0
-##    def fill(self, array_or_value):
-##        f, n = self.__selected;
-##        self.__data[f : f + n, :] = array_or_value
+    def fill(self, array_or_value):
+        f, n = self.__selected;
+        self.__data[f : f + n, :] = array_or_value
     def fill_random(self):
         iv, nv = self.__selected
         m, n = self.__data.shape
@@ -205,12 +242,19 @@ class Vectors:
             mkl_n = ctypes.c_int(vdim)
             mkl_inc = ctypes.c_int(1)
             vsize = self.__dsize * vdim
+            if self.is_complex():
+                ptr_r = ctypes.c_void_p(self.__cmplx_val.ctypes.data)
             for i in range(n):
                 data_u = self.__data.ctypes.data + i*vsize
                 data_v = other.__data.ctypes.data + i*vsize
                 ptr_u = ctypes.c_void_p(data_u)
                 ptr_v = ctypes.c_void_p(data_v)
-                v[i] = self.__inner(mkl_n, ptr_v, mkl_inc, ptr_u, mkl_inc)
+                if self.is_complex():
+                    self.__inner(mkl_n, ptr_v, mkl_inc, ptr_u, mkl_inc, ptr_r)
+                    res = self.__cmplx_val
+                    v[i] = res[0] + 1j * res[1]
+                else:
+                    v[i] = self.__inner(mkl_n, ptr_v, mkl_inc, ptr_u, mkl_inc)
         else:
             for i in range(n):
                 if other.is_complex():

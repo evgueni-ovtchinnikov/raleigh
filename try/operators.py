@@ -9,6 +9,14 @@ class Diagonal:
     def apply(self, x, y):
         y.data()[:,:] = self.d * x.data()
 
+class CentralDiff:
+    def __init__(self, n):
+        self.n = n
+    def apply(self, x, y):
+        y.data()[:,0] = 1j * x.data()[:,1]
+        y.data()[:,-1] = -1j * x.data()[:,-2]
+        y.data()[:, 1 : -1] = 1j * x.data()[:, 2:] - 1j * x.data()[:, :-2]
+
 class SVD:
     def __init__(self, a):
         self.a = a
