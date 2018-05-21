@@ -1172,3 +1172,21 @@ SAVE = False
 #                    Q = numpy.dot(Gci, Y.dot(Xc))
 
                     #BZ = BY
+
+#        XAX = 0.5*(XAX + conjugate(XAX))
+#        print(XAX)
+
+#        print(lmdx)
+
+#        AZ = None
+#        BZ = None
+
+#            print(delta_R)
+#            print(numpy.sqrt(AX.dots(AX)))
+
+#            print('Y.nvec: %d' % Y.nvec())
+#            print('W.nvec: %d' % W.nvec())
+
+#                    print(ind)
+#                    print(math.sqrt(last_piv))
+

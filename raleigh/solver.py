@@ -347,8 +347,6 @@ class Solver:
             Gci = 2*numpy.identity(nc) - Gc
 
         # initialize
-#        AZ = None
-#        BZ = None
         leftX = left_block_size
         rightX = block_size - leftX
         rec = 0
@@ -413,10 +411,7 @@ class Solver:
         else:
             A(X, AX)
             XAX = AX.dot(X)
-#        XAX = 0.5*(XAX + conjugate(XAX))
-#        print(XAX)
         lmdx, Q = sla.eigh(XAX, XBX, turbo=False) #, overwrite_a = True, overwrite_b = True)
-        print(lmdx)
         W.select(m)
         X.multiply(Q, W)
         W.copy(X)
@@ -442,12 +437,9 @@ class Solver:
 #                da = AX.dots(X)
             XBX = BX.dot(X)
 #            db = BX.dots(X)
-#            print(db)
             da = XAX.diagonal()
             db = XBX.diagonal()
             new_lmd = real(da/db)
-#            print(lmdx)
-#            print(new_lmd)
 
             # estimate error in residual computation due to the error in
             # computing AX, to be used in detecting convergence stagnation
@@ -458,12 +450,8 @@ class Solver:
             if gen:
                 s = numpy.sqrt(abs(X.dots(X)))
                 delta_R /= s #numpy.amax(s)
-#            print(delta_R)
-#            print(numpy.sqrt(AX.dots(AX)))
             delta_R_abs = numpy.amax(delta_R)
             s = numpy.sqrt(abs(AX.dots(AX)))
-#            print(delta_R)
-#            print(s)
             delta_R_rel = numpy.amax(delta_R/s)
             delta_R *= 10
             
@@ -533,8 +521,6 @@ class Solver:
                 else:
                     W.add(Xc, -1.0, Q)
 
-#            print('Y.nvec: %d' % Y.nvec())
-#            print('W.nvec: %d' % W.nvec())
             if pro:
                 W.copy(Y)
                 B(Y, W)
@@ -619,12 +605,12 @@ class Solver:
                         err_X[1, i] = s/(lmd[i] - t)
 
             if verb > 1:
-                msg = 'eigenvalue   residual  ' + \
+                msg = 'eigenvalue     residual  ' + \
                 'estimated errors (kinematic/residual)' + \
-                '  a.c.f.'
+                '   a.c.f.'
                 print(msg)
                 for i in range(block_size):
-                    print('%e %.1e  %.1e / %.1e    %.1e / %.1e  %.3e  %d' % \
+                    print('%14e %8.1e  %.1e / %.1e    %.1e / %.1e  %.3e  %d' % \
                           (lmd[i], res[i], \
                           abs(err_lmd[0, i]), abs(err_lmd[1, i]), \
                           abs(err_X[0, i]), abs(err_X[1, i]), \
@@ -896,8 +882,6 @@ class Solver:
             ind, dropped, last_piv = piv_chol(U, nx, eps)
             if dropped > 0:
                 if verb > -1:
-#                    print(ind)
-#                    print(math.sqrt(last_piv))
                     print('dropped %d search directions out of %d' \
                           % (dropped, ny))
             

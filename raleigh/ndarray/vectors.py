@@ -6,6 +6,7 @@ Implementation of the abstract class Vectors based on numpy.ndarray
 import ctypes
 import numbers
 import numpy
+import numpy.linalg as nla
 
 from sys import platform
 
@@ -41,7 +42,7 @@ class Vectors:
             raise ValueError \
             ('wrong argument %s in constructor' % repr(type(arg)))
         self.__with_mkl = HAVE_MKL and with_mkl
-        if HAVE_MKL: #self.__with_mkl:
+        if self.__with_mkl:
             dt = self.__data.dtype
             if dt == numpy.float32:
                 self.__dsize = 4
@@ -226,14 +227,14 @@ class Vectors:
             vsize = self.__dsize * vdim
             for i in range(n):
                 if s[i] != 0.0:
-                    data_u = self.__data.ctypes.data + i*vsize
+                    data_u = self.__data.ctypes.data + (f + i)*vsize
                     ptr_u = ctypes.c_void_p(data_u)
                     mkl_s = self.__to_mkl_float(1.0/s[i])
                     self.__scal(mkl_n, mkl_s, ptr_u, mkl_inc)
         else:
             for i in range(n):
                 if s[i] != 0.0:
-                    self.__data[i, :] /= s[i]
+                    self.__data[f + i, :] /= s[i]
     def dots(self, other):
         n = self.__selected[1]
         v = numpy.ndarray((n,), dtype = self.__data.dtype)
@@ -245,8 +246,10 @@ class Vectors:
             if self.is_complex():
                 ptr_r = ctypes.c_void_p(self.__cmplx_val.ctypes.data)
             for i in range(n):
-                data_u = self.__data.ctypes.data + i*vsize
-                data_v = other.__data.ctypes.data + i*vsize
+                iu = self.__selected[0]
+                iv = other.__selected[0]
+                data_u = self.__data.ctypes.data + (iu + i)*vsize
+                data_v = other.__data.ctypes.data + (iv + i)*vsize
                 ptr_u = ctypes.c_void_p(data_u)
                 ptr_v = ctypes.c_void_p(data_v)
                 if self.is_complex():
@@ -266,27 +269,104 @@ class Vectors:
 
     # BLAS level 3
     def dot(self, other):
-        if other.is_complex():
-            return numpy.dot(other.data().conj(), self.data().T)
+        if self.__with_mkl:
+            m, n = self.__data.shape
+            m = self.nvec()
+            k = other.nvec()
+            q = numpy.ndarray((m, k), dtype = self.__data.dtype)
+            mkl_n = ctypes.c_int(n)
+            mkl_m = ctypes.c_int(m)
+            mkl_k = ctypes.c_int(k)
+            vsize = self.__dsize * n
+            data_u = other.__data.ctypes.data + other.__selected[0] * vsize
+            data_v = self.__data.ctypes.data + self.__selected[0] * vsize
+            ptr_u = ctypes.c_void_p(data_u)
+            ptr_v = ctypes.c_void_p(data_v)
+            ptr_q = ctypes.c_void_p(q.ctypes.data)
+            if self.is_complex():
+                Trans = CblasConjTrans
+#                t = numpy.dot(other.data().conj(), self.data().T)
+            else:
+                Trans = CblasTrans
+#                t = numpy.dot(other.data(), self.data().T)
+            self.__gemm(CblasColMajor, Trans, CblasNoTrans, \
+                mkl_k, mkl_m, mkl_n, \
+                self.__mkl_one, ptr_u, mkl_n, ptr_v, mkl_n, \
+                self.__mkl_zero, ptr_q, mkl_k)
+#            print(nla.norm(t - q.T))
+            return q.T
         else:
-            return numpy.dot(other.data(), self.data().T)
+            if other.is_complex():
+                return numpy.dot(other.data().conj(), self.data().T)
+            else:
+                return numpy.dot(other.data(), self.data().T)
     def multiply(self, q, output):
         f, n = output.__selected;
-        n = q.shape[1]
-        if output.__data[f : f + n, :].flags['C_CONTIGUOUS']:
-            #print('using optimized dot')
-            numpy.dot(q.T, self.data(), out = output.__data[f : f + n, :])
-            return
-        print('using non-optimized dot')
-        output.__data[f : f + n, :] = numpy.dot(q.T, self.data())
+        m = q.shape[1]
+        if self.__with_mkl:
+            n = self.dimension()
+            fs = self.__selected[0]
+            mkl_n = ctypes.c_int(n)
+            mkl_m = ctypes.c_int(m)
+            mkl_k = ctypes.c_int(self.nvec())
+            vsize = self.__dsize * n
+            data_u = output.__data.ctypes.data + f * vsize
+            data_v = self.__data.ctypes.data + fs * vsize
+            ptr_u = ctypes.c_void_p(data_u)
+            ptr_v = ctypes.c_void_p(data_v)
+            ptr_q = ctypes.c_void_p(q.ctypes.data)
+            self.__gemm(CblasColMajor, CblasNoTrans, CblasTrans, \
+                mkl_n, mkl_m, mkl_k, \
+                self.__mkl_one, ptr_v, mkl_n, ptr_q, mkl_m, \
+                self.__mkl_zero, ptr_u, mkl_n)
+        else:
+            if output.__data[f : f + m, :].flags['C_CONTIGUOUS']:
+                #print('using optimized dot')
+                numpy.dot(q.T, self.data(), out = output.__data[f : f + m, :])
+                return
+            print('using non-optimized dot')
+            output.__data[f : f + m, :] = numpy.dot(q.T, self.data())
     def add(self, other, s, q = None):
-        f, n = self.__selected;
-        if numpy.isscalar(s):
-            if q is None:
-                self.__data[f : f + n, :] += s*other.data()
+        f, m = self.__selected;
+        if self.__with_mkl:
+            n = self.dimension()
+            fu, m = other.__selected
+            mkl_n = ctypes.c_int(n)
+            mkl_m = ctypes.c_int(m)
+            vsize = self.__dsize * n
+            data_u = other.__data.ctypes.data + fu * vsize
+            data_v = self.__data.ctypes.data + f * vsize
+            ptr_u = ctypes.c_void_p(data_u)
+            ptr_v = ctypes.c_void_p(data_v)
+            if numpy.isscalar(s):
+                mkl_s = self.__to_mkl_float(s)
+                if q is None:
+                    mkl_nm = ctypes.c_int(n*m)
+                    mkl_inc = ctypes.c_int(1)
+                    self.__axpy(mkl_nm, mkl_s, ptr_u, mkl_inc, ptr_v, mkl_inc)
+                else:
+                    mkl_k = ctypes.c_int(q.shape[1])
+                    ptr_q = ctypes.c_void_p(q.ctypes.data)
+                    self.__gemm(CblasColMajor, CblasNoTrans, CblasTrans, \
+                        mkl_n, mkl_k, mkl_m, \
+                        mkl_s, ptr_u, mkl_n, ptr_q, mkl_k, \
+                        self.__mkl_one, ptr_v, mkl_n)
             else:
-                self.__data[f : f + n, :] += s*numpy.dot(q.T, other.data())
-            return
-        for i in range(n):
-            self.__data[f + i, :] += s[i]*other.data(i)
+                for i in range(m):
+                    data_u = other.__data.ctypes.data + (fu + i) * vsize
+                    data_v = self.__data.ctypes.data + (f + i) * vsize
+                    ptr_u = ctypes.c_void_p(data_u)
+                    ptr_v = ctypes.c_void_p(data_v)
+                    mkl_inc = ctypes.c_int(1)
+                    mkl_s = self.__to_mkl_float(s[i])
+                    self.__axpy(mkl_n, mkl_s, ptr_u, mkl_inc, ptr_v, mkl_inc)
+        else:
+            if numpy.isscalar(s):
+                if q is None:
+                    self.__data[f : f + m, :] += s*other.data()
+                else:
+                    self.__data[f : f + m, :] += s*numpy.dot(q.T, other.data())
+                return
+            for i in range(m):
+                self.__data[f + i, :] += s[i]*other.data(i)
 
