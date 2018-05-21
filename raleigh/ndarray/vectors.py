@@ -40,32 +40,45 @@ class Vectors:
         else:
             raise ValueError \
             ('wrong argument %s in constructor' % repr(type(arg)))
-        if HAVE_MKL:
+        self.__with_mkl = HAVE_MKL
+        if self.__with_mkl:
             dt = self.__data.dtype
             if dt == numpy.float32:
-                gemm = mkl.cblas_sgemm
-                axpy = mkl.cblas_saxpy
-                copy = mkl.cblas_scopy
-                scal = mkl.cblas_sscal
-                norm = mkl.cblas_snrm2
-                norm.restype = ctypes.c_float
-                inner = mkl.cblas_sdot
-                inner.restype = ctypes.c_float
-                mkl_one = ctypes.c_float(1.0)
-                mkl_zero = ctypes.c_float(0.0)
+                self.__dsize = 4
+                self.__gemm = mkl.cblas_sgemm
+                self.__axpy = mkl.cblas_saxpy
+                self.__copy = mkl.cblas_scopy
+                self.__scal = mkl.cblas_sscal
+                self.__norm = mkl.cblas_snrm2
+                self.__norm.restype = ctypes.c_float
+                self.__inner = mkl.cblas_sdot
+                self.__inner.restype = ctypes.c_float
+                self.__mkl_one = ctypes.c_float(1.0)
+                self.__mkl_zero = ctypes.c_float(0.0)
             elif dt == numpy.float64:
-                gemm = mkl.cblas_dgemm
-                axpy = mkl.cblas_daxpy
-                copy = mkl.cblas_dcopy
-                scal = mkl.cblas_dscal
-                norm = mkl.cblas_dnrm2
-                norm.restype = ctypes.c_double
-                inner = mkl.cblas_ddot
-                inner.restype = ctypes.c_double
-                mkl_one = ctypes.c_double(1.0)
-                mkl_zero = ctypes.c_double(0.0)
+                self.__dsize = 8
+                self.__gemm = mkl.cblas_dgemm
+                self.__axpy = mkl.cblas_daxpy
+                self.__copy = mkl.cblas_dcopy
+                self.__scal = mkl.cblas_dscal
+                self.__norm = mkl.cblas_dnrm2
+                self.__norm.restype = ctypes.c_double
+                self.__inner = mkl.cblas_ddot
+                self.__inner.restype = ctypes.c_double
+                self.__mkl_one = ctypes.c_double(1.0)
+                self.__mkl_zero = ctypes.c_double(0.0)
+            else:
+                raise ValueError('data type %s not supported' % repr(dt))
         m, n = self.__data.shape
         self.__selected = (0, m)
+    def __to_mkl_float(self, v):
+        dt = self.__data.dtype
+        if dt == numpy.float32:
+            return ctypes.c_float(v)
+        elif dt == numpy.float64:
+            return ctypes.c_double(v)
+        else:
+            raise ValueError('data type %s not supported' % repr(dt))
     def dimension(self):
         return self.__data.shape[1]
     def nvec(self):
@@ -142,24 +155,69 @@ class Vectors:
     def copy(self, other, ind = None):
         i, n = self.__selected
         j, m = other.__selected
-        if ind is None:
-            other.__data[j : j + n, :] = self.__data[i : i + n, :]
+        if self.__with_mkl:
+            vdim = self.dimension()
+            mkl_inc = ctypes.c_int(1)
+            vsize = self.__dsize * vdim
+            if ind is None:
+                mkl_n = ctypes.c_int(n*vdim)
+                data_u = self.__data.ctypes.data + i*vsize
+                data_v = other.__data.ctypes.data + j*vsize
+                ptr_u = ctypes.c_void_p(data_u)
+                ptr_v = ctypes.c_void_p(data_v)
+                self.__copy(mkl_n, ptr_u, mkl_inc, ptr_v, mkl_inc)
+            else:
+                mkl_n = ctypes.c_int(vdim)
+                l = len(ind)
+                for k in range(l):
+                    data_u = self.__data.ctypes.data + ind[k]*vsize
+                    data_v = other.__data.ctypes.data + (j + k)*vsize
+                    ptr_u = ctypes.c_void_p(data_u)
+                    ptr_v = ctypes.c_void_p(data_v)
+                    self.__copy(mkl_n, ptr_u, mkl_inc, ptr_v, mkl_inc)
         else:
-            other.__data[j : j + len(ind), :] = self.__data[ind, :]
+            if ind is None:
+                other.__data[j : j + n, :] = self.__data[i : i + n, :]
+            else:
+                other.__data[j : j + len(ind), :] = self.__data[ind, :]
     def scale(self, s):
         f, n = self.__selected;
-        for i in range(n):
-            if s[i] != 0.0:
-                self.__data[i, :] /= s[i]
+        if self.__with_mkl:
+            vdim = self.dimension()
+            mkl_n = ctypes.c_int(vdim)
+            mkl_inc = ctypes.c_int(1)
+            vsize = self.__dsize * vdim
+            for i in range(n):
+                if s[i] != 0.0:
+                    data_u = self.__data.ctypes.data + i*vsize
+                    ptr_u = ctypes.c_void_p(data_u)
+                    mkl_s = self.__to_mkl_float(1.0/s[i])
+                    self.__scal(mkl_n, mkl_s, ptr_u, mkl_inc)
+        else:
+            for i in range(n):
+                if s[i] != 0.0:
+                    self.__data[i, :] /= s[i]
     def dots(self, other):
         n = self.__selected[1]
         v = numpy.ndarray((n,), dtype = self.__data.dtype)
-        for i in range(n):
-            if other.is_complex():
-                s =  numpy.dot(other.data(i).conj(), self.data(i).T)
-            else:
-                s = numpy.dot(other.data(i), self.data(i).T)
-            v[i] = s
+        if self.__with_mkl:
+            vdim = self.dimension()
+            mkl_n = ctypes.c_int(vdim)
+            mkl_inc = ctypes.c_int(1)
+            vsize = self.__dsize * vdim
+            for i in range(n):
+                data_u = self.__data.ctypes.data + i*vsize
+                data_v = other.__data.ctypes.data + i*vsize
+                ptr_u = ctypes.c_void_p(data_u)
+                ptr_v = ctypes.c_void_p(data_v)
+                v[i] = self.__inner(mkl_n, ptr_v, mkl_inc, ptr_u, mkl_inc)
+        else:
+            for i in range(n):
+                if other.is_complex():
+                    s =  numpy.dot(other.data(i).conj(), self.data(i))
+                else:
+                    s = numpy.dot(other.data(i), self.data(i))
+                v[i] = s
         return v
 
     # BLAS level 3
