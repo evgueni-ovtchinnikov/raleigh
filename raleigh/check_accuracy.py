@@ -56,12 +56,11 @@ def check_eigenvectors_accuracy \
     print('%d + %d eigenvalues computed in %d iterations:' \
           % (solver.lcon, solver.rcon, solver.iteration))
     lmdu = solver.eigenvalues
-    print(lmdu)
+#    print(lmdu)
     lmdu, u, err_lmdu, err_u, res_u, cnv_u = sort_eigenpairs_and_errors\
         (lmdu, u, solver.eigenvalue_errors, solver.eigenvector_errors, \
         solver.residual_norms, solver.convergence_status)
     print(lmdu)
-    return
     lconu = solver.lcon
     rconu = solver.rcon
     nconu = lconu + rconu
@@ -106,24 +105,25 @@ def check_eigenvectors_accuracy \
 
     # compare eigenvectors on the left
     lcon = min(lconu, lconv)
-    u.select(lcon)
-    v.select(lcon)
-    w = u.new_vectors(lcon)
-    if std:
-        q = v.dot(u)
-        u.multiply(q, w)
-        w.add(v, -1.0)
-        sl = w.dots(w)
-    else:
-        x = u.new_vectors(lcon)
-        B = problem.B()
-        B(v, w)
-        q = w.dot(u)
-        u.multiply(q, w)
-        w.add(v, -1.0)
-        B(w, x)
-        sl = x.dots(w)
-    sl = numpy.sqrt(sl) # difference on the left
+    if lcon > 0:
+        u.select(lcon)
+        v.select(lcon)
+        w = u.new_vectors(lcon)
+        if std:
+            q = v.dot(u)
+            u.multiply(q, w)
+            w.add(v, -1.0)
+            sl = w.dots(w)
+        else:
+            x = u.new_vectors(lcon)
+            B = problem.B()
+            B(v, w)
+            q = w.dot(u)
+            u.multiply(q, w)
+            w.add(v, -1.0)
+            B(w, x)
+            sl = x.dots(w)
+        sl = numpy.sqrt(sl) # difference on the left
 
     # compare eigenvectors on the right
     rcon = min(rconu, rconv)
@@ -147,21 +147,22 @@ def check_eigenvectors_accuracy \
 ##        print('%e  %.1e  %.1e  %.1e' % \
 ##        (lmdv[nconv - rcon + i], res_v[nconv - rcon + i], s[i], t[i]))
 
-    if std:
-        q = v.dot(u)
-        u.multiply(q, w)
-        w.add(v, -1.0)
-        sr = w.dots(w)
-    else:
-        x = u.new_vectors(rcon)
-        B = problem.B()
-        B(v, w)
-        q = w.dot(u)
-        u.multiply(q, w)
-        w.add(v, -1.0)
-        B(w, x)
-        sr = x.dots(w)
-    sr = numpy.sqrt(sr) # difference on the right
+    if rcon > 0:
+        if std:
+            q = v.dot(u)
+            u.multiply(q, w)
+            w.add(v, -1.0)
+            sr = w.dots(w)
+        else:
+            x = u.new_vectors(rcon)
+            B = problem.B()
+            B(v, w)
+            q = w.dot(u)
+            u.multiply(q, w)
+            w.add(v, -1.0)
+            B(w, x)
+            sr = x.dots(w)
+        sr = numpy.sqrt(sr) # difference on the right
 
     print('eigenvector errors:')
     msg = ' eigenvalue   estimate (kinematic/residual)   actual' + \
@@ -196,7 +197,7 @@ def check_eigenvectors_accuracy \
         err_uik = abs(err_ui[0])
         err_uir = abs(err_ui[1])
         if v_ex is None:
-            err_vi = err_v[i]
+            err_vi = err_v[nconv - rcon + j]
             err_vik = abs(err_vi[0])
             err_vir = abs(err_vi[1])
         else:

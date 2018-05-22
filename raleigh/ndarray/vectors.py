@@ -27,10 +27,18 @@ try:
 except:
     HAVE_MKL = False
 
+def conjugate(a):
+    if isinstance(a[0,0], complex):
+        return a.conj()
+    else:
+        return a
+
 class Vectors:
-    def __init__(self, arg, nvec = 0, data_type = None, with_mkl = True):
+    def __init__(self, arg, nvec = 0, data_type = None, with_mkl = None):
         if isinstance(arg, Vectors):
             self.__data = arg.__data.copy()
+            if with_mkl is None:
+                with_mkl = arg.__with_mkl
         elif isinstance(arg, numpy.ndarray):
             self.__data = arg
         elif isinstance(arg, numbers.Number):
@@ -41,6 +49,8 @@ class Vectors:
         else:
             raise ValueError \
             ('wrong argument %s in constructor' % repr(type(arg)))
+        if with_mkl is None:
+            with_mkl = True
         self.__with_mkl = HAVE_MKL and with_mkl
         if self.__with_mkl:
             dt = self.__data.dtype
@@ -133,12 +143,10 @@ class Vectors:
 ##        return numpy.iscomplex(self.__data[0,0])
 ##        return isinstance(self.__data[0,0], complex)
     def clone(self):
-        return Vectors(self) #.__data.copy())
+        return Vectors(self)
     def new_vectors(self, nv = 0):
         m, n = self.__data.shape
-        return Vectors(n, nv, self.__data.dtype)
-##        data = numpy.ones((nv, n), dtype = self.__data.dtype)
-##        return Vectors(data)
+        return Vectors(n, nv, self.__data.dtype, self.__with_mkl)
     def zero(self):
         f, n = self.__selected;
         self.__data[f : f + n, :] = 0.0
@@ -148,16 +156,13 @@ class Vectors:
     def fill_random(self):
         iv, nv = self.__selected
         m, n = self.__data.shape
-        #data = numpy.zeros((nv, n), dtype = self.__data.dtype)
         self.__data[iv : iv + nv,:] = 2*numpy.random.rand(nv, n) - 1
-        #return Vectors(data)
     def fill_orthogonal(self, m):
         iv, nv = self.__selected
         k, n = self.__data.shape
         if n < m:
             print('Warning: number of vectors too large, reducing')
             m = n
-        #a = numpy.zeros((m, n), dtype = self.__data.dtype)
         a = self.__data[iv : iv + nv, :]
         a[0,0] = 1.0
         i = 1
@@ -178,7 +183,6 @@ class Vectors:
         j = i//2
         a[k : m,   : j] = a[:(m - k), : j]
         a[k : m, j : i] = -a[:(m - k), j : i]
-        #return Vectors(a)
     def data(self, i = None):
         f, n = self.__selected
         if i is None:
@@ -207,13 +211,9 @@ class Vectors:
             else:
                 mkl_n = ctypes.c_int(vdim)
                 l = len(ind)
-#                print(type(self.__data.ctypes.data))
-#                print(type(ind[0]))
-#                print(type(vsize))
                 for k in range(l):
                     data_u = self.__data.ctypes.data + int(ind[k])*vsize
                     data_v = other.__data.ctypes.data + (j + k)*vsize
-#                    print(type(data_u))
                     ptr_u = ctypes.c_void_p(data_u)
                     ptr_v = ctypes.c_void_p(data_v)
                     self.__copy(mkl_n, ptr_u, mkl_inc, ptr_v, mkl_inc)
@@ -277,7 +277,7 @@ class Vectors:
             m, n = self.__data.shape
             m = self.nvec()
             k = other.nvec()
-            q = numpy.ndarray((m, k), dtype = self.__data.dtype)
+            q = numpy.ndarray((k, m), dtype = self.__data.dtype)
             mkl_n = ctypes.c_int(n)
             mkl_m = ctypes.c_int(m)
             mkl_k = ctypes.c_int(k)
@@ -294,18 +294,17 @@ class Vectors:
                 Trans = CblasTrans
 #                t = numpy.dot(other.data(), self.data().T)
             self.__gemm(CblasColMajor, Trans, CblasNoTrans, \
-                mkl_k, mkl_m, mkl_n, \
-                self.__mkl_one, ptr_u, mkl_n, ptr_v, mkl_n, \
-                self.__mkl_zero, ptr_q, mkl_k)
-#            print(nla.norm(t - q.T))
-            return q.T
+                mkl_m, mkl_k, mkl_n, \
+                self.__mkl_one, ptr_v, mkl_n, ptr_u, mkl_n, \
+                self.__mkl_zero, ptr_q, mkl_m)
+            return conjugate(q)
         else:
             if other.is_complex():
                 return numpy.dot(other.data().conj(), self.data().T)
             else:
                 return numpy.dot(other.data(), self.data().T)
     def multiply(self, q, output):
-        f, n = output.__selected;
+        f, s = output.__selected;
         m = q.shape[1]
         if self.__with_mkl:
             n = self.dimension()
@@ -319,7 +318,11 @@ class Vectors:
             ptr_u = ctypes.c_void_p(data_u)
             ptr_v = ctypes.c_void_p(data_v)
             ptr_q = ctypes.c_void_p(q.ctypes.data)
-            self.__gemm(CblasColMajor, CblasNoTrans, CblasTrans, \
+            if q.flags['C_CONTIGUOUS']:
+                Trans = CblasTrans
+            else:
+                Trans = CblasNoTrans
+            self.__gemm(CblasColMajor, CblasNoTrans, Trans, \
                 mkl_n, mkl_m, mkl_k, \
                 self.__mkl_one, ptr_v, mkl_n, ptr_q, mkl_m, \
                 self.__mkl_zero, ptr_u, mkl_n)
@@ -351,7 +354,11 @@ class Vectors:
                 else:
                     mkl_k = ctypes.c_int(q.shape[1])
                     ptr_q = ctypes.c_void_p(q.ctypes.data)
-                    self.__gemm(CblasColMajor, CblasNoTrans, CblasTrans, \
+                    if q.flags['C_CONTIGUOUS']:
+                        Trans = CblasTrans
+                    else:
+                        Trans = CblasNoTrans
+                    self.__gemm(CblasColMajor, CblasNoTrans, Trans, \
                         mkl_n, mkl_k, mkl_m, \
                         mkl_s, ptr_u, mkl_n, ptr_q, mkl_k, \
                         self.__mkl_one, ptr_v, mkl_n)

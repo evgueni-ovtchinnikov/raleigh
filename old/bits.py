@@ -1190,3 +1190,47 @@ SAVE = False
 #                    print(ind)
 #                    print(math.sqrt(last_piv))
 
+##        data = numpy.ones((nv, n), dtype = self.__data.dtype)
+##        return Vectors(data)
+
+        #data = numpy.zeros((nv, n), dtype = self.__data.dtype)
+
+        #return Vectors(data)
+
+        #a = numpy.zeros((m, n), dtype = self.__data.dtype)
+
+        #return Vectors(a)
+
+#                print(type(self.__data.ctypes.data))
+#                print(type(ind[0]))
+#                print(type(vsize))
+
+#                    print(type(data_u))
+
+#            q = numpy.ndarray((m, k), dtype = self.__data.dtype)
+
+#            self.__gemm(CblasColMajor, Trans, CblasNoTrans, \
+#                mkl_k, mkl_m, mkl_n, \
+#                self.__mkl_one, ptr_u, mkl_n, ptr_v, mkl_n, \
+#                self.__mkl_zero, ptr_q, mkl_k)
+##            print(nla.norm(t - q.T))
+#            qt[:,:] = q.T
+#            return qt
+#            return q.T
+
+#        print(q.flags)
+
+#            print(n, m, self.nvec(), f, fs)
+
+#            pf_q = ctypes.cast(ptr_q, ctypes.POINTER(ctypes.c_float))
+#            print(pf_q[0])
+#            print(pf_q[1])
+#            print(pf_q[2])
+
+#            print('---')
+#            print(nla.norm(output.__data[f : f + m, :]))
+#            w = output.__data[f : f + m, :].copy()
+#            print(nla.norm(w[0,:]))
+#            numpy.dot(q.T, self.data(), out = output.__data[f : f + m, :])
+#            print(nla.norm(w - output.__data[f : f + m, :]))
+

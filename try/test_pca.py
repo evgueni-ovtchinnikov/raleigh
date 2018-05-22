@@ -41,8 +41,8 @@ numpy.random.seed(1) # make results reproducible
 opt = raleigh.solver.Options()
 opt.block_size = 64 #192
 opt.threads = 4
-opt.verbosity = 2 #1 #2
-opt.max_iter = 13 #200
+opt.verbosity = 1 #2
+#opt.max_iter = 13 #200
 #opt.convergence_criteria = MyConvergenceCriteria(1e-4)
 opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-25) #1e-8)
 #opt.convergence_criteria.set_error_tolerance('residual', 1e-6) #1e-8)
@@ -57,7 +57,7 @@ k = 200
 EXP = 1
 
 dt_op = numpy.float32
-dt_v = numpy.float32
+dt_v = numpy.float64
 
 a = 2*numpy.random.rand(m, n).astype(dt_op) - 1
 s = numpy.linalg.norm(a, axis = 0)
@@ -77,7 +77,9 @@ else:
     alpha = 0.01
     f_sigma = lambda t: 2**(-alpha*t*t).astype(dt_op)
 s, u, v, b = random_matrix_for_svd(m, n, k, f_sigma, dt_op)
-v0 = Vectors(v[:,::-1].T)
+w = numpy.random.randn(k, n).astype(dt_v)
+w[:,:] = v[:,::-1].T
+v0 = Vectors(w, data_type = dt_v)
 
 eps = 0 #.001
 a = eps*a + b
@@ -88,7 +90,7 @@ a = eps*a + b
 operatorATA = operators.SVD(a)
 op = lambda x, y: operatorATA.apply(x, y)
 
-v = Vectors(n, data_type = dt_v, with_mkl = False)
+v = Vectors(n, data_type = dt_v) #, with_mkl = False)
 problem = raleigh.solver.Problem(v, op)
 if eps == 0:
     check_eigenvectors_accuracy(problem, opt, which = (0,-1), v_ex = v0)
