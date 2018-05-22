@@ -56,8 +56,8 @@ if LOAD:
     m, n = u0.shape
 else:
     # generate the matrix
-    m = 1000
-    n = 400
+    m = 2000
+    n = 4000
     u0, v0 = random_singular_vectors(m, n, min(m, n), numpy.float32)
     if SAVE:
         numpy.save('u.npy', u0)
@@ -104,7 +104,7 @@ vt_wr = None
 iter_wr = 0
 start = time.time()
 while WITH_RESTARTS:
-    sigma_wr, u_wr, vt_wr = partial_svd(a, opt, u_wr, vt_wr)
+    sigma_wr, u_wr, vt_wr = partial_svd(a, opt, uc = u_wr, vtc = vt_wr)
     iter_wr += opt.stopping_criteria.iteration
     if sigma_wr[-1] < th*sigma_wr[0]:
         break
