@@ -207,9 +207,13 @@ class Vectors:
             else:
                 mkl_n = ctypes.c_int(vdim)
                 l = len(ind)
+#                print(type(self.__data.ctypes.data))
+#                print(type(ind[0]))
+#                print(type(vsize))
                 for k in range(l):
-                    data_u = self.__data.ctypes.data + ind[k]*vsize
+                    data_u = self.__data.ctypes.data + int(ind[k])*vsize
                     data_v = other.__data.ctypes.data + (j + k)*vsize
+#                    print(type(data_u))
                     ptr_u = ctypes.c_void_p(data_u)
                     ptr_v = ctypes.c_void_p(data_v)
                     self.__copy(mkl_n, ptr_u, mkl_inc, ptr_v, mkl_inc)

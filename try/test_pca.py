@@ -41,8 +41,8 @@ numpy.random.seed(1) # make results reproducible
 opt = raleigh.solver.Options()
 opt.block_size = 64 #192
 opt.threads = 4
-opt.verbosity = 1 #2
-#opt.max_iter = 200
+opt.verbosity = 2 #1 #2
+opt.max_iter = 13 #200
 #opt.convergence_criteria = MyConvergenceCriteria(1e-4)
 opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-25) #1e-8)
 #opt.convergence_criteria.set_error_tolerance('residual', 1e-6) #1e-8)
@@ -88,7 +88,7 @@ a = eps*a + b
 operatorATA = operators.SVD(a)
 op = lambda x, y: operatorATA.apply(x, y)
 
-v = Vectors(n, data_type = dt_v)
+v = Vectors(n, data_type = dt_v, with_mkl = False)
 problem = raleigh.solver.Problem(v, op)
 if eps == 0:
     check_eigenvectors_accuracy(problem, opt, which = (0,-1), v_ex = v0)

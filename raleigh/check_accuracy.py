@@ -25,12 +25,12 @@ def RayleighRitz(A, u):
     q = v.dot(u)
 #    lmd = numpy.diag(q)
     lmd, Q = sla.eigh(q, p)
-    u.mult(Q, w)
+    u.multiply(Q, w)
     w.copy(u)
-    v.mult(Q, w)
+    v.multiply(Q, w)
     w.copy(v)
     q = v.dot(u)
-    u.mult(q, w)
+    u.multiply(q, w)
     w.add(v, -1.0)
     t = w.dots(w)
     t = numpy.sqrt(t)
@@ -56,10 +56,12 @@ def check_eigenvectors_accuracy \
     print('%d + %d eigenvalues computed in %d iterations:' \
           % (solver.lcon, solver.rcon, solver.iteration))
     lmdu = solver.eigenvalues
+    print(lmdu)
     lmdu, u, err_lmdu, err_u, res_u, cnv_u = sort_eigenpairs_and_errors\
         (lmdu, u, solver.eigenvalue_errors, solver.eigenvector_errors, \
         solver.residual_norms, solver.convergence_status)
     print(lmdu)
+    return
     lconu = solver.lcon
     rconu = solver.rcon
     nconu = lconu + rconu
@@ -109,7 +111,7 @@ def check_eigenvectors_accuracy \
     w = u.new_vectors(lcon)
     if std:
         q = v.dot(u)
-        u.mult(q, w)
+        u.multiply(q, w)
         w.add(v, -1.0)
         sl = w.dots(w)
     else:
@@ -117,7 +119,7 @@ def check_eigenvectors_accuracy \
         B = problem.B()
         B(v, w)
         q = w.dot(u)
-        u.mult(q, w)
+        u.multiply(q, w)
         w.add(v, -1.0)
         B(w, x)
         sl = x.dots(w)
@@ -147,7 +149,7 @@ def check_eigenvectors_accuracy \
 
     if std:
         q = v.dot(u)
-        u.mult(q, w)
+        u.multiply(q, w)
         w.add(v, -1.0)
         sr = w.dots(w)
     else:
@@ -155,7 +157,7 @@ def check_eigenvectors_accuracy \
         B = problem.B()
         B(v, w)
         q = w.dot(u)
-        u.mult(q, w)
+        u.multiply(q, w)
         w.add(v, -1.0)
         B(w, x)
         sr = x.dots(w)
