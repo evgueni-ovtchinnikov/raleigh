@@ -31,7 +31,7 @@ def compute_right(a, opt, vtc = None):
     if vtc is None:
         v = Vectors(n)
     else:
-        v = Vectors(vtc)
+        v = Vectors(vtc, with_mkl = False)
     operator = Operator(a)
     problem = Problem(v, lambda x, y: operator.apply(x, y))
     solver = Solver(problem)
