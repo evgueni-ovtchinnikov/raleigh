@@ -1251,3 +1251,87 @@ SAVE = False
 #    CblasConjTrans = 113
 #    print('Using %d MKL threads' % mkl.mkl_get_max_threads())
 
+#            y.data()[:,:] = numpy.dot(z, self.a).astype(type_x)
+
+#            y.data()[:,:] = numpy.dot(z, self.a)
+
+#            if dt == numpy.float32:
+#                self.__dsize = 4
+#                self.__gemm = mkl.cblas_sgemm
+#                self.__axpy = mkl.cblas_saxpy
+#                self.__copy = mkl.cblas_scopy
+#                self.__scal = mkl.cblas_sscal
+#                self.__norm = mkl.cblas_snrm2
+#                self.__norm.restype = ctypes.c_float
+#                self.__inner = mkl.cblas_sdot
+#                self.__inner.restype = ctypes.c_float
+#                self.__mkl_one = ctypes.c_float(1.0)
+#                self.__mkl_zero = ctypes.c_float(0.0)
+#            elif dt == numpy.float64:
+#                self.__dsize = 8
+#                self.__gemm = mkl.cblas_dgemm
+#                self.__axpy = mkl.cblas_daxpy
+#                self.__copy = mkl.cblas_dcopy
+#                self.__scal = mkl.cblas_dscal
+#                self.__norm = mkl.cblas_dnrm2
+#                self.__norm.restype = ctypes.c_double
+#                self.__inner = mkl.cblas_ddot
+#                self.__inner.restype = ctypes.c_double
+#                self.__mkl_one = ctypes.c_double(1.0)
+#                self.__mkl_zero = ctypes.c_double(0.0)
+#            elif dt == numpy.complex64:
+#                self.__dsize = 8
+#                self.__gemm = mkl.cblas_cgemm
+#                self.__axpy = mkl.cblas_caxpy
+#                self.__copy = mkl.cblas_ccopy
+#                self.__scal = mkl.cblas_cscal
+#                self.__norm = mkl.cblas_scnrm2
+#                self.__norm.restype = ctypes.c_float
+#                self.__inner = mkl.cblas_cdotc_sub
+#                self.__cmplx_val = numpy.zeros((2,), dtype = numpy.float32)
+#                self.__cmplx_one = numpy.zeros((2,), dtype = numpy.float32)
+#                self.__cmplx_one[0] = 1.0
+#                self.__cmplx_zero = numpy.zeros((2,), dtype = numpy.float32)
+#                self.__mkl_one = ctypes.c_void_p(self.__cmplx_one.ctypes.data)
+#                self.__mkl_zero = ctypes.c_void_p(self.__cmplx_zero.ctypes.data)
+#            elif dt == numpy.complex128:
+#                self.__dsize = 16
+#                self.__gemm = mkl.cblas_zgemm
+#                self.__axpy = mkl.cblas_zaxpy
+#                self.__copy = mkl.cblas_zcopy
+#                self.__scal = mkl.cblas_zscal
+#                self.__norm = mkl.cblas_dznrm2
+#                self.__norm.restype = ctypes.c_double
+#                self.__inner = mkl.cblas_zdotc_sub
+#                self.__cmplx_val = numpy.zeros((2,), dtype = numpy.float64)
+#                self.__cmplx_one = numpy.zeros((2,), dtype = numpy.float64)
+#                self.__cmplx_one[0] = 1.0
+#                self.__cmplx_zero = numpy.zeros((2,), dtype = numpy.float64)
+#                self.__mkl_one = ctypes.c_void_p(self.__cmplx_one.ctypes.data)
+#                self.__mkl_zero = ctypes.c_void_p(self.__cmplx_zero.ctypes.data)
+#            else:
+#                raise ValueError('data type %s not supported' % repr(dt))
+
+#                    self.__copy(mkl_n, ptr_u, mkl_inc, ptr_v, mkl_inc)
+
+#                    self.__scal(mkl_n, mkl_s, ptr_u, mkl_inc)
+
+#            vsize = self.__dsize * n
+#            data_u = other.__data.ctypes.data + other.__selected[0] * vsize
+#            data_v = self.__data.ctypes.data + self.__selected[0] * vsize
+
+#            fs = self.__selected[0]
+
+#            vsize = self.__cblas.dsize * n
+#            data_u = output.__data.ctypes.data + f * vsize
+#            data_v = self.__data.ctypes.data + fs * vsize
+
+#            fu, m = other.__selected
+
+#            data_u = other.__data.ctypes.data + fu * vsize
+#            data_v = self.__data.ctypes.data + f * vsize
+
+#                    data_u = other.__data.ctypes.data + (fu + i) * vsize
+#                    data_v = self.__data.ctypes.data + (f + i) * vsize
+#                    data_u = other.data().ctypes.data + i*vsize
+#                    data_v = self.data().ctypes.data + i*vsize
