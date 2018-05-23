@@ -1,6 +1,7 @@
 '''Self-adjoint operators library
 '''
 
+import ctypes
 import numpy
 
 class Diagonal:
@@ -36,14 +37,31 @@ class SVD:
             z = numpy.dot(u.astype(self.__type), self.__a.T)
             v[:,:] = numpy.dot(z, self.__a).astype(type_x)
         else:
-#            if HAVE_MKL:
-#                m, na = self.__a.shape
-#                n, k = u.shape
-#                if n != na:
-#                    raise ValueError('mismatching dimensions %d != %d' % (n, na))
-#                mkl_n = ctypes.c_int(n)
-#                mkl_m = ctypes.c_int(m)
-#                mkl_k = ctypes.c_int(k)
-#            else:
-            z = numpy.dot(u, self.__a.T)
-            v[:,:] = numpy.dot(z, self.__a)
+            if HAVE_MKL:
+                cblas = Cblas(self.__type)
+                m, na = self.__a.shape
+                k, n = u.shape
+                if n != na:
+                    raise ValueError('mismatching dimensions %d != %d' % (n, na))
+                z = numpy.ndarray((k, m), dtype = self.__type)
+                mkl_n = ctypes.c_int(n)
+                mkl_m = ctypes.c_int(m)
+                mkl_k = ctypes.c_int(k)
+                data_u = u.ctypes.data
+                data_v = v.ctypes.data
+                data_a = self.__a.ctypes.data
+                ptr_u = ctypes.c_void_p(data_u)
+                ptr_v = ctypes.c_void_p(data_v)
+                ptr_a = ctypes.c_void_p(data_a)
+                ptr_z = ctypes.c_void_p(z.ctypes.data)
+                cblas.gemm(Cblas.ColMajor, Cblas.Trans, Cblas.NoTrans, \
+                    mkl_m, mkl_k, mkl_n, \
+                    cblas.mkl_one, ptr_a, mkl_n, ptr_u, mkl_n, \
+                    cblas.mkl_zero, ptr_z, mkl_m)
+                cblas.gemm(Cblas.ColMajor, Cblas.NoTrans, Cblas.NoTrans, \
+                    mkl_n, mkl_k, mkl_m, \
+                    cblas.mkl_one, ptr_a, mkl_n, ptr_z, mkl_m, \
+                    cblas.mkl_zero, ptr_v, mkl_n)
+            else:
+                z = numpy.dot(u, self.__a.T)
+                v[:,:] = numpy.dot(z, self.__a)

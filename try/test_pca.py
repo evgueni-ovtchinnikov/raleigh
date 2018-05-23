@@ -57,7 +57,7 @@ k = 200
 EXP = 1
 
 dt_op = numpy.float32
-dt_v = numpy.float64
+dt_v = numpy.float32
 
 a = 2*numpy.random.rand(m, n).astype(dt_op) - 1
 s = numpy.linalg.norm(a, axis = 0)
