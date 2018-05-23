@@ -1234,3 +1234,20 @@ SAVE = False
 #            numpy.dot(q.T, self.data(), out = output.__data[f : f + m, :])
 #            print(nla.norm(w - output.__data[f : f + m, :]))
 
+#import numpy.linalg as nla
+
+#from sys import platform
+
+#print(platform)
+
+#    if platform == 'win32':
+#        mkl = ctypes.CDLL('mkl_rt.dll', mode = ctypes.RTLD_GLOBAL)
+#    else:
+#        mkl = ctypes.CDLL('libmkl_rt.so', mode = ctypes.RTLD_GLOBAL)
+
+#    CblasColMajor = 102
+#    CblasNoTrans = 111
+#    CblasTrans = 112
+#    CblasConjTrans = 113
+#    print('Using %d MKL threads' % mkl.mkl_get_max_threads())
+

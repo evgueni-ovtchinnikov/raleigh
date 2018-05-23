@@ -6,24 +6,10 @@ Implementation of the abstract class Vectors based on numpy.ndarray
 import ctypes
 import numbers
 import numpy
-import numpy.linalg as nla
-
-from sys import platform
-
-#print(platform)
 
 try:
-    if platform == 'win32':
-        mkl = ctypes.CDLL('mkl_rt.dll', mode = ctypes.RTLD_GLOBAL)
-    else:
-        mkl = ctypes.CDLL('libmkl_rt.so', mode = ctypes.RTLD_GLOBAL)
+    from raleigh.ndarray.mkl import mkl, Cblas
     HAVE_MKL = True
-    CblasColMajor = 102
-    CblasNoTrans = 111
-    CblasTrans = 112
-    CblasConjTrans = 113
-    print('Using %d MKL threads' % mkl.mkl_get_max_threads())
-
 except:
     HAVE_MKL = False
 
@@ -288,12 +274,12 @@ class Vectors:
             ptr_v = ctypes.c_void_p(data_v)
             ptr_q = ctypes.c_void_p(q.ctypes.data)
             if self.is_complex():
-                Trans = CblasConjTrans
+                Trans = Cblas.ConjTrans
 #                t = numpy.dot(other.data().conj(), self.data().T)
             else:
-                Trans = CblasTrans
+                Trans = Cblas.Trans
 #                t = numpy.dot(other.data(), self.data().T)
-            self.__gemm(CblasColMajor, Trans, CblasNoTrans, \
+            self.__gemm(Cblas.ColMajor, Trans, Cblas.NoTrans, \
                 mkl_m, mkl_k, mkl_n, \
                 self.__mkl_one, ptr_v, mkl_n, ptr_u, mkl_n, \
                 self.__mkl_zero, ptr_q, mkl_m)
@@ -319,10 +305,10 @@ class Vectors:
             ptr_v = ctypes.c_void_p(data_v)
             ptr_q = ctypes.c_void_p(q.ctypes.data)
             if q.flags['C_CONTIGUOUS']:
-                Trans = CblasTrans
+                Trans = Cblas.Trans
             else:
-                Trans = CblasNoTrans
-            self.__gemm(CblasColMajor, CblasNoTrans, Trans, \
+                Trans = Cblas.NoTrans
+            self.__gemm(Cblas.ColMajor, Cblas.NoTrans, Trans, \
                 mkl_n, mkl_m, mkl_k, \
                 self.__mkl_one, ptr_v, mkl_n, ptr_q, mkl_m, \
                 self.__mkl_zero, ptr_u, mkl_n)
@@ -355,10 +341,10 @@ class Vectors:
                     mkl_k = ctypes.c_int(q.shape[1])
                     ptr_q = ctypes.c_void_p(q.ctypes.data)
                     if q.flags['C_CONTIGUOUS']:
-                        Trans = CblasTrans
+                        Trans = Cblas.Trans
                     else:
-                        Trans = CblasNoTrans
-                    self.__gemm(CblasColMajor, CblasNoTrans, Trans, \
+                        Trans = Cblas.NoTrans
+                    self.__gemm(Cblas.ColMajor, Cblas.NoTrans, Trans, \
                         mkl_n, mkl_k, mkl_m, \
                         mkl_s, ptr_u, mkl_n, ptr_q, mkl_k, \
                         self.__mkl_one, ptr_v, mkl_n)

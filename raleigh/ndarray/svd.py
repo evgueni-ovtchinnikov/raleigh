@@ -11,6 +11,12 @@ import scipy
 from raleigh.solver import Problem, Solver, conjugate
 from raleigh.ndarray.vectors import Vectors
 
+try:
+    from raleigh.ndarray.mkl import mkl, Cblas
+    HAVE_MKL = True
+except:
+    HAVE_MKL = False
+
 class Operator:
     def __init__(self, a):
         self.a = a
