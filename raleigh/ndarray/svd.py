@@ -22,18 +22,23 @@ class Operator:
         self.a = a
         self.type = type(a[0,0])
     def apply(self, x, y, transp = False):
-        u = x.data()
-        type_x = type(u[0,0])
-        mixed_types = type_x is not self.type
-        if mixed_types:
-            u = u.astype(self.type)
         if transp:
-            v = numpy.dot(u, self.a)
+            x.apply(self.a.T, y)
         else:
-            v = numpy.dot(u, self.a.T)
-        if mixed_types:
-            v = v.astype(type_x)
-        y.data()[:,:] = v
+            x.apply(self.a, y)
+#    def apply(self, x, y, transp = False):
+#        u = x.data()
+#        type_x = type(u[0,0])
+#        mixed_types = type_x is not self.type
+#        if mixed_types:
+#            u = u.astype(self.type)
+#        if transp:
+#            v = numpy.dot(u, self.a)
+#        else:
+#            v = numpy.dot(u, self.a.T)
+#        if mixed_types:
+#            v = v.astype(type_x)
+#        y.data()[:,:] = v
 
 class OperatorSVD:
     def __init__(self, a):

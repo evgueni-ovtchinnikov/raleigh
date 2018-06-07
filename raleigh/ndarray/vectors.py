@@ -264,6 +264,22 @@ class Vectors:
                 return
             #print('using non-optimized dot')
             output.__data[f : f + m, :] = numpy.dot(q.T, self.data())
+    def apply(self, q, output):
+        type_s = self.data_type()
+        type_q = type(q[0,0])
+        mixed_types = type_s is not type_q
+        if mixed_types:
+            u = self.data().astype(type_q)
+            v = numpy.ndarray((self.nvec(), q.shape[0]), dtype = type_q)
+            numpy.dot(u, q.T, out = v)
+            output.data()[:,:] = v
+        else:
+            if output.data().flags['C_CONTIGUOUS']:
+                #print('using optimized dot')
+                numpy.dot(self.data(), q.T, out = output.data())
+            else:
+                #print('using non-optimized dot')
+                output.data()[:,:] = numpy.dot(self.data(), q.T)
     def add(self, other, s, q = None):
         f, m = self.__selected;
         if self.__with_mkl:
