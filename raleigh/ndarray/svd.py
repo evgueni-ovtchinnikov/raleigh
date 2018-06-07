@@ -21,25 +21,57 @@ class Operator:
     def __init__(self, a):
         self.a = a
         self.type = type(a[0,0])
-    def apply(self, x, y):
+    def apply(self, x, y, transp = False):
         u = x.data()
         type_x = type(u[0,0])
         mixed_types = type_x is not self.type
         if mixed_types:
-            z = numpy.dot(u.astype(self.type), conjugate(self.a))
-            y.data()[:,:] = numpy.dot(z, self.a).astype(type_x)
+            u = u.astype(self.type)
+        if transp:
+            v = numpy.dot(u, self.a)
         else:
-            z = numpy.dot(u, conjugate(self.a))
-            y.data()[:,:] = numpy.dot(z, self.a)
+            v = numpy.dot(u, self.a.T)
+        if mixed_types:
+            v = v.astype(type_x)
+        y.data()[:,:] = v
 
-def compute_right(a, opt, nsv, vtc = None):
-    m, n = a.shape
+class OperatorSVD:
+    def __init__(self, a):
+        self.a = a
+        self.type = type(a[0,0])
+    def apply(self, x, y, transp = False):
+        u = x.data()
+        type_x = type(u[0,0])
+        mixed_types = type_x is not self.type
+        if mixed_types:
+            u = u.astype(self.type)
+        if transp:
+            w = numpy.dot(u, self.a)
+            v = numpy.dot(w, self.a.T)
+        else:
+            w = numpy.dot(u, self.a.T)
+            v = numpy.dot(w, self.a)
+        if mixed_types:
+            v = v.astype(type_x)
+        y.data()[:,:] = v
+#        if mixed_types:
+#            z = numpy.dot(u.astype(self.type), conjugate(self.a))
+#            y.data()[:,:] = numpy.dot(z, self.a).astype(type_x)
+#        else:
+#            z = numpy.dot(u, conjugate(self.a))
+#            y.data()[:,:] = numpy.dot(z, self.a)
+
+def compute_right(a, transp, opt, nsv, vtc = None):
+    if transp:
+        n, m = a.shape
+    else:
+        m, n = a.shape
     if vtc is None:
         v = Vectors(n)
     else:
         v = Vectors(vtc, with_mkl = False)
-    operator = Operator(a)
-    problem = Problem(v, lambda x, y: operator.apply(x, y))
+    operator = OperatorSVD(a)
+    problem = Problem(v, lambda x, y: operator.apply(x, y, transp))
     solver = Solver(problem)
     solver.solve(v, opt, which = (0, nsv))
     vt = v.data()
@@ -57,18 +89,56 @@ def compute_left(a, vt):
     u /= sigma
     return sigma, u, conjugate(v)
 
-def partial_svd(a, opt, nsv = -1, uc = None, vtc = None):
+def partial_svd_old(a, opt, nsv = -1, uc = None, vtc = None):
     m, n = a.shape
     if m >= n:
-        vt = compute_right(a, opt, nsv, vtc)
+        vt = compute_right(a, False, opt, nsv, vtc)
         sigma, u, vt = compute_left(a, vt)
         return sigma, u, vt
     else:
+        print('transposing...')
         b = conjugate(a)
         if uc is not None:
             vtc = conjugate(uc)
         else:
             vtc = None
-        u = compute_right(b, opt, nsv, vtc)
+#        u = compute_right(b, opt, nsv, vtc)
+        u = compute_right(a, True, opt, nsv, vtc)
         sigma, vt, u = compute_left(b, u)
         return sigma, conjugate(u), conjugate(vt)
+
+def partial_svd(a, opt, nsv = -1, cstr = None):
+    m, n = a.shape
+    transp = m < n
+    if transp:
+        n, m = m, n
+    op = Operator(a)
+    opSVD = OperatorSVD(a)
+    if cstr is None:
+        v = Vectors(n)
+    else:
+        if transp:
+            v = Vectors(cstr[0].T)
+        else:
+            v = Vectors(cstr[1])
+    problem = Problem(v, lambda x, y: opSVD.apply(x, y, transp))
+    solver = Solver(problem)
+    solver.solve(v, opt, which = (0, nsv))
+    nv = v.nvec()
+    u = Vectors(m, nv, v.data_type())
+    op.apply(v, u, transp)
+    vv = v.dot(v)
+    uu = -u.dot(u)
+    lmd, x = scipy.linalg.eigh(uu, vv, turbo = False)
+    w = v.new_vectors(nv)
+    v.multiply(x, w)
+    w.copy(v)
+    w = u.new_vectors(nv)
+    u.multiply(x, w)
+    w.copy(u)
+    sigma = numpy.sqrt(abs(u.dots(u)))
+    u.scale(sigma)
+    if transp:
+        return sigma, v.data().T, u.data()
+    else:
+        return sigma, u.data().T, v.data()

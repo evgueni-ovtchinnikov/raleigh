@@ -101,21 +101,27 @@ nsv = int(round(block_size*0.8))
 opt.stopping_criteria.set_how_many(nsv)
 u_wr = None
 vt_wr = None
+cstr = None
 iter_wr = 0
 start = time.time()
 while WITH_RESTARTS:
-    sigma_wr, u_wr, vt_wr = partial_svd(a, opt, uc = u_wr, vtc = vt_wr)
+#    sigma_wr, u_wr, vt_wr = partial_svd(a, opt, uc = u_wr, vtc = vt_wr)
+    sigma_wr, u_wr, vt_wr = partial_svd(a, opt, cstr = cstr)
     iter_wr += opt.stopping_criteria.iteration
     if sigma_wr[-1] < th*sigma_wr[0]:
         break
+    cstr = (u_wr, vt_wr)
+    print('\nrestarting...')
 stop = time.time()
 time_wr = stop - start
 
-print(sigma)
-print('iterations: sliding window %d, with restarts %d' % (iter_sw, iter_wr))
-print('time: sliding window %.1e, with restarts %.1e' % (time_sw, time_wr))
+#print(sigma_wr)
+#print(sigma)
 
 print('\nsingular values:')
-print(sigma0[:n_sw + 1])
+print(sigma[:n_sw + 1])
 print('\nsingular vector errors:')
 print(err_sw)
+
+print('\niterations: sliding window %d, with restarts %d' % (iter_sw, iter_wr))
+print('time: sliding window %.1e, with restarts %.1e' % (time_sw, time_wr))
