@@ -39,12 +39,12 @@ class Vectors:
             with_mkl = True
         self.__with_mkl = HAVE_MKL and with_mkl
         if self.__with_mkl:
-            dt = self.__data.dtype
+            dt = self.data_type()
             self.__cblas = Cblas(dt)
         m, n = self.__data.shape
         self.__selected = (0, m)
     def __to_mkl_float(self, v):
-        dt = self.__data.dtype
+        dt = self.data_type()
         if dt == numpy.float32:
             return ctypes.c_float(v)
         elif dt == numpy.float64:
@@ -67,17 +67,18 @@ class Vectors:
     def select_all(self):
         self.select(self.__data.shape[0])
     def data_type(self):
-        return self.__data.dtype
+#        return type(self.__data[0,0])
+        return self.__data.dtype.type
     def is_complex(self):
-        v = self.__data[0,0]
-        return type(v) is numpy.complex64 or type(v) is numpy.complex128
+#        v = self.__data[0,0]
+#        return type(v) is numpy.complex64 or type(v) is numpy.complex128
 ##        return numpy.iscomplex(self.__data[0,0])
-##        return isinstance(self.__data[0,0], complex)
+        return isinstance(self.__data[0,0], complex)
     def clone(self):
         return Vectors(self)
     def new_vectors(self, nv = 0):
         m, n = self.__data.shape
-        return Vectors(n, nv, self.__data.dtype, self.__with_mkl)
+        return Vectors(n, nv, self.data_type(), self.__with_mkl)
     def zero(self):
         f, n = self.__selected;
         self.__data[f : f + n, :] = 0.0
@@ -172,14 +173,14 @@ class Vectors:
                     self.__data[f + i, :] /= s[i]
     def dots(self, other):
         n = self.__selected[1]
-        v = numpy.ndarray((n,), dtype = self.__data.dtype)
+        v = numpy.ndarray((n,), dtype = self.data_type())
         if self.__with_mkl:
             vdim = self.dimension()
             mkl_n = ctypes.c_int(vdim)
             mkl_inc = ctypes.c_int(1)
             vsize = self.__cblas.dsize * vdim
             if self.is_complex():
-                ptr_r = ctypes.c_void_p(self.__cmplx_val.ctypes.data)
+                ptr_r = ctypes.c_void_p(self.__cblas.cmplx_val.ctypes.data)
             for i in range(n):
                 iu = self.__selected[0]
                 iv = other.__selected[0]
@@ -188,7 +189,8 @@ class Vectors:
                 ptr_u = ctypes.c_void_p(data_u)
                 ptr_v = ctypes.c_void_p(data_v)
                 if self.is_complex():
-                    self.__inner(mkl_n, ptr_v, mkl_inc, ptr_u, mkl_inc, ptr_r)
+                    self.__cblas.inner \
+                        (mkl_n, ptr_v, mkl_inc, ptr_u, mkl_inc, ptr_r)
                     res = self.__cblas.cmplx_val
                     v[i] = res[0] + 1j * res[1]
                 else:
@@ -209,7 +211,7 @@ class Vectors:
             m, n = self.__data.shape
             m = self.nvec()
             k = other.nvec()
-            q = numpy.ndarray((k, m), dtype = self.__data.dtype)
+            q = numpy.ndarray((k, m), dtype = self.data_type())
             mkl_n = ctypes.c_int(n)
             mkl_m = ctypes.c_int(m)
             mkl_k = ctypes.c_int(k)
