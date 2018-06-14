@@ -109,6 +109,8 @@ while WITH_RESTARTS:
     sigma_wr, u_wr, vt_wr = partial_svd(a, opt, cstr = cstr)
     iter_wr += opt.stopping_criteria.iteration
 #    print(sigma_wr)
+#    if iter_wr > 100:
+#        break
     if sigma_wr[-1] < th*sigma_wr[0]:
         break
     cstr = (u_wr, vt_wr)
