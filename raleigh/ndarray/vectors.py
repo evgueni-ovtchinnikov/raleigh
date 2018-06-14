@@ -35,14 +35,19 @@ class Vectors:
         else:
             raise ValueError \
             ('wrong argument %s in constructor' % repr(type(arg)))
+        dt = self.__data.dtype.type
+        self.__dtype = dt
+        self.__is_complex = (dt == numpy.complex64 or dt == numpy.complex128)
         if with_mkl is None:
             with_mkl = True
         self.__with_mkl = HAVE_MKL and with_mkl
         if self.__with_mkl:
-            dt = self.data_type()
+#            dt = self.data_type()
             self.__cblas = Cblas(dt)
         m, n = self.__data.shape
         self.__selected = (0, m)
+        self.__vdim = n
+        self.__nvec = m
     def __to_mkl_float(self, v):
         dt = self.data_type()
         if dt == numpy.float32:
@@ -55,30 +60,39 @@ class Vectors:
             return ctypes.c_void_p(self.__cblas.cmplx_val.ctypes.data)
         else:
             raise ValueError('data type %s not supported' % repr(dt))
+    def new_vectors(self, nv = 0):
+#        m, n = self.__data.shape
+#        n = self.dimension()
+#        return Vectors(n, nv, self.data_type(), self.__with_mkl)
+        return Vectors(self.__vdim, nv, self.__dtype, self.__with_mkl)
+
     def dimension(self):
-        return self.__data.shape[1]
+        return self.__vdim
+#        return self.__data.shape[1]
     def nvec(self):
         return self.__selected[1]
     def selected(self):
         return self.__selected
     def select(self, nv, first = 0):
-        assert nv <= self.__data.shape[0] and first >= 0
+#        assert nv <= self.__data.shape[0] and first >= 0
+        assert nv <= self.__nvec and first >= 0
         self.__selected = (first, nv)
     def select_all(self):
-        self.select(self.__data.shape[0])
+        self.select(self.__nvec)
+#        self.select(self.__data.shape[0])
     def data_type(self):
+        return self.__dtype
 #        return type(self.__data[0,0])
-        return self.__data.dtype.type
+#        return self.__data.dtype.type
     def is_complex(self):
+        return self.__is_complex
 #        v = self.__data[0,0]
 #        return type(v) is numpy.complex64 or type(v) is numpy.complex128
 ##        return numpy.iscomplex(self.__data[0,0])
-        return isinstance(self.__data[0,0], complex)
+#        return isinstance(self.__data[0,0], complex)
     def clone(self):
         return Vectors(self)
-    def new_vectors(self, nv = 0):
-        m, n = self.__data.shape
-        return Vectors(n, nv, self.data_type(), self.__with_mkl)
+
     def zero(self):
         f, n = self.__selected;
         self.__data[f : f + n, :] = 0.0
@@ -123,6 +137,7 @@ class Vectors:
             return self.__data[f + i, :]
     def append(self, other):
         self.__data = numpy.concatenate((self.__data, other.data()))
+        self.__nvec += other.nvec()
         self.select_all()
 
     # BLAS level 1

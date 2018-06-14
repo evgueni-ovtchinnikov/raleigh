@@ -1,6 +1,7 @@
 '''
 RAL EIGensolver for real symmetric and Hermitian problems.
 
+@author: Evgueni Ovtchinnikov, UKRI-STFC
 '''
 
 from raleigh.piv_chol import piv_chol
@@ -344,7 +345,7 @@ class Solver:
         if nc > 0:
             Gc = BXc.dot(Xc)
             # approximate inverse of Gc
-            Gci = 2*numpy.identity(nc) - Gc
+            Gci = 2*numpy.identity(nc, dtype = data_type) - Gc
 
         # initialize
         leftX = left_block_size
@@ -412,6 +413,7 @@ class Solver:
             A(X, AX)
             XAX = AX.dot(X)
         lmdx, Q = sla.eigh(XAX, XBX, turbo=False) #, overwrite_a = True, overwrite_b = True)
+#        print(lmdx)
         W.select(m)
         X.multiply(Q, W)
         W.copy(X)
@@ -899,12 +901,12 @@ class Solver:
             for i in range(ny):
                 indy[i] -= nx
             W.select(ny)
-            Y.copy(W, indy)
-            W.copy(Y)
+            Y.copy(W, indy[:ny])
             Y.select(ny)
+            W.copy(Y)
             AY.select(ny)
             if not std:
-                BY.copy(W, indy)
+                BY.copy(W, indy[:ny])
                 W.copy(BY)
                 BY.select(ny)
 

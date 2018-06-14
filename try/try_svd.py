@@ -80,7 +80,7 @@ block_size = 16
 opt = Options()
 opt.block_size = block_size
 opt.max_iter = 300
-opt.verbosity = 1
+#opt.verbosity = 1
 opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-4)
 opt.stopping_criteria = MyStoppingCriteria()
 opt.stopping_criteria.set_threshold(th, relative = False)
@@ -108,6 +108,7 @@ while WITH_RESTARTS:
 #    sigma_wr, u_wr, vt_wr = partial_svd(a, opt, uc = u_wr, vtc = vt_wr)
     sigma_wr, u_wr, vt_wr = partial_svd(a, opt, cstr = cstr)
     iter_wr += opt.stopping_criteria.iteration
+#    print(sigma_wr)
     if sigma_wr[-1] < th*sigma_wr[0]:
         break
     cstr = (u_wr, vt_wr)

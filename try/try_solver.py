@@ -4,7 +4,10 @@ sys.path.append('..')
 
 import operators
 import raleigh.solver
-from raleigh.ndarray.vectors import Vectors
+from raleigh.vectors import Vectors
+#from raleigh.ndarray.cblas_vectors import Vectors
+#from raleigh.ndarray.numpy_vectors import Vectors
+#from raleigh.ndarray.vectors import Vectors
 import scipy.linalg as sla
 
 numpy.random.seed(1) # to debug
@@ -13,7 +16,7 @@ opt = raleigh.solver.Options()
 opt.block_size = 2
 #opt.max_iter = 16
 opt.res_tol = 1e-4
-opt.verbosity = 2 #3
+#opt.verbosity = 2 #3
 n = 40
 #n = 160
 v = Vectors(n, data_type = numpy.complex128)

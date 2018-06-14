@@ -6,7 +6,8 @@ from raleigh.check_accuracy import check_eigenvectors_accuracy
 #from raleigh.ndarray_svd import partial_svd
 import operators
 import raleigh.solver
-from raleigh.ndarray.vectors import Vectors
+from raleigh.vectors import Vectors
+#from raleigh.ndarray.vectors import Vectors
 from random_matrix_for_svd import random_matrix_for_svd
 
 class MyConvergenceCriteria:

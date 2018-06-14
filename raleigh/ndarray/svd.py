@@ -9,7 +9,9 @@ Created on Wed Mar 21 14:06:26 2018
 import numpy
 import scipy
 from raleigh.solver import Problem, Solver, conjugate
-from raleigh.ndarray.vectors import Vectors
+from raleigh.vectors import Vectors
+#from raleigh.ndarray.vectors import Vectors
+#from raleigh.ndarray.numpy_vectors import Vectors
 
 try:
     from raleigh.ndarray.mkl import mkl, Cblas
@@ -119,13 +121,14 @@ def partial_svd(a, opt, nsv = -1, cstr = None):
         n, m = m, n
     op = Operator(a)
     opSVD = OperatorSVD(a)
+    dt = a.dtype.type
     if cstr is None:
-        v = Vectors(n)
+        v = Vectors(n, data_type = dt)
     else:
         if transp:
-            v = Vectors(cstr[0].T)
+            v = Vectors(cstr[0].T, data_type = dt)
         else:
-            v = Vectors(cstr[1])
+            v = Vectors(cstr[1], data_type = dt)
     problem = Problem(v, lambda x, y: opSVD.apply(x, y, transp))
     solver = Solver(problem)
     solver.solve(v, opt, which = (0, nsv))
