@@ -22,7 +22,7 @@ except:
 class Operator:
     def __init__(self, a):
         self.a = a
-        self.type = type(a[0,0])
+#        self.type = type(a[0,0])
     def apply(self, x, y, transp = False):
         if transp:
             x.apply(self.a.T, y)
@@ -45,28 +45,39 @@ class Operator:
 class OperatorSVD:
     def __init__(self, a):
         self.a = a
-        self.type = type(a[0,0])
+#        self.type = type(a[0,0])
     def apply(self, x, y, transp = False):
-        u = x.data()
-        type_x = type(u[0,0])
-        mixed_types = type_x is not self.type
-        if mixed_types:
-            u = u.astype(self.type)
+        m, n = self.a.shape
+        k = x.nvec()
         if transp:
-            w = numpy.dot(u, self.a)
-            v = numpy.dot(w, self.a.T)
+            z = Vectors(n, k, x.data_type())
+            x.apply(self.a.T, z)
+            z.apply(self.a, y)
         else:
-            w = numpy.dot(u, self.a.T)
-            v = numpy.dot(w, self.a)
-        if mixed_types:
-            v = v.astype(type_x)
-        y.data()[:,:] = v
+            z = Vectors(m, k, x.data_type())
+            x.apply(self.a, z)
+            z.apply(self.a.T, y)
+#    def apply(self, x, y, transp = False):
+#        u = x.data()
+#        type_x = type(u[0,0])
+#        mixed_types = type_x is not self.type
 #        if mixed_types:
-#            z = numpy.dot(u.astype(self.type), conjugate(self.a))
-#            y.data()[:,:] = numpy.dot(z, self.a).astype(type_x)
+#            u = u.astype(self.type)
+#        if transp:
+#            w = numpy.dot(u, self.a)
+#            v = numpy.dot(w, self.a.T)
 #        else:
-#            z = numpy.dot(u, conjugate(self.a))
-#            y.data()[:,:] = numpy.dot(z, self.a)
+#            w = numpy.dot(u, self.a.T)
+#            v = numpy.dot(w, self.a)
+#        if mixed_types:
+#            v = v.astype(type_x)
+#        y.data()[:,:] = v
+##        if mixed_types:
+##            z = numpy.dot(u.astype(self.type), conjugate(self.a))
+##            y.data()[:,:] = numpy.dot(z, self.a).astype(type_x)
+##        else:
+##            z = numpy.dot(u, conjugate(self.a))
+##            y.data()[:,:] = numpy.dot(z, self.a)
 
 def compute_right(a, transp, opt, nsv, vtc = None):
     if transp:
