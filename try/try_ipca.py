@@ -95,6 +95,7 @@ opt.stopping_criteria = MyStoppingCriteria()
 sigma, u, vt = partial_svd(images, opt)
 
 iterations = opt.stopping_criteria.iteration
-elapsed_time = opt.stopping_criteria.elapsed_time
+elapsed_time = opt.stopping_criteria.elapsed_time + \
+    time.time() - opt.stopping_criteria.start_time
 
 print('iterations: %d, time: %.2e' % (iterations, elapsed_time))
