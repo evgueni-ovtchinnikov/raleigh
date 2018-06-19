@@ -1433,3 +1433,44 @@ except:
 
 #            self.__cblas.mkl_one, ptr_v, mkl_n, ptr_q, mkl_m, \
 
+#cudaMemcpyHostToHost          =   c_int(0)
+#cudaMemcpyHostToDevice        =   c_int(1)
+#cudaMemcpyDeviceToHost        =   c_int(2)
+#cudaMemcpyDeviceToDevice      =   c_int(3)
+
+#cuda = CDLL(cuda_path + '/cudart64_70.dll', mode = RTLD_GLOBAL)
+#cublas = CDLL('C:\\Program Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v7.0\\bin\\cublas64_70.dll', mode = RTLD_GLOBAL)
+
+#cuda_malloc = cuda.cudaMalloc
+#cuda_malloc.argtypes = [POINTER(POINTER(c_ubyte)), c_int]
+#cuda_malloc.restype = c_int
+#
+#cuda_free = cuda.cudaFree
+#cuda_free.restype = c_int
+#
+#cuda_memcpy = cuda.cudaMemcpy
+#cuda_memcpy.restype = c_int
+
+#print(cuda_malloc(byref(dev_v), size))
+
+#print(cuda_memcpy(dev_v, c_void_p(v.ctypes.data), size, cudaMemcpyHostToDevice))
+
+#cuda_free(dev_v)
+
+##cuda_path = 'C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v7.0/bin'
+#cublas = CDLL(cuda.cuda_path + '/cublas64_70.dll', mode = RTLD_GLOBAL)
+#
+#cublas_create = cublas.cublasCreate_v2
+#cublas_create.argtypes = [POINTER(POINTER(c_ubyte))]
+#cublas_create.restype = c_int
+#
+#cublas_destroy = cublas.cublasDestroy_v2
+##cublas_destroy.argtypes = [POINTER(c_ubyte)]
+#cublas_destroy.restype = c_int
+
+#handle = POINTER(ctypes.c_ubyte)()
+#print(cublas.create(ctypes.byref(handle)))
+
+#norm = cublas.cublas.cublasSnrm2_v2
+#norm.restype = ctypes.c_int
+
