@@ -1429,3 +1429,7 @@ try:
 except:
     HAVE_MKL = False
 
+#            print(n, self.nvec(), m, mkl_k, mkl_m)
+
+#            self.__cblas.mkl_one, ptr_v, mkl_n, ptr_q, mkl_m, \
+

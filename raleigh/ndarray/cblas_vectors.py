@@ -141,16 +141,29 @@ class Vectors(NDArrayVectors):
         if q.flags['C_CONTIGUOUS']:
             Trans = Cblas.Trans
             ldq = mkl_m
-        else:
-#            print(n, self.nvec(), m, mkl_k, mkl_m)
+        elif q.flags['F_CONTIGUOUS']:
             Trans = Cblas.NoTrans
             ldq = mkl_k
+        else:
+            print('using non-optimized dot')
+            output.data()[:,:] = numpy.dot(q.T, self.data())
+            return
         self.__cblas.gemm(Cblas.ColMajor, Cblas.NoTrans, Trans, \
             mkl_n, mkl_m, mkl_k, \
             self.__cblas.mkl_one, ptr_v, mkl_n, ptr_q, ldq, \
             self.__cblas.mkl_zero, ptr_u, mkl_n)
-#            self.__cblas.mkl_one, ptr_v, mkl_n, ptr_q, mkl_m, \
-    def apply(self, q, output):
+    def apply(self, a, output, transp = False):
+        if transp:
+            is_complex = isinstance(a[0,0], complex)
+            if is_complex:
+                numpy.conj(self.data(), out = self.data())
+            self.__apply(a.T, output)
+            if is_complex:
+                numpy.conj(output.data(), out = output.data())
+                numpy.conj(self.data(), out = self.data())
+        else:
+            self.__apply(a, output)
+    def __apply(self, q, output):
         f, s = output.selected();
         m = q.shape[0]
         n = self.dimension()
@@ -167,9 +180,13 @@ class Vectors(NDArrayVectors):
         if q.flags['C_CONTIGUOUS']:
             Trans = Cblas.Trans
             ldq = mkl_n
-        else:
+        elif q.flags['F_CONTIGUOUS']:
             Trans = Cblas.NoTrans
             ldq = mkl_m
+        else:
+            print('using non-optimized dot')
+            output.data()[:,:] = numpy.dot(self.data(), q.T)
+            return
         self.__cblas.gemm(Cblas.ColMajor, Trans, Cblas.NoTrans, \
             mkl_m, mkl_k, mkl_n, \
             self.__cblas.mkl_one, ptr_q, ldq, ptr_v, mkl_n, \
@@ -203,8 +220,12 @@ class Vectors(NDArrayVectors):
                 ptr_q = ctypes.c_void_p(q.ctypes.data)
                 if q.flags['C_CONTIGUOUS']:
                     Trans = Cblas.Trans
-                else:
+                elif q.flags['F_CONTIGUOUS']:
                     Trans = Cblas.NoTrans
+                else:
+                    print('using non-optimized dot')
+                    self.data()[:,:] += s*numpy.dot(q.T, other.data())
+                    return
                 self.__cblas.gemm(Cblas.ColMajor, Cblas.NoTrans, Trans, \
                     mkl_n, mkl_k, mkl_m, \
                     mkl_s, ptr_u, mkl_n, ptr_q, mkl_k, \

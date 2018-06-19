@@ -60,7 +60,18 @@ class Vectors(NDArrayVectors):
             return
         print('using non-optimized dot')
         output.data()[:,:] = numpy.dot(q.T, self.data())
-    def apply(self, q, output):
+    def apply(self, a, output, transp = False):
+        if transp:
+            is_complex = isinstance(a[0,0], complex)
+            if is_complex:
+                numpy.conj(self.data(), out = self.data())
+            self.__apply(a.T, output)
+            if is_complex:
+                numpy.conj(output.data(), out = output.data())
+                numpy.conj(self.data(), out = self.data())
+        else:
+            self.__apply(a, output)
+    def __apply(self, q, output):
         if output.data().flags['C_CONTIGUOUS']:
             #print('using optimized dot')
             numpy.dot(self.data(), q.T, out = output.data())

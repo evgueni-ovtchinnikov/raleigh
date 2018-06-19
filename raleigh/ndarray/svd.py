@@ -15,10 +15,11 @@ class Operator:
     def __init__(self, a):
         self.a = a
     def apply(self, x, y, transp = False):
-        if transp:
-            x.apply(self.a.T, y)
-        else:
-            x.apply(self.a, y)
+        x.apply(self.a, y, transp)
+#        if transp:
+#            x.apply(self.a.T, y)
+#        else:
+#            x.apply(self.a, y)
 
 class OperatorSVD:
     def __init__(self, a):
@@ -28,12 +29,14 @@ class OperatorSVD:
         k = x.nvec()
         if transp:
             z = Vectors(n, k, x.data_type())
-            x.apply(self.a.T, z)
+#            x.apply(self.a.T, z)
+            x.apply(self.a, z, transp = True)
             z.apply(self.a, y)
         else:
             z = Vectors(m, k, x.data_type())
             x.apply(self.a, z)
-            z.apply(self.a.T, y)
+            z.apply(self.a, y, transp = True)
+#            z.apply(self.a.T, y)
 
 def partial_svd(a, opt, nsv = -1, cstr = None, one_side = False):
     m, n = a.shape
