@@ -1335,3 +1335,97 @@ SAVE = False
 #                    data_v = self.__data.ctypes.data + (f + i) * vsize
 #                    data_u = other.data().ctypes.data + i*vsize
 #                    data_v = self.data().ctypes.data + i*vsize
+
+#from raleigh.ndarray.vectors import Vectors
+#from raleigh.ndarray.numpy_vectors import Vectors
+
+#        self.type = type(a[0,0])
+
+#    def apply(self, x, y, transp = False):
+#        u = x.data()
+#        type_x = type(u[0,0])
+#        mixed_types = type_x is not self.type
+#        if mixed_types:
+#            u = u.astype(self.type)
+#        if transp:
+#            v = numpy.dot(u, self.a)
+#        else:
+#            v = numpy.dot(u, self.a.T)
+#        if mixed_types:
+#            v = v.astype(type_x)
+#        y.data()[:,:] = v
+
+#    def apply(self, x, y, transp = False):
+#        u = x.data()
+#        type_x = type(u[0,0])
+#        mixed_types = type_x is not self.type
+#        if mixed_types:
+#            u = u.astype(self.type)
+#        if transp:
+#            w = numpy.dot(u, self.a)
+#            v = numpy.dot(w, self.a.T)
+#        else:
+#            w = numpy.dot(u, self.a.T)
+#            v = numpy.dot(w, self.a)
+#        if mixed_types:
+#            v = v.astype(type_x)
+#        y.data()[:,:] = v
+##        if mixed_types:
+##            z = numpy.dot(u.astype(self.type), conjugate(self.a))
+##            y.data()[:,:] = numpy.dot(z, self.a).astype(type_x)
+##        else:
+##            z = numpy.dot(u, conjugate(self.a))
+##            y.data()[:,:] = numpy.dot(z, self.a)
+
+def compute_right(a, transp, opt, nsv, vtc = None):
+    if transp:
+        n, m = a.shape
+    else:
+        m, n = a.shape
+    if vtc is None:
+        v = Vectors(n)
+    else:
+        v = Vectors(vtc, with_mkl = False)
+    operator = OperatorSVD(a)
+    problem = Problem(v, lambda x, y: operator.apply(x, y, transp))
+    solver = Solver(problem)
+    solver.solve(v, opt, which = (0, nsv))
+    vt = v.data()
+    return vt
+
+def compute_left(a, vt):
+    v = conjugate(vt)
+    u = numpy.dot(a, v)
+    vv = numpy.dot(conjugate(v), v)
+    uu = -numpy.dot(conjugate(u), u)
+    lmd, x = scipy.linalg.eigh(uu, vv, turbo = False)
+    u = numpy.dot(u, x)
+    v = numpy.dot(v, x)
+    sigma = numpy.linalg.norm(u, axis = 0)
+    u /= sigma
+    return sigma, u, conjugate(v)
+
+def partial_svd_old(a, opt, nsv = -1, uc = None, vtc = None):
+    m, n = a.shape
+    if m >= n:
+        vt = compute_right(a, False, opt, nsv, vtc)
+        sigma, u, vt = compute_left(a, vt)
+        return sigma, u, vt
+    else:
+        print('transposing...')
+        b = conjugate(a)
+        if uc is not None:
+            vtc = conjugate(uc)
+        else:
+            vtc = None
+#        u = compute_right(b, opt, nsv, vtc)
+        u = compute_right(a, True, opt, nsv, vtc)
+        sigma, vt, u = compute_left(b, u)
+        return sigma, conjugate(u), conjugate(vt)
+
+try:
+    from raleigh.ndarray.mkl import mkl, Cblas
+    HAVE_MKL = True
+except:
+    HAVE_MKL = False
+

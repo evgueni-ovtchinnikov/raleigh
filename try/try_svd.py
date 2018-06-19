@@ -56,8 +56,8 @@ if LOAD:
     m, n = u0.shape
 else:
     # generate the matrix
-    m = 2000
-    n = 4000
+    m = 4000
+    n = 2000
     u0, v0 = random_singular_vectors(m, n, min(m, n), numpy.float32)
     if SAVE:
         numpy.save('u.npy', u0)
@@ -65,7 +65,7 @@ else:
 k = min(m, n)
 
 if EXP == 1:
-    alpha = 0.05
+    alpha = 0.025 # 0.05
     f_sigma = lambda t: 2**(-alpha*t).astype(numpy.float32)
 else:
     alpha = 0.01
@@ -74,7 +74,7 @@ sigma0 = random_singular_values(k, f_sigma, numpy.float32)
 a = numpy.dot(u0*sigma0, v0.transpose())
 
 th = 0.01
-block_size = 16
+block_size = 64 # 16
 
 # set solver options
 opt = Options()
@@ -89,16 +89,21 @@ opt.stopping_criteria.set_threshold(th, relative = False)
 
 # using sliding window scheme
 start = time.time()
-sigma, u, vt = partial_svd(a, opt)
+sigma, vt = partial_svd(a, opt, one_side = True)
+#sigma, u, vt = partial_svd(a, opt)
 stop = time.time()
 time_sw = stop - start
 iter_sw = opt.stopping_criteria.iteration
 n_sw = vt.shape[0]
-err_sw = vec_err(v0[:,:n_sw], vt.transpose())
+ind = numpy.argsort(-sigma)
+sigma = sigma[ind]
+v = vt.transpose()[:,ind]
+err_sw = vec_err(v0[:,:n_sw], v)
+#err_sw = vec_err(v0[:,:n_sw], vt.transpose())
 
 # with restarts
 nsv = int(round(block_size*0.8))
-opt.stopping_criteria.set_how_many(nsv)
+#opt.stopping_criteria.set_how_many(nsv)
 u_wr = None
 vt_wr = None
 cstr = None
@@ -106,12 +111,15 @@ iter_wr = 0
 start = time.time()
 while WITH_RESTARTS:
 #    sigma_wr, u_wr, vt_wr = partial_svd(a, opt, uc = u_wr, vtc = vt_wr)
-    sigma_wr, u_wr, vt_wr = partial_svd(a, opt, cstr = cstr)
+#    sigma_wr, u_wr, vt_wr = partial_svd(a, opt, nsv, cstr = cstr)
+    sigma_wr, vt_wr = partial_svd(a, opt, nsv, cstr = cstr, one_side = True)
+    if iter_wr == 0:
+        sigma0 = numpy.amax(sigma_wr)
     iter_wr += opt.stopping_criteria.iteration
 #    print(sigma_wr)
 #    if iter_wr > 100:
 #        break
-    if sigma_wr[-1] < th*sigma_wr[0]:
+    if sigma_wr[-1] < th*sigma0:
         break
     cstr = (u_wr, vt_wr)
     print('\nrestarting...')
@@ -121,8 +129,9 @@ time_wr = stop - start
 #print(sigma_wr)
 #print(sigma)
 
-print('\nsingular values:')
-print(sigma[:n_sw + 1])
+print('\nlargest %d singular values:' % n_sw)
+print(sigma[:n_sw])
+#print(sigma[:n_sw + 1])
 print('\nsingular vector errors:')
 print(err_sw)
 
