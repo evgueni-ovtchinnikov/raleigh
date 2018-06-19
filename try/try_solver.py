@@ -55,7 +55,7 @@ print(solver.eigenvalues)
 #print('%d converged eigenvalues are:' % (solver.lcon + solver.rcon))
 #print(solver.eigenvalues)
 
-d = numpy.ones((n - 1,))
+d = 1j*numpy.ones((n - 1,))
 A = numpy.diag(d, 1) - numpy.diag(d, -1)
 B = numpy.diag(2*numpy.ones((n,)))
 A = numpy.dot(B, numpy.dot(A, B))
