@@ -10,6 +10,28 @@ Created on Thu Jun 14 11:48:14 2018
 import numbers
 import numpy
 
+def fill_ndarray_with_orthogonal_vectors(a):
+    m, n = a.shape
+    a[0,0] = 1.0
+    i = 1
+    while 2*i < m:
+        a[i : 2*i, :i] = a[:i, :i]
+        a[:i, i : 2*i] = a[:i, :i]
+        a[i : 2*i, i : 2*i] = -a[:i, :i]
+        i *= 2
+    k = i
+    j = 2*i
+    if j > n:
+        for i in range(k, m):
+            a[i, i] = 1.0
+        return
+    while j <= n:
+        a[:k, i : j] = a[:k, :i]
+        i, j = j, 2*j
+    j = i//2
+    a[k : m,   : j] = a[:(m - k), : j]
+    a[k : m, j : i] = -a[:(m - k), j : i]
+
 class NDArrayVectors:
     def __init__(self, arg, nvec = 0, data_type = None):
         if isinstance(arg, NDArrayVectors):
@@ -58,32 +80,12 @@ class NDArrayVectors:
         iv, nv = self.__selected
         m, n = self.__data.shape
         self.__data[iv : iv + nv,:] = 2*numpy.random.rand(nv, n) - 1
-    def fill_orthogonal(self, m):
+    def fill_orthogonal(self):
         iv, nv = self.__selected
         k, n = self.__data.shape
-        if n < m:
-            print('Warning: number of vectors too large, reducing')
-            m = n
-        a = self.__data[iv : iv + nv, :]
-        a[0,0] = 1.0
-        i = 1
-        while 2*i < m:
-            a[i : 2*i, :i] = a[:i, :i]
-            a[:i, i : 2*i] = a[:i, :i]
-            a[i : 2*i, i : 2*i] = -a[:i, :i]
-            i *= 2
-        k = i
-        j = 2*i
-        if j > n:
-            for i in range(k, m):
-                a[i, i] = 1.0
-            return Vectors(a)
-        while j <= n:
-            a[:k, i : j] = a[:k, :i]
-            i, j = j, 2*j
-        j = i//2
-        a[k : m,   : j] = a[:(m - k), : j]
-        a[k : m, j : i] = -a[:(m - k), j : i]
+        if n < nv:
+            raise ValueError('fill_orthogonal: too many vectors in the array')
+        fill_ndarray_with_orthogonal_vectors(self.__data[iv : iv + nv, :])
     def all_data(self):
         return self.__data
     def data(self, i = None):

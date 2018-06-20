@@ -1474,3 +1474,29 @@ except:
 #norm = cublas.cublas.cublasSnrm2_v2
 #norm.restype = ctypes.c_int
 
+#        a = self.__data[iv : iv + nv, :]
+#        a[0,0] = 1.0
+#        i = 1
+#        while 2*i < m:
+#            a[i : 2*i, :i] = a[:i, :i]
+#            a[:i, i : 2*i] = a[:i, :i]
+#            a[i : 2*i, i : 2*i] = -a[:i, :i]
+#            i *= 2
+#        k = i
+#        j = 2*i
+#        if j > n:
+#            for i in range(k, m):
+#                a[i, i] = 1.0
+#            return
+#        while j <= n:
+#            a[:k, i : j] = a[:k, :i]
+#            i, j = j, 2*j
+#        j = i//2
+#        a[k : m,   : j] = a[:(m - k), : j]
+#        a[k : m, j : i] = -a[:(m - k), j : i]
+
+#    def fill_orthogonal(self, m):
+
+#        if n < m:
+#            print('Warning: number of vectors too large, reducing')
+#            m = n
