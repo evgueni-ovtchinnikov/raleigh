@@ -88,6 +88,8 @@ malloc.argtypes = [POINTER(POINTER(ctypes.c_ubyte)), ctypes.c_int]
 malloc.restype = ctypes.c_int
 free = cuda.cudaFree
 free.restype = ctypes.c_int
+memset = cuda.cudaMemset
+memset.restype = ctypes.c_int
 memcpy = cuda.cudaMemcpy
 memcpy.restype = ctypes.c_int
 memcpyH2H = ctypes.c_int(0)
@@ -95,5 +97,16 @@ memcpyH2D = ctypes.c_int(1)
 memcpyD2H = ctypes.c_int(2)
 memcpyD2D = ctypes.c_int(3)
 
+numDevices = ctypes.c_int()
+getDeviceCount(ctypes.byref(numDevices))
+print('devices found: %d' % numDevices.value)
 
-
+for x in range(numDevices.value):
+    devProp = CudaDeviceProp()
+    getDeviceProperties(ctypes.byref(devProp), x)
+    print('device: %s' % devProp.name)
+    print('memory: %d' % devProp.totalGlobalMem)
+    print('multiprocessors: %d' % devProp.multiProcessorCount)
+    print('threads per mp: %d' % devProp.maxThreadsPerMultiProcessor)
+    print('registers per block: %d'% devProp.regsPerBlock)
+    print('shared memory per block: %d' % devProp.sharedMemPerBlock)

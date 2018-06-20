@@ -6,8 +6,11 @@ Created on Tue Jun 19 17:05:28 2018
 """
 
 import ctypes
-import cuda
 import numpy
+import sys
+sys.path.append('..')
+
+import raleigh.cuda.cuda as cuda
 
 POINTER = ctypes.POINTER
 
@@ -23,7 +26,7 @@ destroy = cublas.cublasDestroy_v2
 #destroy.argtypes = [POINTER(ctypes.c_ubyte)]
 destroy.restype = ctypes.c_int
 
-class CUBLAS:
+class Cublas:
     def __init__(self, dt):
         self.handle = POINTER(ctypes.c_ubyte)()
         err = create(ctypes.byref(self.handle))
@@ -33,10 +36,14 @@ class CUBLAS:
             self.dsize = 4
             self.norm = cublas.cublasSnrm2_v2
             self.norm.restype = ctypes.c_int
+            self.dot = cublas.cublasSdot_v2
+            self.dot.restype = ctypes.c_int
         elif dt == numpy.float64:
             self.dsize = 8
             self.norm = cublas.cublasDnrm2_v2
             self.norm.restype = ctypes.c_int
+            self.dot = cublas.cublasDdot_v2
+            self.dot.restype = ctypes.c_int
         else:
             raise ValueError('data type %s not supported' % repr(dt))
     def __del__(self):
