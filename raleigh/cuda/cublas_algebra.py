@@ -8,6 +8,8 @@ Created on Wed Jun 20 14:19:47 2018
 import ctypes
 import numbers
 import numpy
+import sys
+sys.path.append('..')
 
 import raleigh.cuda.cuda as cuda
 

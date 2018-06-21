@@ -8,6 +8,8 @@ Created on Thu Jun 14 11:52:38 2018
 """
 
 import numpy
+import sys
+sys.path.append('../..')
 
 from raleigh.ndarray.algebra_bc import NDArrayVectors, NDArrayMatrix
 

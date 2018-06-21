@@ -10,7 +10,7 @@ Created on Thu Jun 14 12:34:53 2018
 import ctypes
 import numpy
 import sys
-sys.path.append('..')
+sys.path.append('../..')
 
 from raleigh.ndarray.mkl import Cblas
 
