@@ -6,14 +6,18 @@ Created on Wed Mar 21 14:06:26 2018
 
 @author: Evgueni Ovtchinnikov, STFC
 """
+
 import numpy
 import scipy
+import sys
+sys.path.append('..')
+
 from raleigh.solver import Problem, Solver
-from raleigh.vectors import Vectors
+from raleigh.algebra import Vectors, Matrix
 
 class Operator:
     def __init__(self, a):
-        self.a = a
+        self.a = Matrix(a)
     def apply(self, x, y, transp = False):
         x.apply(self.a, y, transp)
 #        if transp:
@@ -23,9 +27,9 @@ class Operator:
 
 class OperatorSVD:
     def __init__(self, a):
-        self.a = a
+        self.a = Matrix(a)
     def apply(self, x, y, transp = False):
-        m, n = self.a.shape
+        m, n = self.a.data().shape
         k = x.nvec()
         if transp:
             z = Vectors(n, k, x.data_type())

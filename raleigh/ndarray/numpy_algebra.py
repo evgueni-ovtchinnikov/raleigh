@@ -9,7 +9,7 @@ Created on Thu Jun 14 11:52:38 2018
 
 import numpy
 
-from raleigh.ndarray.algebra_types import NDArrayVectors
+from raleigh.ndarray.algebra_bc import NDArrayVectors, NDArrayMatrix
 
 class Vectors(NDArrayVectors):
     def __init__(self, arg, nvec = 0, data_type = None):
@@ -60,7 +60,8 @@ class Vectors(NDArrayVectors):
             return
         print('using non-optimized dot')
         output.data()[:,:] = numpy.dot(q.T, self.data())
-    def apply(self, a, output, transp = False):
+    def apply(self, A, output, transp = False):
+        a = A.data()
         if transp:
             is_complex = isinstance(a[0,0], complex)
             if is_complex:
@@ -89,3 +90,6 @@ class Vectors(NDArrayVectors):
         else:
             for i in range(m):
                 self.data(i)[:] += s[i]*other.data(i)
+
+class Matrix(NDArrayMatrix):
+    pass
