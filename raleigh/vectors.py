@@ -8,8 +8,8 @@ Created on Thu Jun 14 13:08:20 2018
 """
 
 try:
-    from raleigh.ndarray.cblas_vectors import Vectors
+    from raleigh.ndarray.cblas_algebra import Vectors
     print('using mkl cblas...')
 except:
     print('mkl cblas not found, using numpy...')
-    from raleigh.ndarray.numpy_vectors import Vectors
+    from raleigh.ndarray.numpy_algebra import Vectors

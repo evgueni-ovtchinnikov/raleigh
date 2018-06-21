@@ -12,7 +12,7 @@ import numpy
 
 from raleigh.ndarray.mkl import Cblas
 
-from raleigh.ndarray.ndarray_vectors import NDArrayVectors
+from raleigh.ndarray.algebra_types import NDArrayVectors
 
 def conjugate(a):
     if isinstance(a[0,0], complex):

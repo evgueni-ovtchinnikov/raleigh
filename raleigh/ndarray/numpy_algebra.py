@@ -9,7 +9,7 @@ Created on Thu Jun 14 11:52:38 2018
 
 import numpy
 
-from raleigh.ndarray.ndarray_vectors import NDArrayVectors
+from raleigh.ndarray.algebra_types import NDArrayVectors
 
 class Vectors(NDArrayVectors):
     def __init__(self, arg, nvec = 0, data_type = None):
