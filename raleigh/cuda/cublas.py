@@ -34,24 +34,40 @@ class Cublas:
             raise RuntimeError('cublasCreate failure')
         if dt == numpy.float32:
             self.dsize = 4
+            self.copy = cublas.cublasScopy_v2
+            self.copy.restype = ctypes.c_int
+            self.scal = cublas.cublasSscal_v2
+            self.scal.restype = ctypes.c_int
             self.norm = cublas.cublasSnrm2_v2
             self.norm.restype = ctypes.c_int
             self.dot = cublas.cublasSdot_v2
             self.dot.restype = ctypes.c_int
         elif dt == numpy.float64:
             self.dsize = 8
+            self.copy = cublas.cublasDcopy_v2
+            self.copy.restype = ctypes.c_int
+            self.scal = cublas.cublasDscal_v2
+            self.scal.restype = ctypes.c_int
             self.norm = cublas.cublasDnrm2_v2
             self.norm.restype = ctypes.c_int
             self.dot = cublas.cublasDdot_v2
             self.dot.restype = ctypes.c_int
         elif dt == numpy.complex64:
             self.dsize = 8
+            self.copy = cublas.cublasCcopy_v2
+            self.copy.restype = ctypes.c_int
+            self.scal = cublas.cublasCscal_v2
+            self.scal.restype = ctypes.c_int
             self.norm = cublas.cublasScnrm2_v2
             self.norm.restype = ctypes.c_int
             self.dot = cublas.cublasCdotc_v2
             self.dot.restype = ctypes.c_int
         elif dt == numpy.complex128:
             self.dsize = 16
+            self.copy = cublas.cublasZcopy_v2
+            self.copy.restype = ctypes.c_int
+            self.scal = cublas.cublasZscal_v2
+            self.scal.restype = ctypes.c_int
             self.norm = cublas.cublasDznrm2_v2
             self.norm.restype = ctypes.c_int
             self.dot = cublas.cublasZdotc_v2

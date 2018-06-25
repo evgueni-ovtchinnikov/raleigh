@@ -77,7 +77,13 @@ si = s[1]
 print(sr, si)
 
 w = Vectors(z)
-u = Vectors(w)
+#u = Vectors(w)
+u = Vectors(n, w.nvec(), dtype = numpy.complex128)
+ind = numpy.asarray([1, 0])
+w.copy(u, ind)
+
+s = 2*numpy.ones((2,))
+u.scale(s)
 #w = Vectors(n, 0)
 
 print(u.dimension())

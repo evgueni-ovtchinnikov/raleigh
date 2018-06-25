@@ -18,7 +18,7 @@ def try_calling(err):
         raise RuntimeError('cuda error')
 
 def shifted_ptr(dev_ptr, shift):
-#    print(type(dev_ptr))
+#    print(type(dev_ptr), type(shift))
     ptr = ctypes.cast(dev_ptr, ctypes.c_void_p)
     return ctypes.cast(ptr.value + shift, ctypes.POINTER(ctypes.c_ubyte))
 
@@ -131,6 +131,40 @@ class Vectors:
     def all_data(self):
         return self.__data
 
+    # BLAS level 1
+    def copy(self, other, ind = None):
+        i, m = self.selected()
+        j, l = other.selected()
+        vdim = self.dimension()
+        inc = ctypes.c_int(1)
+        vsize = self.__cublas.dsize * vdim
+        data_u = self.all_data()
+        data_v = other.all_data()
+        if ind is None:
+            n = ctypes.c_int(m*vdim)
+            ptr_u = shifted_ptr(data_u, i*vsize)
+            ptr_v = shifted_ptr(data_v, j*vsize)
+            self.__cublas.copy(self.__cublas.handle, n, ptr_u, inc, ptr_v, inc)
+        else:
+            n = ctypes.c_int(vdim)
+            l = len(ind)
+            for k in range(l):
+                ptr_u = shifted_ptr(data_u, int(ind[k])*vsize)
+                ptr_v = shifted_ptr(data_v, (j + k)*vsize)
+                self.__cublas.copy \
+                    (self.__cublas.handle, n, ptr_u, inc, ptr_v, inc)
+    def scale(self, s):
+        f, m = self.selected()
+        vdim = self.dimension()
+        n = ctypes.c_int(vdim)
+        inc = ctypes.c_int(1)
+        vsize = self.__cublas.dsize * vdim
+        data_u = self.all_data()
+        for i in range(m):
+            ptr_u = shifted_ptr(data_u, (f + i)*vsize)
+            if s[i] != 0.0:
+                r = self.__to_float(1.0/s[i])
+                self.__cublas.scal(self.__cublas.handle, n, r, ptr_u, inc)
     def dots(self, other):
         m = self.nvec()
         v = numpy.ndarray((m,), dtype = self.data_type())
