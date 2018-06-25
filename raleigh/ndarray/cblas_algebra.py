@@ -9,10 +9,12 @@ Created on Thu Jun 14 12:34:53 2018
 
 import ctypes
 import numpy
+import sys
+sys.path.append('../..')
 
 from raleigh.ndarray.mkl import Cblas
 
-from raleigh.ndarray.ndarray_vectors import NDArrayVectors
+from raleigh.ndarray.algebra_bc import NDArrayVectors, NDArrayMatrix
 
 def conjugate(a):
     if isinstance(a[0,0], complex):
@@ -152,7 +154,8 @@ class Vectors(NDArrayVectors):
             mkl_n, mkl_m, mkl_k, \
             self.__cblas.mkl_one, ptr_v, mkl_n, ptr_q, ldq, \
             self.__cblas.mkl_zero, ptr_u, mkl_n)
-    def apply(self, a, output, transp = False):
+    def apply(self, A, output, transp = False):
+        a = A.data()
         if transp:
             is_complex = isinstance(a[0,0], complex)
             if is_complex:
@@ -240,3 +243,6 @@ class Vectors(NDArrayVectors):
                     (mkl_n, mkl_s, ptr_u, mkl_inc, ptr_v, mkl_inc)
                 data_u += vsize
                 data_v += vsize
+
+class Matrix(NDArrayMatrix):
+    pass

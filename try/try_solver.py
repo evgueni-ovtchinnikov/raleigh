@@ -4,7 +4,7 @@ sys.path.append('..')
 
 import operators
 import raleigh.solver
-from raleigh.vectors import Vectors
+from raleigh.algebra import Vectors, Matrix
 #from raleigh.ndarray.cblas_vectors import Vectors
 #from raleigh.ndarray.numpy_vectors import Vectors
 #from raleigh.ndarray.vectors import Vectors
@@ -70,10 +70,10 @@ A = numpy.diag(d, 1) - numpy.diag(d, -1)
 #print(y.data())
 
 v = Vectors(2, data_type = numpy.complex128)
-B = A[:3,:2].copy()
-C = A[:2,:2].copy()
+B = Matrix(A[:3,:2].copy())
+C = Matrix(A[:2,:2].copy())
 print('B:')
-print(B)
+print(B.data())
 x = v.new_vectors(2)
 y = Vectors(3, 2, data_type = numpy.complex128)
 z = y.new_vectors(2)
@@ -86,6 +86,7 @@ print(y.data())
 y.apply(B, x, transp = True)
 print('x = B* y:')
 print(x.data())
+C = C.data()
 print('C:')
 print(C)
 y.multiply(C, z)

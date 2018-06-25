@@ -1,5 +1,8 @@
 import numpy
 import scipy.linalg as sla
+import sys
+sys.path.append('../..')
+
 import raleigh.solver
 
 def sort_eigenpairs_and_errors(lmd, u, err_lmd, err_X, res, cnv_stat):

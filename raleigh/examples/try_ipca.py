@@ -12,7 +12,7 @@ Arguments:
 Options:
   -p <path>, --path=<path>   path to the data directory
                              [default: C:/Users/wps46139/Documents/Data/PCA]
-  -b <blk> , --bsize=<blk>   block CG block size [default: 16]
+  -b <blk> , --bsize=<blk>   block CG block size [default: 64]
   -t <tol> , --svtol=<tol>   singular vector error tolerance [default: 1e-2]
 
 Created on Mon Jun 18 12:10:20 2018
@@ -33,7 +33,7 @@ import numpy
 import sys
 import time
 
-sys.path.append('..')
+sys.path.append('../..')
 
 from raleigh.solver import Options
 from raleigh.ndarray.svd import partial_svd
@@ -81,13 +81,10 @@ n = nx*ny
 
 images = numpy.reshape(images, (m, n))
 
-#block_size = 256
-
-# set solver options
 opt = Options()
 opt.block_size = block_size
 opt.max_iter = 300
-#opt.verbosity = 1
+opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
     ('kinematic eigenvector error', svec_tol)
 opt.stopping_criteria = MyStoppingCriteria()
@@ -99,3 +96,10 @@ elapsed_time = opt.stopping_criteria.elapsed_time + \
     time.time() - opt.stopping_criteria.start_time
 
 print('iterations: %d, time: %.2e' % (iterations, elapsed_time))
+
+ncon = sigma.shape[0]
+v = numpy.reshape(u.T, (ncon, m))
+u = numpy.reshape(vt, (ncon, ny, nx))    
+numpy.save('sigma.npy', sigma[:ncon])
+numpy.save('u.npy', u)
+numpy.save('v.npy', v)

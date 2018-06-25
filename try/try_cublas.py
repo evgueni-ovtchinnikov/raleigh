@@ -20,7 +20,7 @@ print(type(dev_v))
 import raleigh.cuda.cuda as cuda
 
 from raleigh.cuda.cublas import Cublas
-from raleigh.cuda.cublas_vectors import Vectors
+from raleigh.cuda.cublas_algebra import Vectors
 
 cublas = Cublas(numpy.float32)
 

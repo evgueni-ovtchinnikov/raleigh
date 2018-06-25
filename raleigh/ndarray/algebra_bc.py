@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Base class for ndarray implementation of Vectors type
+Base class for ndarray implementation of Vectors and Matrix type
 
 Created on Thu Jun 14 11:48:14 2018
 
@@ -98,3 +98,9 @@ class NDArrayVectors:
         self.__data = numpy.concatenate((self.__data, other.data()))
         self.__nvec += other.nvec()
         self.select_all()
+
+class NDArrayMatrix:
+    def __init__(self, data):
+        self.__data = data
+    def data(self):
+        return self.__data
