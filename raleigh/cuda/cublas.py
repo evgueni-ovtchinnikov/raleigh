@@ -44,6 +44,18 @@ class Cublas:
             self.norm.restype = ctypes.c_int
             self.dot = cublas.cublasDdot_v2
             self.dot.restype = ctypes.c_int
+        elif dt == numpy.complex64:
+            self.dsize = 8
+            self.norm = cublas.cublasScnrm2_v2
+            self.norm.restype = ctypes.c_int
+            self.dot = cublas.cublasCdotc_v2
+            self.dot.restype = ctypes.c_int
+        elif dt == numpy.complex128:
+            self.dsize = 16
+            self.norm = cublas.cublasDznrm2_v2
+            self.norm.restype = ctypes.c_int
+            self.dot = cublas.cublasZdotc_v2
+            self.dot.restype = ctypes.c_int
         else:
             raise ValueError('data type %s not supported' % repr(dt))
     def __del__(self):
