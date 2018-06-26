@@ -1597,3 +1597,12 @@ except:
 #    if numpy.iscomplex(a).any():
 
 #    if is_complex(a[0]):
+
+#                s = self.__floats()
+#                self.__cublas.dot \
+#                    (self.__cublas.handle, n, ptr_v, inc, ptr_u, inc, s)
+
+#                s = self.__float()
+#                self.__cublas.dot \
+#                    (self.__cublas.handle, n, ptr_v, inc, ptr_u, inc, ctypes.byref(s))
+#                v[i] = s.value

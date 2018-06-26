@@ -5,6 +5,12 @@ sys.path.append('..')
 
 POINTER = ctypes.POINTER
 
+def conjugate(a):
+    if a.dtype.kind == 'c':
+        return a.conj()
+    else:
+        return a
+
 #def shifted_ptr(ptr, shift):
 #    return ctypes.cast(ptr.value + shift, POINTER(ctypes.c_ubyte))
 def shifted_ptr(dev_ptr, shift):
@@ -57,19 +63,25 @@ print(r)
 
 cuda.free(dev_v)
 
-cublas = Cublas(numpy.complex128)
-z = numpy.ndarray((2, n), dtype = numpy.complex128)
-z[:,:] = 1
+#data_type = numpy.float32
+data_type = numpy.complex64
+cublas = Cublas(data_type)
+z = numpy.ndarray((2, n), dtype = data_type)
+z[0,:] = 1
+z[1,:] = 2
 print(z.dtype.type)
 print(z.itemsize)
 print(isinstance(z[0,0], complex))
-z[0,0] = 1000
-size = ctypes.c_int(32*n)
+#z[0,0] = 1000
+size = ctypes.c_int(2*n*z.itemsize)
 dev_z = POINTER(ctypes.c_ubyte)()
 print(cuda.malloc(ctypes.byref(dev_z), size))
 ptr_z = ctypes.c_void_p(z.ctypes.data)
 print(cuda.memcpy(dev_z, ptr_z, size, cuda.memcpyH2D))
-floats = ctypes.c_double * 2
+if data_type == numpy.float64 or data_type == numpy.complex128:
+    floats = ctypes.c_double * 2
+else:
+    floats = ctypes.c_float * 2
 s = floats()
 print(cublas.dot(cublas.handle, ctypes.c_int(n), dev_z, inc, dev_z, inc, s))
 sr = s[0]
@@ -77,12 +89,14 @@ si = s[1]
 print(sr, si)
 
 w = Vectors(z)
+u = w.new_vectors(w.nvec())
+v = w.new_vectors(w.nvec())
 #u = Vectors(w)
-u = Vectors(n, w.nvec(), dtype = numpy.complex128)
+#u = Vectors(n, w.nvec(), dtype = data_type)
 ind = numpy.asarray([1, 0])
 w.copy(u, ind)
 
-s = 2*numpy.ones((2,))
+s = 2*numpy.ones((2,), dtype = data_type)
 u.scale(s)
 #w = Vectors(n, 0)
 
@@ -94,6 +108,17 @@ print(u.is_complex())
 
 s = u.dots(u)
 print(s)
+
+q = u.dot(w)
+print(q)
+
+w.multiply(q, v)
+qq = v.dot(u)
+
+print(qq)
+print(numpy.dot(conjugate(q.T), q))
+
+print(q.flags)
 
 #array2 = ctypes.c_float * 2
 #t = array2()
