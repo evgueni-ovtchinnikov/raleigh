@@ -16,9 +16,11 @@ from raleigh.ndarray.mkl import Cblas
 
 from raleigh.ndarray.algebra_bc import NDArrayVectors, NDArrayMatrix
 
+def array_ptr(array, shift = 0):
+    return ctypes.c_void_p(array.ctypes.data + shift)
+
 def conjugate(a):
-#    if isinstance(a[0,0], complex):
-    if numpy.iscomplex(a).any():
+    if a.dtype.kind == 'c':
         return a.conj()
     else:
         return a
@@ -28,18 +30,28 @@ class Vectors(NDArrayVectors):
         super(Vectors, self).__init__(arg, nvec, data_type)
         dt = self.data_type()
         self.__cblas = Cblas(dt)
-    def __to_mkl_float(self, v):
+    def __complex(self):
+        dt = self.data_type()
+        if dt == numpy.complex64:
+            floats = ctypes.c_float * 2
+        elif dt == numpy.complex128:
+            floats = ctypes.c_double * 2
+        else:
+            raise ValueError('wrong data type %s passed to __complex' % repr(dt))
+        return floats()
+    def __to_float(self, v):
         dt = self.data_type()
         if dt == numpy.float32:
-            return ctypes.c_float(v)
+            s = ctypes.c_float(v)
         elif dt == numpy.float64:
-            return ctypes.c_double(v)
+            s = ctypes.c_double(v)
         elif dt == numpy.complex64 or dt == numpy.complex128:
-            self.__cblas.cmplx_val[0] = v.real
-            self.__cblas.cmplx_val[1] = v.imag
-            return ctypes.c_void_p(self.__cblas.cmplx_val.ctypes.data)
+            s = self.__complex()
+            s[0] = v.real
+            s[1] = v.imag
         else:
             raise ValueError('data type %s not supported' % repr(dt))
+        return s
     def new_vectors(self, nv = 0):
         return Vectors(self.dimension(), nv, self.data_type())
     def clone(self):
@@ -54,19 +66,15 @@ class Vectors(NDArrayVectors):
         vsize = self.__cblas.dsize * vdim
         if ind is None:
             mkl_n = ctypes.c_int(n*vdim)
-            data_u = self.all_data().ctypes.data + i*vsize
-            data_v = other.all_data().ctypes.data + j*vsize
-            ptr_u = ctypes.c_void_p(data_u)
-            ptr_v = ctypes.c_void_p(data_v)
+            ptr_u = array_ptr(self.all_data(), i*vsize)
+            ptr_v = array_ptr(other.all_data(), j*vsize)
             self.__cblas.copy(mkl_n, ptr_u, mkl_inc, ptr_v, mkl_inc)
         else:
             mkl_n = ctypes.c_int(vdim)
             l = len(ind)
             for k in range(l):
-                data_u = self.all_data().ctypes.data + int(ind[k])*vsize
-                data_v = other.all_data().ctypes.data + (j + k)*vsize
-                ptr_u = ctypes.c_void_p(data_u)
-                ptr_v = ctypes.c_void_p(data_v)
+                ptr_u = array_ptr(self.all_data(), int(ind[k])*vsize)
+                ptr_v = array_ptr(other.all_data(), (j + k)*vsize)
                 self.__cblas.copy(mkl_n, ptr_u, mkl_inc, ptr_v, mkl_inc)
     def scale(self, s):
         f, n = self.selected()
@@ -76,9 +84,8 @@ class Vectors(NDArrayVectors):
         vsize = self.__cblas.dsize * vdim
         for i in range(n):
             if s[i] != 0.0:
-                data_u = self.all_data().ctypes.data + (f + i)*vsize
-                ptr_u = ctypes.c_void_p(data_u)
-                mkl_s = self.__to_mkl_float(1.0/s[i])
+                ptr_u = array_ptr(self.all_data(), (f + i)*vsize)
+                mkl_s = self.__to_float(1.0/s[i])
                 self.__cblas.scal(mkl_n, mkl_s, ptr_u, mkl_inc)
     def dots(self, other):
         n = self.nvec()
@@ -87,20 +94,16 @@ class Vectors(NDArrayVectors):
         mkl_n = ctypes.c_int(vdim)
         mkl_inc = ctypes.c_int(1)
         vsize = self.__cblas.dsize * vdim
-        if self.is_complex():
-            ptr_r = ctypes.c_void_p(self.__cblas.cmplx_val.ctypes.data)
+        iu = self.selected()[0]
+        iv = other.selected()[0]
         for i in range(n):
-            iu = self.selected()[0]
-            iv = other.selected()[0]
-            data_u = self.all_data().ctypes.data + (iu + i)*vsize
-            data_v = other.all_data().ctypes.data + (iv + i)*vsize
-            ptr_u = ctypes.c_void_p(data_u)
-            ptr_v = ctypes.c_void_p(data_v)
+            ptr_u = array_ptr(self.all_data(), (iu + i)*vsize)
+            ptr_v = array_ptr(other.all_data(), (iv + i)*vsize)
             if self.is_complex():
+                s = self.__complex()
                 self.__cblas.inner \
-                    (mkl_n, ptr_v, mkl_inc, ptr_u, mkl_inc, ptr_r)
-                res = self.__cblas.cmplx_val
-                v[i] = res[0] + 1j * res[1]
+                    (mkl_n, ptr_v, mkl_inc, ptr_u, mkl_inc, s)
+                v[i] = s[0] + 1j * s[1]
             else:
                 v[i] = self.__cblas.inner \
                     (mkl_n, ptr_v, mkl_inc, ptr_u, mkl_inc)
@@ -115,10 +118,8 @@ class Vectors(NDArrayVectors):
         mkl_n = ctypes.c_int(n)
         mkl_m = ctypes.c_int(m)
         mkl_k = ctypes.c_int(k)
-        data_u = other.data().ctypes.data
-        data_v = self.data().ctypes.data
-        ptr_u = ctypes.c_void_p(data_u)
-        ptr_v = ctypes.c_void_p(data_v)
+        ptr_u = array_ptr(other.data())
+        ptr_v = array_ptr(self.data())
         ptr_q = ctypes.c_void_p(q.ctypes.data)
         if self.is_complex():
             Trans = Cblas.ConjTrans
@@ -136,10 +137,8 @@ class Vectors(NDArrayVectors):
         mkl_n = ctypes.c_int(n)
         mkl_m = ctypes.c_int(m)
         mkl_k = ctypes.c_int(self.nvec())
-        data_u = output.data().ctypes.data
-        data_v = self.data().ctypes.data
-        ptr_u = ctypes.c_void_p(data_u)
-        ptr_v = ctypes.c_void_p(data_v)
+        ptr_u = array_ptr(output.data())
+        ptr_v = array_ptr(self.data())
         ptr_q = ctypes.c_void_p(q.ctypes.data)
         if q.flags['C_CONTIGUOUS']:
             Trans = Cblas.Trans
@@ -158,8 +157,7 @@ class Vectors(NDArrayVectors):
     def apply(self, A, output, transp = False):
         a = A.data()
         if transp:
-#            is_complex = isinstance(a[0,0], complex)
-            is_complex = numpy.iscomplex(a).any()
+            is_complex = (a.dtype.kind == 'c')
             if is_complex:
                 numpy.conj(self.data(), out = self.data())
             self.__apply(a.T, output)
@@ -173,7 +171,6 @@ class Vectors(NDArrayVectors):
         m = q.shape[0]
         n = self.dimension()
         k = self.nvec()
-#        print(m, n, k, q.flags['C_CONTIGUOUS'])
         mkl_n = ctypes.c_int(n)
         mkl_m = ctypes.c_int(m)
         mkl_k = ctypes.c_int(k)
@@ -187,21 +184,13 @@ class Vectors(NDArrayVectors):
             print('using non-optimized dot')
             output.data()[:,:] = numpy.dot(self.data(), q.T)
             return
-        data_u = output.data().ctypes.data
-        data_v = self.data().ctypes.data
-        ptr_u = ctypes.c_void_p(data_u)
-        ptr_v = ctypes.c_void_p(data_v)
+        ptr_u = array_ptr(output.data())
+        ptr_v = array_ptr(self.data())
         ptr_q = ctypes.c_void_p(q.ctypes.data)
         self.__cblas.gemm(Cblas.ColMajor, Trans, Cblas.NoTrans, \
             mkl_m, mkl_k, mkl_n, \
             self.__cblas.mkl_one, ptr_q, ldq, ptr_v, mkl_n, \
             self.__cblas.mkl_zero, ptr_u, mkl_m)
-#        if output.data().flags['C_CONTIGUOUS']:
-#            #print('using optimized dot')
-#            numpy.dot(self.data(), q.T, out = output.data())
-#        else:
-#            #print('using non-optimized dot')
-#            output.data()[:,:] = numpy.dot(self.data(), q.T)
     def add(self, other, s, q = None):
         f, m = self.selected();
         n = self.dimension()
@@ -209,12 +198,10 @@ class Vectors(NDArrayVectors):
         mkl_n = ctypes.c_int(n)
         mkl_m = ctypes.c_int(m)
         vsize = self.__cblas.dsize * n
-        data_u = other.data().ctypes.data
-        data_v = self.data().ctypes.data
-        ptr_u = ctypes.c_void_p(data_u)
-        ptr_v = ctypes.c_void_p(data_v)
+        ptr_u = array_ptr(other.data())
+        ptr_v = array_ptr(self.data())
         if numpy.isscalar(s):
-            mkl_s = self.__to_mkl_float(s)
+            mkl_s = self.__to_float(s)
             if q is None:
                 mkl_nm = ctypes.c_int(n*m)
                 mkl_inc = ctypes.c_int(1)
@@ -239,14 +226,12 @@ class Vectors(NDArrayVectors):
                     self.__cblas.mkl_one, ptr_v, mkl_n)
         else:
             for i in range(m):
-                ptr_u = ctypes.c_void_p(data_u)
-                ptr_v = ctypes.c_void_p(data_v)
+                ptr_u = array_ptr(other.data(), i*vsize)
+                ptr_v = array_ptr(self.data(), i*vsize)
                 mkl_inc = ctypes.c_int(1)
-                mkl_s = self.__to_mkl_float(s[i])
+                mkl_s = self.__to_float(s[i])
                 self.__cblas.axpy \
                     (mkl_n, mkl_s, ptr_u, mkl_inc, ptr_v, mkl_inc)
-                data_u += vsize
-                data_v += vsize
 
 class Matrix(NDArrayMatrix):
     pass

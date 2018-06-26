@@ -1500,3 +1500,100 @@ except:
 #        if n < m:
 #            print('Warning: number of vectors too large, reducing')
 #            m = n
+
+#    if isinstance(a[0,0], complex):
+#    if numpy.iscomplex(a).any():
+
+#    def __to_mkl_float(self, v):
+#        dt = self.data_type()
+#        if dt == numpy.float32:
+#            return ctypes.c_float(v)
+#        elif dt == numpy.float64:
+#            return ctypes.c_double(v)
+#        elif dt == numpy.complex64 or dt == numpy.complex128:
+#            self.__cblas.cmplx_val[0] = v.real
+#            self.__cblas.cmplx_val[1] = v.imag
+#            return ctypes.c_void_p(self.__cblas.cmplx_val.ctypes.data)
+#        else:
+#            raise ValueError('data type %s not supported' % repr(dt))
+
+#            data_u = self.all_data().ctypes.data + i*vsize
+#            data_v = other.all_data().ctypes.data + j*vsize
+#            ptr_u = ctypes.c_void_p(data_u)
+#            ptr_v = ctypes.c_void_p(data_v)
+
+#                data_u = self.all_data().ctypes.data + int(ind[k])*vsize
+#                data_v = other.all_data().ctypes.data + (j + k)*vsize
+#                ptr_u = ctypes.c_void_p(data_u)
+#                ptr_v = ctypes.c_void_p(data_v)
+
+#                data_u = self.all_data().ctypes.data + (f + i)*vsize
+#                ptr_u = ctypes.c_void_p(data_u)
+
+#                mkl_s = self.__to_mkl_float(1.0/s[i])
+
+#        if self.is_complex():
+#            ptr_r = ctypes.c_void_p(self.__cblas.cmplx_val.ctypes.data)
+
+#            data_u = self.all_data().ctypes.data + (iu + i)*vsize
+#            data_v = other.all_data().ctypes.data + (iv + i)*vsize
+#            ptr_u = ctypes.c_void_p(data_u)
+#            ptr_v = ctypes.c_void_p(data_v)
+
+#                self.__cblas.inner \
+#                    (mkl_n, ptr_v, mkl_inc, ptr_u, mkl_inc, ptr_r)
+#                res = self.__cblas.cmplx_val
+#                v[i] = res[0] + 1j * res[1]
+
+#        data_u = other.data().ctypes.data
+#        data_v = self.data().ctypes.data
+#        ptr_u = ctypes.c_void_p(data_u)
+#        ptr_v = ctypes.c_void_p(data_v)
+
+#        data_u = output.data().ctypes.data
+#        data_v = self.data().ctypes.data
+#        ptr_u = ctypes.c_void_p(data_u)
+#        ptr_v = ctypes.c_void_p(data_v)
+
+#            is_complex = isinstance(a[0,0], complex)
+#            is_complex = numpy.iscomplex(a).any()
+
+#        print(m, n, k, q.flags['C_CONTIGUOUS'])
+
+#        data_u = output.data().ctypes.data
+#        data_v = self.data().ctypes.data
+#        ptr_u = ctypes.c_void_p(data_u)
+#        ptr_v = ctypes.c_void_p(data_v)
+
+#        if output.data().flags['C_CONTIGUOUS']:
+#            #print('using optimized dot')
+#            numpy.dot(self.data(), q.T, out = output.data())
+#        else:
+#            #print('using non-optimized dot')
+#            output.data()[:,:] = numpy.dot(self.data(), q.T)
+
+#        data_u = other.data().ctypes.data
+#        data_v = self.data().ctypes.data
+#        ptr_u = ctypes.c_void_p(data_u)
+#        ptr_v = ctypes.c_void_p(data_v)
+
+#            mkl_s = self.__to_mkl_float(s)
+
+#                ptr_u = ctypes.c_void_p(data_u)
+#                ptr_v = ctypes.c_void_p(data_v)
+
+#                mkl_s = self.__to_mkl_float(s[i])
+
+#                data_u += vsize
+#                data_v += vsize
+
+#    x = np.ones((n,), dtype = np.dtype(U[0,0]))
+
+#def is_complex(v):
+#    return type(v) is numpy.complex64 or type(v) is numpy.complex128
+
+#    if numpy.iscomplex(a[0,0]): # lying!!!
+#    if is_complex(a[0,0]):
+#    if numpy.iscomplex(a).any():
+
+#    if is_complex(a[0]):

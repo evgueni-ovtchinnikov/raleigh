@@ -7,7 +7,8 @@ import numpy.linalg as nla
 import scipy.linalg as sla
 
 def conjugate(a):
-    if np.iscomplex(a).any():
+    if a.dtype.kind == 'c':
+#    if np.iscomplex(a).any():
         return a.conj().T
     else:
         return a.T
@@ -54,11 +55,9 @@ def estimate_lmax(U):
 def estimate_lmin(U):
     n = U.shape[0]
     if U.dtype.kind == 'c':
-#    if isinstance(U[0,0], complex):
         tr = 2
     else:
         tr = 1
-#    x = np.ones((n,), dtype = np.dtype(U[0,0]))
     x = np.ones((n,), dtype = U.dtype)
     s = np.dot(x, x)
     for i in range(3):
