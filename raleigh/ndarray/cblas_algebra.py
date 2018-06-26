@@ -175,11 +175,6 @@ class Vectors(NDArrayVectors):
         mkl_n = ctypes.c_int(n)
         mkl_m = ctypes.c_int(m)
         mkl_k = ctypes.c_int(k)
-        data_u = output.data().ctypes.data
-        data_v = self.data().ctypes.data
-        ptr_u = ctypes.c_void_p(data_u)
-        ptr_v = ctypes.c_void_p(data_v)
-        ptr_q = ctypes.c_void_p(q.ctypes.data)
         if q.flags['C_CONTIGUOUS']:
             Trans = Cblas.Trans
             ldq = mkl_n
@@ -190,6 +185,11 @@ class Vectors(NDArrayVectors):
             print('using non-optimized dot')
             output.data()[:,:] = numpy.dot(self.data(), q.T)
             return
+        data_u = output.data().ctypes.data
+        data_v = self.data().ctypes.data
+        ptr_u = ctypes.c_void_p(data_u)
+        ptr_v = ctypes.c_void_p(data_v)
+        ptr_q = ctypes.c_void_p(q.ctypes.data)
         self.__cblas.gemm(Cblas.ColMajor, Trans, Cblas.NoTrans, \
             mkl_m, mkl_k, mkl_n, \
             self.__cblas.mkl_one, ptr_q, ldq, ptr_v, mkl_n, \
@@ -223,15 +223,17 @@ class Vectors(NDArrayVectors):
                 ptr_q = ctypes.c_void_p(q.ctypes.data)
                 if q.flags['C_CONTIGUOUS']:
                     Trans = Cblas.Trans
+                    ldq = mkl_k
                 elif q.flags['F_CONTIGUOUS']:
                     Trans = Cblas.NoTrans
+                    ldq = mkl_m
                 else:
                     print('using non-optimized dot')
                     self.data()[:,:] += s*numpy.dot(q.T, other.data())
                     return
                 self.__cblas.gemm(Cblas.ColMajor, Cblas.NoTrans, Trans, \
                     mkl_n, mkl_k, mkl_m, \
-                    mkl_s, ptr_u, mkl_n, ptr_q, mkl_k, \
+                    mkl_s, ptr_u, mkl_n, ptr_q, ldq, \
                     self.__cblas.mkl_one, ptr_v, mkl_n)
         else:
             for i in range(m):
