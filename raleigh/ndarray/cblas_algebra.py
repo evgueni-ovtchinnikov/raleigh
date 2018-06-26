@@ -17,7 +17,8 @@ from raleigh.ndarray.mkl import Cblas
 from raleigh.ndarray.algebra_bc import NDArrayVectors, NDArrayMatrix
 
 def conjugate(a):
-    if isinstance(a[0,0], complex):
+#    if isinstance(a[0,0], complex):
+    if numpy.iscomplex(a).any():
         return a.conj()
     else:
         return a
@@ -157,7 +158,8 @@ class Vectors(NDArrayVectors):
     def apply(self, A, output, transp = False):
         a = A.data()
         if transp:
-            is_complex = isinstance(a[0,0], complex)
+#            is_complex = isinstance(a[0,0], complex)
+            is_complex = numpy.iscomplex(a).any()
             if is_complex:
                 numpy.conj(self.data(), out = self.data())
             self.__apply(a.T, output)

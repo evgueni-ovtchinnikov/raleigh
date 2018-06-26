@@ -53,14 +53,16 @@ def estimate_lmax(U):
     return sla.norm(np.dot(conjugate(U), U), ord = 1)
 def estimate_lmin(U):
     n = U.shape[0]
-    x = np.ones((n,), dtype = np.dtype(U[0,0]))
+    if U.dtype.kind == 'c':
+#    if isinstance(U[0,0], complex):
+        tr = 2
+    else:
+        tr = 1
+#    x = np.ones((n,), dtype = np.dtype(U[0,0]))
+    x = np.ones((n,), dtype = U.dtype)
     s = np.dot(x, x)
     for i in range(3):
-        if isinstance(U[0,0], complex):
-            t = 2
-        else:
-            t = 1
-        y = sla.solve_triangular(U, x, trans = t)
+        y = sla.solve_triangular(U, x, trans = tr)
         t = np.dot(y, y)
         rq = s/t
         #print(i, rq)

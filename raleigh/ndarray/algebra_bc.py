@@ -47,8 +47,10 @@ class NDArrayVectors:
             raise ValueError \
             ('wrong argument %s in constructor' % repr(type(arg)))
         dt = self.__data.dtype.type
+        dk = self.__data.dtype.kind
         self.__dtype = dt
-        self.__is_complex = (dt == numpy.complex64 or dt == numpy.complex128)
+        self.__is_complex = (dk == 'c')
+#        self.__is_complex = (dt == numpy.complex64 or dt == numpy.complex128)
         m, n = self.__data.shape
         self.__selected = (0, m)
         self.__vdim = n

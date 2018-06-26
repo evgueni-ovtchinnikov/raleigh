@@ -12,18 +12,20 @@ import scipy.linalg as sla
 
 RECORDS = 20
 
-def is_complex(v):
-    return type(v) is numpy.complex64 or type(v) is numpy.complex128
+#def is_complex(v):
+#    return type(v) is numpy.complex64 or type(v) is numpy.complex128
 
 def conjugate(a):
 #    if numpy.iscomplex(a[0,0]): # lying!!!
-    if is_complex(a[0,0]):
+#    if is_complex(a[0,0]):
+    if numpy.iscomplex(a).any():
         return a.conj().T
     else:
         return a.T
 
 def real(a):
-    if is_complex(a[0]):
+    if a.dtype.kind == 'c':
+#    if is_complex(a[0]):
         return a.real
     else:
         return a
