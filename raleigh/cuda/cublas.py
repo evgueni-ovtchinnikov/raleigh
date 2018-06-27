@@ -39,6 +39,8 @@ class Cublas:
             self.dsize = 4
             self.copy = cublas.cublasScopy_v2
             self.copy.restype = ctypes.c_int
+            self.axpy = cublas.cublasSaxpy_v2
+            self.axpy.restype = ctypes.c_int
             self.scal = cublas.cublasSscal_v2
             self.scal.restype = ctypes.c_int
             self.norm = cublas.cublasSnrm2_v2
@@ -51,6 +53,8 @@ class Cublas:
             self.dsize = 8
             self.copy = cublas.cublasDcopy_v2
             self.copy.restype = ctypes.c_int
+            self.axpy = cublas.cublasDaxpy_v2
+            self.axpy.restype = ctypes.c_int
             self.scal = cublas.cublasDscal_v2
             self.scal.restype = ctypes.c_int
             self.norm = cublas.cublasDnrm2_v2
@@ -63,6 +67,8 @@ class Cublas:
             self.dsize = 8
             self.copy = cublas.cublasCcopy_v2
             self.copy.restype = ctypes.c_int
+            self.axpy = cublas.cublasCaxpy_v2
+            self.axpy.restype = ctypes.c_int
             self.scal = cublas.cublasCscal_v2
             self.scal.restype = ctypes.c_int
             self.norm = cublas.cublasScnrm2_v2
@@ -75,6 +81,8 @@ class Cublas:
             self.dsize = 16
             self.copy = cublas.cublasZcopy_v2
             self.copy.restype = ctypes.c_int
+            self.axpy = cublas.cublasZaxpy_v2
+            self.axpy.restype = ctypes.c_int
             self.scal = cublas.cublasZscal_v2
             self.scal.restype = ctypes.c_int
             self.norm = cublas.cublasDznrm2_v2

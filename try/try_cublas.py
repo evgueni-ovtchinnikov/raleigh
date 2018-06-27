@@ -122,8 +122,9 @@ u.copy(v)
 s = v.dots(v)
 print(s)
 
-a = numpy.eye(n, dtype = data_type)
-matrix = Matrix(a)
+a = numpy.ndarray((n + 1, n + 1), dtype = data_type, order = 'F')
+a[:,:] = numpy.eye(n + 1, dtype = data_type)
+matrix = Matrix(a[:n, :n])
 matrix.apply(u, v)
 s = v.dots(v)
 print(s)
@@ -133,6 +134,19 @@ qq = v.dot(u)
 
 print(qq)
 print(numpy.dot(conjugate(q.T), q))
+
+v.add(w, -1.0, q)
+s = v.dots(v)
+print(s)
+
+w.add(w, -1.0)
+s = w.dots(w)
+print(s)
+
+s = -numpy.ones((m,), dtype = data_type)
+u.add(u, s)
+s = u.dots(u)
+print(s)
 
 #print(q.flags)
 

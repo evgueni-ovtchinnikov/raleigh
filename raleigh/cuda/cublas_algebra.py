@@ -265,6 +265,55 @@ class Vectors:
         self.__cublas.gemm(self.__cublas.handle, Cublas.NoTrans, Trans, \
             c_n, c_m, c_k, one, dptr_v, c_n, dptr_q, ldq, zero, dptr_u, c_n)
         try_calling(cuda.free(dptr_q))
+    def add(self, other, s, a = None):
+        n = self.dimension()
+        m = other.nvec()
+        c_n = ctypes.c_int(n)
+        c_m = ctypes.c_int(m)
+        vsize = self.__dsize * n
+        dptr_u = other.data_ptr()
+        dptr_v = self.data_ptr()
+        if numpy.isscalar(s):
+            cublas_s = self.__to_floats(s)
+            if a is None:
+                nm = ctypes.c_int(n*m)
+                inc = ctypes.c_int(1)
+                self.__cublas.axpy \
+                    (self.__cublas.handle, nm, cublas_s, dptr_u, inc, dptr_v, inc)
+            else:
+                k = a.shape[1]
+                c_k = ctypes.c_int(k)
+                if a.flags['C_CONTIGUOUS']:
+                    Trans = Cublas.Trans
+                    q = a
+                    ldq = c_k
+                elif a.flags['F_CONTIGUOUS']:
+                    Trans = Cublas.NoTrans
+                    q = a
+                    ldq = c_m
+                else:
+                    q = numpy.ndarray(a.shape, dtype = a.dtype)
+                    q[:,:] = a.copy()
+                    Trans = Cublas.Trans
+                    ldq = c_k
+                hptr_q = ctypes.c_void_p(q.ctypes.data)
+                dptr_q = ctypes.POINTER(ctypes.c_ubyte)()
+                size_q = k*m*self.__dsize
+                try_calling(cuda.malloc(ctypes.byref(dptr_q), size_q))
+                try_calling(cuda.memcpy(dptr_q, hptr_q, size_q, cuda.memcpyH2D))
+                one = self.__to_floats(1.0)
+                self.__cublas.gemm(self.__cublas.handle, Cublas.NoTrans, Trans, \
+                    c_n, c_k, c_m, cublas_s, dptr_u, c_n, dptr_q, ldq, \
+                    one, dptr_v, c_n)
+                try_calling(cuda.free(dptr_q))
+        else:
+            for i in range(m):
+                dptr_u = shifted_ptr(other.data_ptr(), i*vsize)
+                dptr_v = shifted_ptr(self.data_ptr(), i*vsize)
+                inc = ctypes.c_int(1)
+                cublas_s = self.__to_floats(s[i])
+                self.__cublas.axpy \
+                    (self.__cublas.handle, c_n, cublas_s, dptr_u, inc, dptr_v, inc)
 
 class Matrix:
     def __init__(self, array):
@@ -273,7 +322,7 @@ class Matrix:
         self.__dtype = array.dtype.type
         self.__is_complex = (array.dtype.kind == 'c')
         if self.__is_complex and not array.flags['F_CONTIGUOUS']:
-            print('copyint to F-contiguous array...')
+            print('copying to F-contiguous array...')
             a = numpy.ndarray(array.shape, dtype = array.dtype, order = 'F')
             a[:,:] = array.copy()
         else:
