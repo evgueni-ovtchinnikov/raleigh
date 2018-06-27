@@ -104,5 +104,10 @@ class NDArrayVectors:
 class NDArrayMatrix:
     def __init__(self, data):
         self.__data = data
+        self.__shape = data.shape
     def data(self):
         return self.__data
+    def shape(self):
+        return self.__shape
+    def is_complex(self):
+        return (self.__data.dtype.kind == 'c')

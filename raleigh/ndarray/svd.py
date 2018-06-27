@@ -13,34 +13,34 @@ import sys
 sys.path.append('..')
 
 from raleigh.solver import Problem, Solver
+#from raleigh.ndarray.numpy_algebra import Vectors, Matrix
 from raleigh.algebra import Vectors, Matrix
 
 class Operator:
-    def __init__(self, a):
-        self.a = Matrix(a)
+    def __init__(self, array):
+        self.matrix = Matrix(array)
     def apply(self, x, y, transp = False):
-        x.apply(self.a, y, transp)
-#        if transp:
-#            x.apply(self.a.T, y)
-#        else:
-#            x.apply(self.a, y)
+        self.matrix.apply(x, y, transp)
+#        x.apply(self.matrix, y, transp)
 
 class OperatorSVD:
-    def __init__(self, a):
-        self.a = Matrix(a)
+    def __init__(self, array):
+        self.matrix = Matrix(array)
     def apply(self, x, y, transp = False):
-        m, n = self.a.data().shape
+        m, n = self.matrix.shape()
         k = x.nvec()
         if transp:
             z = Vectors(n, k, x.data_type())
-#            x.apply(self.a.T, z)
-            x.apply(self.a, z, transp = True)
-            z.apply(self.a, y)
+            self.matrix.apply(x, z, transp = True)
+            self.matrix.apply(z, y)
+#            x.apply(self.matrix, z, transp = True)
+#            z.apply(self.matrix, y)
         else:
             z = Vectors(m, k, x.data_type())
-            x.apply(self.a, z)
-            z.apply(self.a, y, transp = True)
-#            z.apply(self.a.T, y)
+            self.matrix.apply(x, z)
+            self.matrix.apply(z, y, transp = True)
+#            x.apply(self.matrix, z)
+#            z.apply(self.matrix, y, transp = True)
 
 def partial_svd(a, opt, nsv = -1, cstr = None, one_side = False):
     m, n = a.shape

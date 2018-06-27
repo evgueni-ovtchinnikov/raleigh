@@ -56,6 +56,8 @@ class Vectors(NDArrayVectors):
         return Vectors(self.dimension(), nv, self.data_type())
     def clone(self):
         return Vectors(self)
+    def cblas(self):
+        return self.__cblas
 
     # BLAS level 1
     def copy(self, other, ind = None):
@@ -234,4 +236,42 @@ class Vectors(NDArrayVectors):
                     (mkl_n, mkl_s, ptr_u, mkl_inc, ptr_v, mkl_inc)
 
 class Matrix(NDArrayMatrix):
-    pass
+    def apply(self, x, y, transp = False):
+        if transp:
+            is_complex = self.is_complex()
+            if is_complex:
+                numpy.conj(x.data(), out = x.data())
+            self.__apply(x, y, transp)
+            if is_complex:
+                numpy.conj(x.data(), out = x.data())
+                numpy.conj(y.data(), out = y.data())
+        else:
+            self.__apply(x, y)
+    def __apply(self, x, y, transp = False):
+        if transp:
+            q = self.data().T
+        else:
+            q = self.data()
+        m = q.shape[0]
+        n = x.dimension()
+        k = x.nvec()
+        mkl_n = ctypes.c_int(n)
+        mkl_m = ctypes.c_int(m)
+        mkl_k = ctypes.c_int(k)
+        if q.flags['C_CONTIGUOUS']:
+            Trans = Cblas.Trans
+            ldq = mkl_n
+        elif q.flags['F_CONTIGUOUS']:
+            Trans = Cblas.NoTrans
+            ldq = mkl_m
+        else:
+            print('using non-optimized dot')
+            y.data()[:,:] = numpy.dot(x.data(), q.T)
+            return
+        ptr_u = array_ptr(y.data())
+        ptr_v = array_ptr(x.data())
+        ptr_q = ctypes.c_void_p(q.ctypes.data)
+        x.cblas().gemm(Cblas.ColMajor, Trans, Cblas.NoTrans, \
+            mkl_m, mkl_k, mkl_n, \
+            x.cblas().mkl_one, ptr_q, ldq, ptr_v, mkl_n, \
+            x.cblas().mkl_zero, ptr_u, mkl_m)

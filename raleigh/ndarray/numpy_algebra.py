@@ -65,8 +65,9 @@ class Vectors(NDArrayVectors):
     def apply(self, A, output, transp = False):
         a = A.data()
         if transp:
-#            is_complex = isinstance(a[0,0], complex)
-            is_complex = numpy.iscomplex(a).any()
+#            is_complex = isinstance(a[0,0], complex) # wrong
+#            is_complex = numpy.iscomplex(a).any() # too slow
+            is_complex = A.is_complex()
             if is_complex:
                 numpy.conj(self.data(), out = self.data())
             self.__apply(a.T, output)
@@ -95,4 +96,25 @@ class Vectors(NDArrayVectors):
                 self.data(i)[:] += s[i]*other.data(i)
 
 class Matrix(NDArrayMatrix):
-    pass
+    def apply(self, x, y, transp = False):
+        if transp:
+            is_complex = self.is_complex()
+            if is_complex:
+                numpy.conj(x.data(), out = x.data())
+            self.__apply(x, y, transp)
+            if is_complex:
+                numpy.conj(x.data(), out = x.data())
+                numpy.conj(y.data(), out = y.data())
+        else:
+            self.__apply(x, y)
+    def __apply(self, x, y, transp = False):
+        if transp:
+            a = self.data().T
+        else:
+            a = self.data()
+        if y.data().flags['C_CONTIGUOUS']:
+            #print('using optimized dot')
+            numpy.dot(x.data(), a.T, out = y.data())
+        else:
+            print('using non-optimized dot')
+            y.data()[:,:] = numpy.dot(x.data(), a.T)

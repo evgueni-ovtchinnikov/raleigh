@@ -1606,3 +1606,8 @@ except:
 #                self.__cublas.dot \
 #                    (self.__cublas.handle, n, ptr_v, inc, ptr_u, inc, ctypes.byref(s))
 #                v[i] = s.value
+
+#        if transp:
+#            x.apply(self.a.T, y)
+#        else:
+#            x.apply(self.a, y)
