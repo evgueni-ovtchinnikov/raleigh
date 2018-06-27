@@ -114,6 +114,9 @@ print(u.is_complex())
 s = u.dots(u)
 print(s)
 
+h = u.asarray()
+print(numpy.dot(conjugate(h.T), h))
+
 q = u.dot(w)
 print(q)
 

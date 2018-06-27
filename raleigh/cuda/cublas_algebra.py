@@ -148,6 +148,16 @@ class Vectors:
     def is_complex(self):
         return self.__is_complex
 
+    def data(self):
+        m = self.nvec()
+        n = self.dimension()
+        v = numpy.ndarray((m, n), dtype = self.data_type())
+        hptr_v = ctypes.c_void_p(v.ctypes.data)
+        size = n * m * self.__dsize
+        try_calling(cuda.memcpy(hptr_v, self.data_ptr(), size, cuda.memcpyD2H))
+        return v
+    def asarray(self):
+        return self.data().T
     def all_data_ptr(self):
         return self.__data
     def data_ptr(self):
