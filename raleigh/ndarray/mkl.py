@@ -6,6 +6,7 @@ Created on Wed May 23 10:21:04 2018
 """
 
 import ctypes
+import multiprocessing
 import numpy
 from sys import platform
 
@@ -16,6 +17,13 @@ if platform == 'win32':
 else:
     mkl = ctypes.CDLL('libmkl_rt.so', mode = ctypes.RTLD_GLOBAL)
     
+num_cpus = multiprocessing.cpu_count()
+if num_cpus > 4:
+    num_threads = num_cpus - 1
+    #mkl.mkl_set_dynamic(ctypes.byref(ctypes.c_int(0)))
+    #mkl.mkl_set_num_threads(ctypes.byref(ctypes.c_int(num_threads)))
+    mkl.MKL_Set_Dynamic(0)
+    mkl.MKL_Set_Num_Threads(num_threads)
 print('Using %d MKL threads' % mkl.mkl_get_max_threads())
 
 class Cblas:
