@@ -16,14 +16,24 @@ if platform == 'win32':
     mkl = ctypes.CDLL('mkl_rt.dll', mode = ctypes.RTLD_GLOBAL)
 else:
     mkl = ctypes.CDLL('libmkl_rt.so', mode = ctypes.RTLD_GLOBAL)
-    
+
+# find the total number of threads    
 num_cpus = multiprocessing.cpu_count()
-if num_cpus > 4:
+
+# find the number of cores using MKL threading behaviour
+mkl.MKL_Set_Dynamic(1)
+# now mkl_get_max_threads() returns the number of cores!
+num_cores = mkl.mkl_get_max_threads()
+
+# if hyperthreading is used, increase the number of mkl threads
+# to achieve slightly better performance
+if num_cpus == 2*num_cores:
     num_threads = num_cpus - 1
     #mkl.mkl_set_dynamic(ctypes.byref(ctypes.c_int(0)))
     #mkl.mkl_set_num_threads(ctypes.byref(ctypes.c_int(num_threads)))
     mkl.MKL_Set_Dynamic(0)
     mkl.MKL_Set_Num_Threads(num_threads)
+
 print('Using %d MKL threads' % mkl.mkl_get_max_threads())
 
 class Cblas:
