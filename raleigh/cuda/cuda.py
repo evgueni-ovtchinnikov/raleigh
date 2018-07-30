@@ -83,6 +83,7 @@ class CudaDeviceProp(ctypes.Structure):
 
 getDeviceCount = cuda.cudaGetDeviceCount
 getDeviceProperties = cuda.cudaGetDeviceProperties
+synchronize = cuda.cudaDeviceSynchronize
 malloc = cuda.cudaMalloc
 malloc.argtypes = [POINTER(POINTER(ctypes.c_ubyte)), ctypes.c_int]
 malloc.restype = ctypes.c_int
