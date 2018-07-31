@@ -6,6 +6,10 @@ Usage:
 Arguments:
   dim  vector space dimension
   nv   number of vectors
+
+Options:
+  -d, --double
+  -c, --complex
 '''
 
 __version__ = '0.1.0'
@@ -14,6 +18,8 @@ args = docopt(__doc__, version=__version__)
 
 n = int(args['<dim>'])
 m = int(args['<nv>'])
+dble = args['--double']
+cmplx = args['--complex']
 
 import math
 import numpy
@@ -40,6 +46,120 @@ def test(u, v):
 
     u_cublas = cublasVectors(u)
     v_cublas = cublasVectors(v)
+
+    print('----\n testing numpy copy...')
+    start = time.time()
+    u_numpy.copy(v_numpy)
+    stop = time.time()
+    elapsed = stop - start
+    s = nla.norm(v_numpy.data())
+    print('time: %.2e' % elapsed)
+
+    print('----\n testing cblas copy...')
+    start = time.time()
+    u_cblas.copy(v_cblas)
+    stop = time.time()
+    elapsed = stop - start
+    t = nla.norm(v_cblas.data() - v_numpy.data())/s
+    print('error: %e' % t)
+    print('time: %.2e' % elapsed)
+
+    print('----\n testing cublas copy...')
+    start = time.time()
+    u_cublas.copy(v_cublas)
+    cuda.synchronize()
+    stop = time.time()
+    elapsed = stop - start
+    t = nla.norm(v_cublas.data() - v_numpy.data())/s
+    print('error: %e' % t)
+    print('time: %.2e' % elapsed)
+
+    m = u_numpy.nvec()
+    ind = numpy.arange(m)
+    for i in range(m - 1):
+        ind[i] = ind[i + 1]
+    ind[m - 1] = 0
+
+    print('----\n testing numpy indexed copy...')
+    start = time.time()
+    u_numpy.copy(v_numpy, ind)
+    stop = time.time()
+    elapsed = stop - start
+    s = nla.norm(v_numpy.data())
+    print('time: %.2e' % elapsed)
+
+    print('----\n testing cblas indexed copy...')
+    start = time.time()
+    u_cblas.copy(v_cblas, ind)
+    stop = time.time()
+    elapsed = stop - start
+    t = nla.norm(v_cblas.data() - v_numpy.data())/s
+    print('error: %e' % t)
+    print('time: %.2e' % elapsed)
+
+    print('----\n testing cublas indexed copy...')
+    start = time.time()
+    u_cublas.copy(v_cublas, ind)
+    cuda.synchronize()
+    stop = time.time()
+    elapsed = stop - start
+    t = nla.norm(v_cublas.data() - v_numpy.data())/s
+    print('error: %e' % t)
+    print('time: %.2e' % elapsed)
+
+    scale = numpy.ones(m)*3.0
+
+    print('----\n testing numpy scale...')
+    start = time.time()
+    u_numpy.scale(scale)
+    stop = time.time()
+    elapsed = stop - start
+    s = nla.norm(u_numpy.data())
+    print('time: %.2e' % elapsed)
+
+    print('----\n testing cblas scale...')
+    start = time.time()
+    u_cblas.scale(scale)
+    stop = time.time()
+    elapsed = stop - start
+    t = nla.norm(u_cblas.data() - u_numpy.data())/s
+    print('error: %e' % t)
+    print('time: %.2e' % elapsed)
+
+    print('----\n testing cublas scale...')
+    start = time.time()
+    u_cublas.scale(scale)
+    cuda.synchronize()
+    stop = time.time()
+    elapsed = stop - start
+    t = nla.norm(u_cublas.data() - u_numpy.data())/s
+    print('error: %e' % t)
+    print('time: %.2e' % elapsed)
+
+    print('----\n testing numpy dots...')
+    start = time.time()
+    p = u_numpy.dots(v_numpy)
+    stop = time.time()
+    elapsed = stop - start
+    s = nla.norm(p)
+    print('time: %.2e' % elapsed)
+
+    print('----\n testing cblas dots...')
+    start = time.time()
+    q = u_cblas.dots(v_cblas)
+    stop = time.time()
+    elapsed = stop - start
+    print('error: %e' % (nla.norm(q - p)/s))
+    print('time: %.2e' % elapsed)
+
+    print('----\n testing cublas dots...')
+    start = time.time()
+    q = u_cublas.dots(v_cublas)
+    cuda.synchronize()
+    stop = time.time()
+    elapsed = stop - start
+    print('error: %e' % (nla.norm(q - p)/s))
+    print('time: %.2e' % elapsed)
 
     print('----\n testing numpy dot...')
     start = time.time()
@@ -72,7 +192,7 @@ def test(u, v):
     stop = time.time()
     elapsed = stop - start
     print('time: %.2e' % elapsed)
-    s = numpy.sqrt(v_numpy.dots(v_numpy))
+    s = nla.norm(v_numpy.data())
 
     print('----\n testing cblas multiply...')
     start = time.time()
@@ -80,8 +200,8 @@ def test(u, v):
     stop = time.time()
     elapsed = stop - start
     print('time: %.2e' % elapsed)
-    t = numpy.sqrt(v_cblas.dots(v_cblas))
-    print('error: %e' % (nla.norm(t - s)/nla.norm(s)))
+    t = nla.norm(v_cblas.data() - v_numpy.data())/s
+    print('error: %e' % t)
 
     print('----\n testing cublas multiply...')
     start = time.time()
@@ -90,8 +210,8 @@ def test(u, v):
     stop = time.time()
     elapsed = stop - start
     print('time: %.2e' % elapsed)
-    t = numpy.sqrt(v_cublas.dots(v_cublas))
-    print('error: %e' % (nla.norm(t - s)/nla.norm(s)))
+    t = nla.norm(v_cublas.data() - v_numpy.data())/s
+    print('error: %e' % t)
 
     print('----\n testing numpy add...')
     start = time.time()
@@ -99,8 +219,8 @@ def test(u, v):
     stop = time.time()
     elapsed = stop - start
     print('time: %.2e' % elapsed)
-    r = numpy.sqrt(v_numpy.dots(v_numpy))
-    print('error: %e' % (nla.norm(r)/nla.norm(s)))
+    t = nla.norm(v_numpy.data())/s
+    print('error: %e' % t)
 
     print('----\n testing cblas add...')
     start = time.time()
@@ -108,8 +228,8 @@ def test(u, v):
     stop = time.time()
     elapsed = stop - start
     print('time: %.2e' % elapsed)
-    r = numpy.sqrt(v_cblas.dots(v_cblas))
-    print('error: %e' % (nla.norm(r)/nla.norm(s)))
+    t = nla.norm(v_cblas.data())/s
+    print('error: %e' % t)
 
     print('----\n testing cublas add...')
     start = time.time()
@@ -117,18 +237,27 @@ def test(u, v):
     stop = time.time()
     elapsed = stop - start
     print('time: %.2e' % elapsed)
-    r = numpy.sqrt(v_cublas.dots(v_cublas))
-    print('error: %e' % (nla.norm(r)/nla.norm(s)))
+    t = nla.norm(v_cublas.data())/s
+    print('error: %e' % t)
 
 try:
-    dt = numpy.float32
+    if dble:
+        print('running in double precision...')
+        dt = numpy.float64
+    else:
+        print('running in single precision...')
+        dt = numpy.float32
 ##    u = numpy.ones((m, n), dtype = dt)
 ##    v = numpy.ones((m, n), dtype = dt)
     u = numpy.random.randn(m, n).astype(dt)
     v = numpy.random.randn(m, n).astype(dt)
 
-    test(u, v)
-##    test(u + 1j*v, v - 2j*u)
+    if cmplx:
+        print('testing on complex data...')
+        test(u + 1j*v, v - 2j*u)
+    else:
+        print('testing on real data...')
+        test(u, v)
 
 except error as err:
     print('%s' % err.value)
