@@ -31,25 +31,8 @@ def conjugate(a):
         return a
 
 class Vectors:
-    def __init__(self, arg, nvec = 0, dtype = None):
+    def __init__(self, arg, nvec = 0, data_type = None):
         self.__data = ctypes.POINTER(ctypes.c_ubyte)()
-        if dtype is None:
-            dtype = numpy.float64
-            self.__is_complex = False
-        if dtype == numpy.float32:
-            dsize = 4
-            self.__is_complex = False
-        elif dtype == numpy.float64:
-            dsize = 8
-            self.__is_complex = False
-        elif dtype == numpy.complex64:
-            dsize = 8
-            self.__is_complex = True
-        elif dtype == numpy.complex128:
-            dsize = 16
-            self.__is_complex = True
-        else:
-            raise ValueError('data type %s not supported' % repr(dtype))
         if isinstance(arg, Vectors):
             n = arg.dimension()
             m = arg.nvec()
@@ -71,11 +54,29 @@ class Vectors:
                 (dtype == numpy.complex64 or dtype == numpy.complex128)
 #            self.__is_complex = isinstance(arg[0,0], complex) # lying!!!
         elif isinstance(arg, numbers.Number):
+            dtype = data_type
+            if dtype is None:
+                dtype = numpy.float64
+            if dtype == numpy.float32:
+                dsize = 4
+                self.__is_complex = False
+            elif dtype == numpy.float64:
+                dsize = 8
+                self.__is_complex = False
+            elif dtype == numpy.complex64:
+                dsize = 8
+                self.__is_complex = True
+            elif dtype == numpy.complex128:
+                dsize = 16
+                self.__is_complex = True
+            else:
+                raise ValueError('data type %s not supported' % repr(dtype))
             n = arg
             m = nvec
-            size = n*m*dsize
-            try_calling(cuda.malloc(ctypes.byref(self.__data), size))
-            try_calling(cuda.memset(self.__data, 0, size))
+            if nvec > 0:
+                size = n*m*dsize
+                try_calling(cuda.malloc(ctypes.byref(self.__data), size))
+                try_calling(cuda.memset(self.__data, 0, size))
         else:
             raise ValueError \
                 ('wrong argument %s in constructor' % repr(type(arg)))
@@ -125,6 +126,40 @@ class Vectors:
         return Vectors(self.dimension(), nv, self.data_type())
     def clone(self):
         return Vectors(self)
+    def append(self, other):
+        if other.nvec() < 1:
+            return
+        n = self.__vdim
+        vsize = self.__dsize * n
+        i, m = self.selected()
+        j, l = other.selected()
+        nvec = m + l
+        size = nvec * vsize
+        data = ctypes.POINTER(ctypes.c_ubyte)()
+        try_calling(cuda.malloc(ctypes.byref(data), size))
+        inc = ctypes.c_int(1)
+        if m > 0:
+            mn = ctypes.c_int(m*n)
+            data_u = self.all_data_ptr()
+            ptr_u = shifted_ptr(data_u, i*vsize)
+            ptr = shifted_ptr(data, 0)
+            self.__cublas.copy(self.__cublas.handle, mn, ptr_u, inc, ptr, inc)
+            try_calling(cuda.free(self.__data))
+        data_v = other.all_data_ptr()
+        ptr_v = shifted_ptr(data_v, j*vsize)
+        ptr = shifted_ptr(data, m*vsize)
+        ln = ctypes.c_int(l*n)
+        self.__cublas.copy(self.__cublas.handle, ln, ptr_v, inc, ptr, inc)
+#        try_calling(cuda.memcpy(data, data_v, l*vsize, cuda.memcpyD2D))
+        self.__data = data
+        self.__nvec = nvec
+        self.select_all()
+    def all_data_ptr(self):
+        return self.__data
+    def data_ptr(self):
+        n = self.dimension()
+        vsize = n * self.__dsize
+        return shifted_ptr(self.__data, self.first() * vsize)
     def cublas(self):
         return self.__cublas
     def cublas_handle(self):
@@ -148,6 +183,23 @@ class Vectors:
     def is_complex(self):
         return self.__is_complex
 
+    def zero(self):
+        n = self.nvec()
+        vsize = self.__dsize * self.__vdim
+        try_calling(cuda.memset(self.data_ptr(), 0, n*vsize))
+    def fill_random(self):
+        n = self.dimension()
+        m = self.nvec()
+        i = self.first()
+        data = numpy.random.rand(m, n).astype(self.data_type())
+#        data = numpy.ones((m, n), dtype = self.data_type())
+        data *= 2
+        data -= 1
+        vsize = n * self.__dsize
+        size = m * vsize
+        ptr_u = self.data_ptr()
+        ptr_v = ctypes.c_void_p(data.ctypes.data)
+        try_calling(cuda.memcpy(ptr_u, ptr_v, size, cuda.memcpyH2D))
     def data(self):
         m = self.nvec()
         n = self.dimension()
@@ -158,10 +210,6 @@ class Vectors:
         return v
     def asarray(self):
         return self.data().T
-    def all_data_ptr(self):
-        return self.__data
-    def data_ptr(self):
-        return shifted_ptr(self.__data, self.first())
 
     # BLAS level 1
     def copy(self, other, ind = None):

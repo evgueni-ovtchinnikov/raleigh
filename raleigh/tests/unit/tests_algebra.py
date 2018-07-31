@@ -40,12 +40,52 @@ def test(u, v):
 
     u_numpy = numpyVectors(u)
     v_numpy = numpyVectors(v)
+    n = u_numpy.dimension()
+    dt = u_numpy.data_type()
+    w_numpy = numpyVectors(n, data_type = dt)
 
     u_cblas = cblasVectors(u.copy())
     v_cblas = cblasVectors(v.copy())
+##    w_cblas = cblasVectors(n, data_type = dt)
 
     u_cublas = cublasVectors(u)
     v_cublas = cublasVectors(v)
+    w_cublas = cublasVectors(n, data_type = dt)
+##    print(u_cublas.data())
+##    print(w_cublas.data())
+
+    print('----\n testing cublasVectors.append...')
+    w_numpy.append(u_numpy)
+    start = time.time()
+    w_cublas.append(u_cublas)
+    cuda.synchronize()
+    stop = time.time()
+    elapsed = stop - start
+    t = nla.norm(w_cublas.data() - w_numpy.data())
+    print('error: %e' % t)
+    print('time: %.2e' % elapsed)
+    v_numpy.select(10, 5)
+    v_cublas.select(10, 5)
+    w_numpy.append(v_numpy)
+    w_cublas.append(v_cublas)
+    t = nla.norm(w_cublas.data() - w_numpy.data())
+    print('error: %e' % t)
+    v_numpy.select_all()
+    v_cublas.select_all()
+
+    print('----\n testing cublasVectors.zero...')
+    w_cublas.zero()
+    t = nla.norm(w_cublas.data())
+    print('error: %e' % t)
+#    return
+
+    print('----\n testing cublasVectors.fill_random...')
+    w_cublas.fill_random()
+    w_data = w_cublas.data()
+    print(numpy.mean(w_data))
+    print(numpy.var(w_data))
+##    print(w_data[0,:10])
+##    print(w_data[5,:10])
 
     print('----\n testing numpy copy...')
     start = time.time()
