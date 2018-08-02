@@ -200,7 +200,6 @@ class Solver:
                     m = 4
 #        block_size = m
         self.block_size = m
-        print(m)
         
         n = eigenvectors.dimension()
         
