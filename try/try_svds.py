@@ -8,7 +8,11 @@ Created on Wed Apr  4 14:59:40 2018
 import numpy
 import sys
 import time
-sys.path.append('..')
+
+raleigh_path = '..'
+if raleigh_path not in sys.path:
+    sys.path.append(raleigh_path)
+
 
 from scipy.sparse.linalg import svds
 from random_matrix_for_svd import random_matrix_for_svd

@@ -4,10 +4,14 @@ Created on Wed Mar 21 14:50:19 2018
 
 @author: Evgueni Ovtchinnikov, STFC
 """
+
 import numpy
 import sys
 import time
-sys.path.append('..')
+
+raleigh_path = '..'
+if raleigh_path not in sys.path:
+    sys.path.append(raleigh_path)
 
 from raleigh.solver import Options
 from raleigh.ndarray.svd import partial_svd

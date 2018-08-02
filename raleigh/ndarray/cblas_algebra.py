@@ -7,10 +7,13 @@ Created on Thu Jun 14 12:34:53 2018
 @author: Evgueni Ovtchinnikov, UKRI-STFC
 """
 
+raleigh_path = '../..'
+
 import ctypes
 import numpy
 import sys
-sys.path.append('../..')
+if raleigh_path not in sys.path:
+    sys.path.append(raleigh_path)
 
 from raleigh.ndarray.mkl import Cblas
 

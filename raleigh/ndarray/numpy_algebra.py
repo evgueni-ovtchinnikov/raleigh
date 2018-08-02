@@ -7,9 +7,12 @@ Created on Thu Jun 14 11:52:38 2018
 @author: Evgueni Ovtchinnikov, UKRI-STFC
 """
 
+raleigh_path = '../..'
+
 import numpy
 import sys
-sys.path.append('../..')
+if raleigh_path not in sys.path:
+    sys.path.append(raleigh_path)
 
 from raleigh.ndarray.algebra_bc import NDArrayVectors, NDArrayMatrix
 

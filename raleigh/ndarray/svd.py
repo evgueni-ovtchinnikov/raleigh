@@ -10,7 +10,11 @@ Created on Wed Mar 21 14:06:26 2018
 import numpy
 import scipy
 import sys
-sys.path.append('..')
+
+raleigh_path = '../..'
+if raleigh_path not in sys.path:
+    sys.path.append(raleigh_path)
+
 
 from raleigh.solver import Problem, Solver
 #from raleigh.ndarray.numpy_algebra import Vectors, Matrix
