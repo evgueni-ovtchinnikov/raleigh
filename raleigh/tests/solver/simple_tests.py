@@ -67,7 +67,7 @@ else:
     raise ValueError('data type %s not supported' % dt)
 
 opt = raleigh.solver.Options()
-opt.block_size = 2 #block_size
+opt.block_size = block_size
 
 v = Vectors(n, data_type = dtype)
 

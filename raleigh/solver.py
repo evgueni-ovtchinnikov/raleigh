@@ -94,13 +94,14 @@ class DefaultStoppingCriteria:
 
 class Options:
     def __init__(self):
+        self.verbosity = 0
         self.max_iter = 100
         self.block_size = -1
         self.threads = -1
         self.convergence_criteria = DefaultConvergenceCriteria()
         self.stopping_criteria = DefaultStoppingCriteria()
         self.detect_stagnation = True
-        self.verbosity = 0
+        self.max_quota = 0.5
         
 class EstimatedErrors:
     def __init__(self):
@@ -197,9 +198,97 @@ class Solver:
                     if verb > -1:
                         print('Block size %d too small, will use 4 instead' % m)
                     m = 4
-        block_size = m
+#        block_size = m
         self.block_size = m
+        print(m)
+        
+        n = eigenvectors.dimension()
+        
+        #output
+        self.iteration = 0
+        self.lcon = 0
+        self.rcon = 0
+        self.eigenvalues = numpy.ndarray((0,), dtype = numpy.float64)
+        self.eigenvalue_errors = EstimatedErrors()
+        self.eigenvector_errors = EstimatedErrors()
+        self.residual_norms = numpy.ndarray((0,), dtype = numpy.float32)
+        self.convergence_status = numpy.ndarray((0,), dtype = numpy.int32)
 
+        if m < n//2:
+            try:
+                status = self._solve(eigenvectors, options, which, extra, init)
+            except:
+                return -1
+        else:
+            status = 3
+            
+        if status == 0:
+            return 0 # success
+
+        Xc = eigenvectors
+        nc = Xc.nvec()
+        m = n - nc
+        if verb > -1:
+            print('%d eigenpairs not computed' % m)
+            
+        if status == 2:
+            return 1 # cannot compute the rest        
+
+        X = eigenvectors.new_vectors(m)
+        X.fill_random()
+        Y = X.new_vectors(m)
+        Z = X.new_vectors(m)
+        std = (self.__problem.type() == 's')
+        pro = (self.__problem.type() == 'p')
+
+        A = self.__problem.A()
+        B = self.__problem.B()
+        data_type = eigenvectors.data_type()
+
+        if nc > 0:
+            if not std:
+                BXc = eigenvectors.clone()
+                if nc > 0:
+                    B(Xc, BXc)
+            else:
+                BXc = Xc
+            if nc > 0:
+                Gc = BXc.dot(Xc)
+                # approximate inverse of Gc
+                Gci = 2*numpy.identity(nc, dtype = data_type) - Gc
+            Q = numpy.dot(Gci, X.dot(BXc))
+            X.add(Xc, -1.0, Q)
+            Q = numpy.dot(Gci, X.dot(BXc))
+            X.add(Xc, -1.0, Q)
+
+        if not std:
+            B(X, Y)
+            XBX = Y.dot(X)
+        else:
+            XBX = X.dot(X)
+        if pro:
+            A(Y, Z)
+            XAX = Z.dot(Y)
+        else:
+            A(X, Z)
+            XAX = Z.dot(X)
+        lmdx, Q = sla.eigh(XAX, XBX, turbo=False, overwrite_a = True, overwrite_b = True)
+#        print(lmdx)
+        X.multiply(Q, Z)
+        Z.copy(X)
+        eigenvectors.append(X)
+        self.eigenvalues = numpy.concatenate((self.eigenvalues, lmdx))
+
+        return 0
+
+    def _solve(self, eigenvectors, options, which, extra, init):
+            
+        verb = options.verbosity
+
+        left = int(which[0])
+        right = int(which[1])
+        
+        m = self.block_size
         if left == 0:
             r = 0.0
             l = 1
@@ -213,6 +302,7 @@ class Solver:
             r = 0.5
             l = m//2
         lr_ratio = r
+        block_size = m
         left_block_size = l
         
         extra_left = int(extra[0])
@@ -243,14 +333,14 @@ class Solver:
         pro = (problem_type == 'p')
         data_type = vector.data_type()
 
-        #output
-        self.lcon = 0
-        self.rcon = 0
-        self.eigenvalues = numpy.ndarray((0,), dtype = numpy.float64)
-        self.eigenvalue_errors = EstimatedErrors()
-        self.eigenvector_errors = EstimatedErrors()
-        self.residual_norms = numpy.ndarray((0,), dtype = numpy.float32)
-        self.convergence_status = numpy.ndarray((0,), dtype = numpy.int32)
+#        #output
+#        self.lcon = 0
+#        self.rcon = 0
+#        self.eigenvalues = numpy.ndarray((0,), dtype = numpy.float64)
+#        self.eigenvalue_errors = EstimatedErrors()
+#        self.eigenvector_errors = EstimatedErrors()
+#        self.residual_norms = numpy.ndarray((0,), dtype = numpy.float32)
+#        self.convergence_status = numpy.ndarray((0,), dtype = numpy.int32)
 
         # convergence data
         self.cnv = numpy.zeros((m,), dtype = numpy.int32)
@@ -260,7 +350,7 @@ class Solver:
         self.err_X = -numpy.ones((2, m,), dtype = numpy.float32)
 
         # data for estimating error in computing residuals
-        err_AX = 0.0
+        #err_AX = 0.0
         norm_AX = numpy.zeros((m,), dtype = numpy.float32)
 
         # convergence history data
@@ -763,11 +853,16 @@ class Solver:
             self.lcon += lcon
             self.rcon += rcon
             if options.stopping_criteria.satisfied(self):
-                break
+                return 0
+#                break
             left_converged = left >= 0 and self.lcon >= left
             right_converged = right >= 0 and self.rcon >= right
             if left_converged and right_converged:
-                break
+                return 0
+#                break
+            lim = options.max_quota * eigenvectors.dimension()
+            if eigenvectors.nvec() > lim:
+                return 1
             
             leftX -= lcon
             rightX -= rcon
@@ -887,7 +982,8 @@ class Solver:
             if ny < 1:
                 if verb > -1:
                     print('no search directions left, terminating')
-                break
+                return 2
+#                break
 
             # re-arrange/drop-linear-dependent search directions
             nxy = nx + ny
