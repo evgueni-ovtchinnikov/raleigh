@@ -42,16 +42,9 @@ import sys
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
-print(sys.path)
-
-import operators
 import raleigh.solver
 from raleigh.algebra import Vectors
-#from raleigh.ndarray.cblas_vectors import Vectors
-#from raleigh.ndarray.numpy_vectors import Vectors
-#from raleigh.ndarray.vectors import Vectors
-
-#import scipy.linalg as sla
+from raleigh.algebra import Matrix
 
 numpy.random.seed(1) # to debug - makes the results reproducible
 
@@ -74,16 +67,17 @@ v = Vectors(n, data_type = dtype)
 if matrix[0] == 'c':
     if dt == 's' or dt == 'd':
         raise ValueError('central differences matrix requires complex data')
-    operatorA = operators.CentralDiff(n)
-    a = numpy.ones((1, n))
+    d = 1j*numpy.ones((n - 1,), dtype = dtype)
+    A = numpy.diag(d, 1) - numpy.diag(d, -1)
+    operatorA = Matrix(A)
 else:
-    a = numpy.asarray([i + 1 for i in range(n)])
-    operatorA = operators.Diagonal(a)
+    a = numpy.asarray([i + 1 for i in range(n)]).astype(dtype)
+    operatorA = Matrix(numpy.diag(a))
 opA = lambda x, y: operatorA.apply(x, y)
 
 if problem[0] != 's':
-    b = 2*numpy.ones((1, n))
-    operatorB = operators.Diagonal(b)
+    b = 2*numpy.ones((n,), dtype = dtype)
+    operatorB = Matrix(numpy.diag(b))
     opB = lambda x, y: operatorB.apply(x, y)
 else:
     opB = None
