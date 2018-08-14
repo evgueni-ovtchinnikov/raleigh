@@ -1639,3 +1639,9 @@ except:
             self.__mvec = MIN_INC
         else:
             self.__mvec = MIN_INC*((m - 1)//MIN_INC + 1)
+
+#from raleigh.ndarray.cblas_algebra import Vectors, Matrix
+#print('using mkl cblas...')
+
+#from raleigh.cuda.cublas_algebra import Vectors
+#from raleigh.cuda.cublas_algebra import Matrix
