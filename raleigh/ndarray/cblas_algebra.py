@@ -116,7 +116,8 @@ class Vectors(NDArrayVectors):
 
     # BLAS level 3
     def dot(self, other):
-        m, n = self.all_data().shape
+##        m, n = self.all_data().shape
+        n = self.dimension()
         m = self.nvec()
         k = other.nvec()
         q = numpy.ndarray((k, m), dtype = self.data_type())
