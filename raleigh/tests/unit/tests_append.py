@@ -43,6 +43,7 @@ def test(u, v):
 
     u_numpy = numpyVectors(u)
     v_numpy = numpyVectors(v)
+    m = u_numpy.nvec()
     n = u_numpy.dimension()
     dt = u_numpy.data_type()
     w_numpy = numpyVectors(n, data_type = dt)
@@ -63,8 +64,18 @@ def test(u, v):
     t = nla.norm(w_cublas.data() - w_numpy.data())
     print('error: %e' % t)
     print('time: %.2e' % elapsed)
-    v_numpy.select(10, 5)
-    v_cublas.select(10, 5)
+    k = 4 #m//2
+    l = m - k
+    v_numpy.select(k, l)
+    v_cublas.select(k, l)
+    w_numpy.append(v_numpy)
+    w_cublas.append(v_cublas)
+    t = nla.norm(w_cublas.data() - w_numpy.data())
+    print('error: %e' % t)
+    k = 5
+    l = m - k
+    v_numpy.select(k, l)
+    v_cublas.select(k, l)
     w_numpy.append(v_numpy)
     w_cublas.append(v_cublas)
     t = nla.norm(w_cublas.data() - w_numpy.data())
@@ -91,5 +102,7 @@ try:
         print('testing on real data...')
         test(u, v)
 
-except error as err:
-    print('%s' % err.value)
+    print('done')
+
+except:
+    print('errored')

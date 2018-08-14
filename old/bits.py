@@ -1634,3 +1634,8 @@ except:
 #    print('error: %e' % t)
 #    v_numpy.select_all()
 #    v_cublas.select_all()
+
+        if m < 1:
+            self.__mvec = MIN_INC
+        else:
+            self.__mvec = MIN_INC*((m - 1)//MIN_INC + 1)

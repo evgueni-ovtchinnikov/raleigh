@@ -31,6 +31,7 @@ def conjugate(a):
         return a
 
 class Vectors:
+    MIN_INC = 16
     def __init__(self, arg, nvec = 0, data_type = None):
         self.__data = ctypes.POINTER(ctypes.c_ubyte)()
         if isinstance(arg, Vectors):
@@ -73,6 +74,7 @@ class Vectors:
                 raise ValueError('data type %s not supported' % repr(dtype))
             n = arg
             m = nvec
+            assert m >= 0
             if nvec > 0:
                 size = n*m*dsize
                 try_calling(cuda.malloc(ctypes.byref(self.__data), size))
@@ -83,6 +85,7 @@ class Vectors:
         self.__selected = (0, m)
         self.__vdim = n
         self.__nvec = m
+        self.__mvec = m
         self.__dsize = dsize
         self.__dtype = dtype
         self.__cublas = Cublas(dtype)
@@ -129,30 +132,39 @@ class Vectors:
     def append(self, other):
         if other.nvec() < 1:
             return
+        inc = ctypes.c_int(1)
         n = self.__vdim
         vsize = self.__dsize * n
         i, m = self.selected()
         j, l = other.selected()
         nvec = m + l
-        size = nvec * vsize
-        data = ctypes.POINTER(ctypes.c_ubyte)()
-        try_calling(cuda.malloc(ctypes.byref(data), size))
-        inc = ctypes.c_int(1)
-        if m > 0:
-            mn = ctypes.c_int(m*n)
-            data_u = self.all_data_ptr()
-            ptr_u = shifted_ptr(data_u, i*vsize)
-            ptr = shifted_ptr(data, 0)
-            self.__cublas.copy(self.__cublas.handle, mn, ptr_u, inc, ptr, inc)
-            try_calling(cuda.free(self.__data))
+        if nvec > self.__mvec:
+            mvec = ((nvec - 1)//Vectors.MIN_INC + 1)*Vectors.MIN_INC
+#            print('allocating %d vectors...' % mvec)
+            size = mvec * vsize
+            data = ctypes.POINTER(ctypes.c_ubyte)()
+            try_calling(cuda.malloc(ctypes.byref(data), size))
+            if m > 0:
+                mn = ctypes.c_int(m*n)
+                data_u = self.all_data_ptr()
+                ptr_u = shifted_ptr(data_u, i*vsize)
+                ptr = shifted_ptr(data, 0)
+                self.__cublas.copy(self.__cublas.handle, mn, ptr_u, inc, ptr, inc)
+                try_calling(cuda.free(self.__data))
+        else:
+            data = self.__data
+            mvec = self.__mvec
+#            print('re-using %d vectors...' % mvec)
         data_v = other.all_data_ptr()
         ptr_v = shifted_ptr(data_v, j*vsize)
         ptr = shifted_ptr(data, m*vsize)
         ln = ctypes.c_int(l*n)
+#        print('copying %d vectors...' % l)
         self.__cublas.copy(self.__cublas.handle, ln, ptr_v, inc, ptr, inc)
 #        try_calling(cuda.memcpy(data, data_v, l*vsize, cuda.memcpyD2D))
         self.__data = data
         self.__nvec = nvec
+        self.__mvec = mvec
         self.select_all()
     def all_data_ptr(self):
         return self.__data
