@@ -184,13 +184,17 @@ class Vectors:
         return self.__is_complex
 
     def zero(self):
-        n = self.nvec()
+        m = self.nvec()
+        if m < 1:
+            return
         vsize = self.__dsize * self.__vdim
-        try_calling(cuda.memset(self.data_ptr(), 0, n*vsize))
+        try_calling(cuda.memset(self.data_ptr(), 0, m*vsize))
     def fill_random(self):
         n = self.dimension()
         m = self.nvec()
-        i = self.first()
+        if m < 1:
+            return
+#        i = self.first()
         data = numpy.random.rand(m, n).astype(self.data_type())
 #        data = numpy.ones((m, n), dtype = self.data_type())
         data *= 2
@@ -204,6 +208,8 @@ class Vectors:
         m = self.nvec()
         n = self.dimension()
         v = numpy.ndarray((m, n), dtype = self.data_type())
+        if m < 1:
+            return v
         hptr_v = ctypes.c_void_p(v.ctypes.data)
         size = n * m * self.__dsize
         try_calling(cuda.memcpy(hptr_v, self.data_ptr(), size, cuda.memcpyD2H))

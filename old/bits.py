@@ -1611,3 +1611,26 @@ except:
 #            x.apply(self.a.T, y)
 #        else:
 #            x.apply(self.a, y)
+
+#    w_cublas = cublasVectors(n, data_type = dt)
+##    print(u_cublas.data())
+##    print(w_cublas.data())
+
+#    print('----\n testing cublasVectors.append...')
+#    w_numpy.append(u_numpy)
+#    start = time.time()
+#    w_cublas.append(u_cublas)
+#    cuda.synchronize()
+#    stop = time.time()
+#    elapsed = stop - start
+#    t = nla.norm(w_cublas.data() - w_numpy.data())
+#    print('error: %e' % t)
+#    print('time: %.2e' % elapsed)
+#    v_numpy.select(10, 5)
+#    v_cublas.select(10, 5)
+#    w_numpy.append(v_numpy)
+#    w_cublas.append(v_cublas)
+#    t = nla.norm(w_cublas.data() - w_numpy.data())
+#    print('error: %e' % t)
+#    v_numpy.select_all()
+#    v_cublas.select_all()

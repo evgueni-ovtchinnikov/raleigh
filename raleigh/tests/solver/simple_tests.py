@@ -43,8 +43,10 @@ if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 import raleigh.solver
-from raleigh.algebra import Vectors
-from raleigh.algebra import Matrix
+from raleigh.cuda.cublas_algebra import Vectors
+from raleigh.cuda.cublas_algebra import Matrix
+#from raleigh.algebra import Vectors
+#from raleigh.algebra import Matrix
 
 numpy.random.seed(1) # to debug - makes the results reproducible
 
