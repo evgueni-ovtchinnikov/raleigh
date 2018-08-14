@@ -18,7 +18,8 @@ if raleigh_path not in sys.path:
 
 from raleigh.solver import Problem, Solver
 #from raleigh.ndarray.numpy_algebra import Vectors, Matrix
-from raleigh.algebra import Vectors, Matrix
+#from raleigh.algebra import Vectors, Matrix
+from raleigh.cuda.cublas_algebra import Vectors, Matrix
 
 class Operator:
     def __init__(self, array):

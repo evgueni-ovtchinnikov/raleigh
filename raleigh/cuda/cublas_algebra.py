@@ -446,12 +446,13 @@ class Matrix:
     def apply(self, x, y, transp = False):
         if x.data_type() != self.__dtype or y.data_type() != self.__dtype:
             raise ValueError('Matrix and vectors data types differ')
+        m, n = self.__shape
         if transp:
-            n, m = self.__shape
+#            n, m = self.__shape
             if n != y.dimension() or m != x.dimension():
                 raise ValueError('Matrix and vectors dimensions incompatible')
         else:
-            m, n = self.__shape
+#            m, n = self.__shape
             if m != y.dimension() or n != x.dimension():
                 raise ValueError('Matrix and vectors dimensions incompatible')
         k = x.nvec()
