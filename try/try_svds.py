@@ -58,10 +58,11 @@ dtype = numpy.float32
 EXP = 1
 EPS = 0 # 1e-3
 
-m = 5000
-n = 10000 # 40000
+m = 65000
+n = 15000 # 40000
 k = 500
 
+print('\n--- generating the matrix...')
 if EXP == 1:
     alpha = 0.05
     f_sigma = lambda t: 2**(-alpha*t).astype(dtype)
@@ -69,14 +70,16 @@ else:
     alpha = 0.01
     f_sigma = lambda t: 2**(-alpha*t*t).astype(dtype)
 sigma0, u0, v0, A = random_matrix_for_svd(m, n, k, f_sigma, dtype)
-a = 2*numpy.random.rand(m, n).astype(dtype) - 1
-s = numpy.linalg.norm(a, axis = 0)
-a /= s
-A += EPS*a
+#a = 2*numpy.random.rand(m, n).astype(dtype) - 1
+#s = numpy.linalg.norm(a, axis = 0)
+#a /= s
+#A += EPS*a
 
 th = 0.01
-block_size = 32 #150 # 128 #144
+block_size = 64 #32 #150 # 128 #144
 vec_tol = 1e-4 #-26
+
+print('\n--- solving with raleigh.ndarray.svd...')
 
 # set raleigh solver options
 opt = Options()
@@ -87,10 +90,11 @@ opt.convergence_criteria.set_error_tolerance \
     ('kinematic eigenvector error', vec_tol)
 opt.stopping_criteria = MyStoppingCriteria()
 opt.stopping_criteria.set_threshold(th, relative = False)
-#opt.stopping_criteria.set_how_many(block_size)
 
 start = time.time()
-sigma, u, vt = partial_svd(A, opt)
+
+sigma, u, vt = partial_svd(A, opt, try_gpu = True)
+
 stop = time.time()
 time_r = stop - start
 iter_r = opt.stopping_criteria.iteration
@@ -108,25 +112,28 @@ else:
     print('\nsingular values (raleigh):')
     print(sigma)
 
-print(type(sigma[0]))
-print(type(vt[0,0]))
-print(type(v0[0,0]))
+print('\n--- solving with restarted scipy.sparse.linalg.svds...')
 
 sigma = numpy.ndarray((0,), dtype = dtype)
 vt = numpy.ndarray((0, n), dtype = dtype)
 sigma_max = None
+
 start = time.time()
+
 while True:
     u, s, vti = svds(A, k = block_size, tol = vec_tol)
     sigma = numpy.concatenate((sigma, s[::-1]))
     vt = numpy.concatenate((vt, vti[::-1, :]))
-    print(s[0])
+    print('last singular value computed: %e' % s[0])
 #    print(s[::-1])
     if sigma_max is None:
         sigma_max = numpy.amax(s) # s[-1]
     if s[0] <= th*sigma_max:
         break
+    print('deflating...')
     A -= numpy.dot(u*s, vti)
+    print('restarting...')
+
 stop = time.time()
 time_s = stop - start
 
@@ -143,9 +150,7 @@ if EPS == 0:
 #    print(abs(sigma - sigma0[:sigma.shape[0]]))
 #else:
 print('\nsingular values (svds):')
-print(sigma)
-
-print(type(sigma[0]))
-print(type(vt[0,0]))
+print(sigma[:n_s])
+#print(sigma0[:n_s])
 
 print('\n time: raleigh %.1e, svds %.1e' % (time_r, time_s))

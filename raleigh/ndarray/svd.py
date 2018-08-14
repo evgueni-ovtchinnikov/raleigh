@@ -15,45 +15,56 @@ raleigh_path = '../..'
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
-
 from raleigh.solver import Problem, Solver
-#from raleigh.ndarray.numpy_algebra import Vectors, Matrix
-#from raleigh.algebra import Vectors, Matrix
-from raleigh.cuda.cublas_algebra import Vectors, Matrix
 
-class Operator:
-    def __init__(self, array):
-        self.matrix = Matrix(array)
-    def apply(self, x, y, transp = False):
-        self.matrix.apply(x, y, transp)
-#        x.apply(self.matrix, y, transp)
+def partial_svd(a, opt, nsv = -1, cstr = None, one_side = False, try_gpu = False):
 
-class OperatorSVD:
-    def __init__(self, array):
-        self.matrix = Matrix(array)
-    def apply(self, x, y, transp = False):
-        m, n = self.matrix.shape()
-        k = x.nvec()
-        if transp:
-            z = Vectors(n, k, x.data_type())
-            self.matrix.apply(x, z, transp = True)
-            self.matrix.apply(z, y)
-#            x.apply(self.matrix, z, transp = True)
-#            z.apply(self.matrix, y)
-        else:
-            z = Vectors(m, k, x.data_type())
-            self.matrix.apply(x, z)
-            self.matrix.apply(z, y, transp = True)
-#            x.apply(self.matrix, z)
-#            z.apply(self.matrix, y, transp = True)
+    if try_gpu:
+        try:
+            from raleigh.cuda.cublas_algebra import Vectors, Matrix
+            op = Matrix(a)
+            gpu = True
+        except:
+            gpu = False
+    else:
+        gpu = False
+    if not gpu:
+        from raleigh.algebra import Vectors, Matrix
+        op = Matrix(a)
 
-def partial_svd(a, opt, nsv = -1, cstr = None, one_side = False):
+#    class Operator:
+#        def __init__(self, array):
+#            self.matrix = Matrix(array)
+#        def apply(self, x, y, transp = False):
+#            self.matrix.apply(x, y, transp)    
+    class OperatorSVD:
+#        def __init__(self, array):
+#            self.matrix = Matrix(array)
+        def __init__(self, op):
+            self.op = op
+        def apply(self, x, y, transp = False):
+#            m, n = self.matrix.shape()
+            m, n = self.op.shape()
+            k = x.nvec()
+            if transp:
+                z = Vectors(n, k, x.data_type())
+                self.op.apply(x, z, transp = True)
+                self.op.apply(z, y)
+#                self.matrix.apply(x, z, transp = True)
+#                self.matrix.apply(z, y)
+            else:
+                z = Vectors(m, k, x.data_type())
+                self.op.apply(x, z)
+                self.op.apply(z, y, transp = True)
+#                self.matrix.apply(x, z)
+#                self.matrix.apply(z, y, transp = True)
+
     m, n = a.shape
     transp = m < n
     if transp:
         n, m = m, n
-    op = Operator(a)
-    opSVD = OperatorSVD(a)
+#    opSVD = OperatorSVD(a)
+    opSVD = OperatorSVD(op)
     dt = a.dtype.type
     if cstr is None:
         v = Vectors(n, data_type = dt)

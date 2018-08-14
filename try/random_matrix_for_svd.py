@@ -22,8 +22,8 @@ def random_singular_vectors(m, n, k, dt):
     return u, v
 
 def random_matrix_for_svd(m, n, k, sigma, dt):
-    u, v = random_singular_vectors(m, n, k, dt)
     s = random_singular_values(k, sigma, dt)
+    u, v = random_singular_vectors(m, n, k, dt)
     a = numpy.dot(u*s, v.transpose())
     return s, u, v, a
 

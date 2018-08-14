@@ -1645,3 +1645,12 @@ except:
 
 #from raleigh.cuda.cublas_algebra import Vectors
 #from raleigh.cuda.cublas_algebra import Matrix
+
+try:
+    from raleigh.cuda.cublas_algebra import Vectors, Matrix0
+    print('using cublas...')
+except:
+
+#from raleigh.ndarray.numpy_algebra import Vectors, Matrix
+#from raleigh.algebra import Vectors, Matrix
+#from raleigh.cuda.cublas_algebra import Vectors, Matrix
