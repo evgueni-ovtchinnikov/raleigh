@@ -91,7 +91,7 @@ solver = raleigh.solver.Solver(evp)
 if with_prec:
     if problem[0] == 'p':
         raise ValueError('preconditioning does not work for matrix product')
-    operatorP = operators.Diagonal(1/a)
+    operatorP = Matrix(numpy.diag(1/a))
     opP = lambda x, y: operatorP.apply(x, y)
     solver.set_preconditioner(opP)
 
