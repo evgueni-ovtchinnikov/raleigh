@@ -14,7 +14,7 @@ if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 try:
-    from raleigh.cuda.cublas_algebra import Vectors, Matrix
+    from raleigh.cuda.cublas_algebra import Vectors, Matrix0
     print('using cublas...')
 except:
     try:
