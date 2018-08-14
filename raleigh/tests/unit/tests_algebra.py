@@ -277,6 +277,8 @@ try:
     else:
         print('testing on real data...')
         test(u, v)
+        
+    print('done')
 
-except error as err:
-    print('%s' % err.value)
+except Exception as e:
+    print(e)

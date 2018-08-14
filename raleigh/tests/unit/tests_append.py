@@ -104,5 +104,5 @@ try:
 
     print('done')
 
-except:
-    print('errored')
+except Exception as e:
+    print(e)
