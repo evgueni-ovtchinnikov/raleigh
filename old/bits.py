@@ -1654,3 +1654,22 @@ except:
 #from raleigh.ndarray.numpy_algebra import Vectors, Matrix
 #from raleigh.algebra import Vectors, Matrix
 #from raleigh.cuda.cublas_algebra import Vectors, Matrix
+
+#    class Operator:
+#        def __init__(self, array):
+#            self.matrix = Matrix(array)
+#        def apply(self, x, y, transp = False):
+#            self.matrix.apply(x, y, transp)    
+
+#        def __init__(self, array):
+#            self.matrix = Matrix(array)
+
+#            m, n = self.matrix.shape()
+
+#                self.matrix.apply(x, z, transp = True)
+#                self.matrix.apply(z, y)
+
+#                self.matrix.apply(x, z)
+#                self.matrix.apply(z, y, transp = True)
+
+#    opSVD = OperatorSVD(a)

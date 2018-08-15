@@ -14,6 +14,7 @@ Options:
                              [default: C:/Users/wps46139/Documents/Data/PCA]
   -b <blk> , --bsize=<blk>   block CG block size [default: 64]
   -t <tol> , --svtol=<tol>   singular vector error tolerance [default: 1e-2]
+  -a <arch>, --arch=<arch>   architecture [default: cpu]
 
 Created on Mon Jun 18 12:10:20 2018
 
@@ -28,6 +29,7 @@ path = args['--path']
 file = args['<data>']
 svec_tol = float(args['--svtol'])
 block_size = int(args['--bsize'])
+arch = args['--arch']
 
 import numpy
 import sys
@@ -89,7 +91,7 @@ opt.convergence_criteria.set_error_tolerance \
     ('kinematic eigenvector error', svec_tol)
 opt.stopping_criteria = MyStoppingCriteria()
 
-sigma, u, vt = partial_svd(images, opt)
+sigma, u, vt = partial_svd(images, opt, arch = arch)
 
 iterations = opt.stopping_criteria.iteration
 elapsed_time = opt.stopping_criteria.elapsed_time + \

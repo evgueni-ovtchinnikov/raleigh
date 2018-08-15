@@ -4,7 +4,7 @@ Convenience function for Partial SVD of a ndarray via RALEIGH
 
 Created on Wed Mar 21 14:06:26 2018
 
-@author: Evgueni Ovtchinnikov, STFC
+@author: Evgueni Ovtchinnikov, UKRI-STFC
 """
 
 import numpy
@@ -17,14 +17,16 @@ if raleigh_path not in sys.path:
 
 from raleigh.solver import Problem, Solver
 
-def partial_svd(a, opt, nsv = -1, cstr = None, one_side = False, try_gpu = False):
+def partial_svd(a, opt, nsv = -1, cstr = None, one_side = False, arch = 'cpu'):
 
-    if try_gpu:
+    if arch[:3] == 'gpu':
         try:
             from raleigh.cuda.cublas_algebra import Vectors, Matrix
             op = Matrix(a)
             gpu = True
         except:
+            if len(arch) > 3 and arch[3] == '!':
+                raise RuntimeError('cannot use GPU')
             gpu = False
     else:
         gpu = False
@@ -32,38 +34,25 @@ def partial_svd(a, opt, nsv = -1, cstr = None, one_side = False, try_gpu = False
         from raleigh.algebra import Vectors, Matrix
         op = Matrix(a)
 
-#    class Operator:
-#        def __init__(self, array):
-#            self.matrix = Matrix(array)
-#        def apply(self, x, y, transp = False):
-#            self.matrix.apply(x, y, transp)    
     class OperatorSVD:
-#        def __init__(self, array):
-#            self.matrix = Matrix(array)
         def __init__(self, op):
             self.op = op
         def apply(self, x, y, transp = False):
-#            m, n = self.matrix.shape()
             m, n = self.op.shape()
             k = x.nvec()
             if transp:
                 z = Vectors(n, k, x.data_type())
                 self.op.apply(x, z, transp = True)
                 self.op.apply(z, y)
-#                self.matrix.apply(x, z, transp = True)
-#                self.matrix.apply(z, y)
             else:
                 z = Vectors(m, k, x.data_type())
                 self.op.apply(x, z)
                 self.op.apply(z, y, transp = True)
-#                self.matrix.apply(x, z)
-#                self.matrix.apply(z, y, transp = True)
 
     m, n = a.shape
     transp = m < n
     if transp:
         n, m = m, n
-#    opSVD = OperatorSVD(a)
     opSVD = OperatorSVD(op)
     dt = a.dtype.type
     if cstr is None:

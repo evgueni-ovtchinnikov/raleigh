@@ -58,7 +58,7 @@ dtype = numpy.float32
 EXP = 1
 EPS = 0 # 1e-3
 
-m = 65000
+m = 25000
 n = 15000 # 40000
 k = 500
 
@@ -93,7 +93,7 @@ opt.stopping_criteria.set_threshold(th, relative = False)
 
 start = time.time()
 
-sigma, u, vt = partial_svd(A, opt, try_gpu = True)
+sigma, u, vt = partial_svd(A, opt, arch = 'gpu')
 
 stop = time.time()
 time_r = stop - start
