@@ -4,14 +4,12 @@ Incremental PCA demo. Computes Principal Components for a set of 2D images
 in small portions until stopped by user's entering 'n' in answer to 'more?'
 
 Usage:
-  try_ipca [--help | -h | options] <data>
+  ipca_images [--help | -h | options] <data>
 
 Arguments:
-  data .npy file containing images as ndarray of dimensions (ni, ny, nx)
+  data  .npy file containing images as ndarray of dimensions (ni, ny, nx)
 
 Options:
-  -p <path>, --path=<path>   path to the data directory
-                             [default: C:/Users/wps46139/Documents/Data/PCA]
   -b <blk> , --bsize=<blk>   block CG block size [default: 64]
   -t <tol> , --svtol=<tol>   singular vector error tolerance [default: 1e-2]
   -a <arch>, --arch=<arch>   architecture [default: cpu]
@@ -25,7 +23,7 @@ __version__ = '0.1.0'
 from docopt import docopt
 args = docopt(__doc__, version=__version__)
 
-path = args['--path']
+#path = args['--path']
 file = args['<data>']
 svec_tol = float(args['--svtol'])
 block_size = int(args['--bsize'])
@@ -71,8 +69,7 @@ class MyStoppingCriteria:
 
 numpy.random.seed(1) # make results reproducible
 
-filepath = path + '/' + file
-images = numpy.load(filepath)
+images = numpy.load(file)
 
 vmin = numpy.amin(images)
 vmax = numpy.amax(images)
@@ -105,3 +102,4 @@ u = numpy.reshape(vt, (ncon, ny, nx))
 numpy.save('sigma.npy', sigma[:ncon])
 numpy.save('u.npy', u)
 numpy.save('v.npy', v)
+print('done')

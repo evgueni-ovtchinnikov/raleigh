@@ -1695,3 +1695,7 @@ except:
 #            self.matrix.apply(x, z)
 #            self.matrix.apply(z, y, transp = True)
 
+#data_root = 'C:/Users/wps46139/Documents/Data/PCA/'
+#image_dir = data_root + 'lfw2/'
+#image_dir = data_root + 'lfw_funneled/'
+
