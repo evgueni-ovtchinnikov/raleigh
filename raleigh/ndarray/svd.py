@@ -10,6 +10,7 @@ Created on Wed Mar 21 14:06:26 2018
 import numpy
 import scipy
 import sys
+import time
 
 raleigh_path = '../..'
 if raleigh_path not in sys.path:
@@ -21,6 +22,7 @@ def partial_svd(a, opt, nsv = -1, cstr = None, one_side = False, arch = 'cpu'):
 
     if arch[:3] == 'gpu':
         try:
+            import raleigh.cuda.cuda as cuda
             from raleigh.cuda.cublas_algebra import Vectors, Matrix
             op = Matrix(a)
             gpu = True
@@ -35,11 +37,13 @@ def partial_svd(a, opt, nsv = -1, cstr = None, one_side = False, arch = 'cpu'):
         op = Matrix(a)
 
     class OperatorSVD:
-        def __init__(self, op):
+        def __init__(self, op, gpu):
             self.op = op
+            self.time = 0
         def apply(self, x, y, transp = False):
             m, n = self.op.shape()
             k = x.nvec()
+            start = time.time()
             if transp:
                 z = Vectors(n, k, x.data_type())
                 self.op.apply(x, z, transp = True)
@@ -48,12 +52,16 @@ def partial_svd(a, opt, nsv = -1, cstr = None, one_side = False, arch = 'cpu'):
                 z = Vectors(m, k, x.data_type())
                 self.op.apply(x, z)
                 self.op.apply(z, y, transp = True)
+            if gpu:
+                cuda.synchronize()
+            stop = time.time()
+            self.time += stop - start
 
     m, n = a.shape
     transp = m < n
     if transp:
         n, m = m, n
-    opSVD = OperatorSVD(op)
+    opSVD = OperatorSVD(op, gpu)
     dt = a.dtype.type
     if cstr is None:
         v = Vectors(n, data_type = dt)
@@ -65,6 +73,7 @@ def partial_svd(a, opt, nsv = -1, cstr = None, one_side = False, arch = 'cpu'):
     problem = Problem(v, lambda x, y: opSVD.apply(x, y, transp))
     solver = Solver(problem)
     solver.solve(v, opt, which = (0, nsv))
+    print('operator application time: %.2e' % opSVD.time)
     if one_side:
         sigma = numpy.sqrt(solver.eigenvalues)
         if transp:
