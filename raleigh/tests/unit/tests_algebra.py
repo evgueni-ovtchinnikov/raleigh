@@ -27,7 +27,9 @@ import numpy.linalg as nla
 import sys
 import time
 
-sys.path.append('../../..')
+raleigh_path = '../../..'
+if raleigh_path not in sys.path:
+    sys.path.append(raleigh_path)
 
 from raleigh.ndarray.numpy_algebra import Vectors as numpyVectors
 from raleigh.ndarray.cblas_algebra import Vectors as cblasVectors

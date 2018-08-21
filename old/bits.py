@@ -1673,3 +1673,25 @@ except:
 #                self.matrix.apply(z, y, transp = True)
 
 #    opSVD = OperatorSVD(a)
+
+#class Operator:
+#    def __init__(self, array):
+#        self.matrix = Matrix(array)
+#    def apply(self, x, y, transp = False):
+#        self.matrix.apply(x, y, transp)
+#
+#class OperatorSVD:
+#    def __init__(self, array):
+#        self.matrix = Matrix(array)
+#    def apply(self, x, y, transp = False):
+#        m, n = self.matrix.shape()
+#        k = x.nvec()
+#        if transp:
+#            z = Vectors(n, k, x.data_type())
+#            self.matrix.apply(x, z, transp = True)
+#            self.matrix.apply(z, y)
+#        else:
+#            z = Vectors(m, k, x.data_type())
+#            self.matrix.apply(x, z)
+#            self.matrix.apply(z, y, transp = True)
+
