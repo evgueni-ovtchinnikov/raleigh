@@ -36,10 +36,12 @@ else:
 filename = path + '/%ssigma.npy' % pref
 print('loading singular values from %s...' % filename)
 sigma = numpy.load(filename)
-filename = path + '/%su.npy' % pref
+#filename = path + '/%su.npy' % pref
+filename = path + '/%seigim.npy' % pref
 print('loading eigenimages from %s...' % filename)
 u = numpy.load(filename)
-filename = path + '/%sv.npy' % pref
+#filename = path + '/%sv.npy' % pref
+filename = path + '/%scoord.npy' % pref
 print('loading images coordinates in eigenimages basis from %s...' % filename)
 v = numpy.load(filename)
 
@@ -69,9 +71,10 @@ images = numpy.reshape(images, (ni, n))
 u = numpy.reshape(u, (nsv, n))
 
 print('measuring svd errors...')
-w = v.T*sigma
 norm = nla.norm(images, axis = 1)
-proj = nla.norm(w, axis = 1)
+#w = v.T*sigma
+#proj = nla.norm(w, axis = 1)
+proj = nla.norm(v, axis = 0)
 err = numpy.sqrt(norm*norm - proj*proj)
 ind = numpy.argsort(-err)
 pylab.figure()
@@ -94,13 +97,15 @@ while True:
     pylab.figure()
     pylab.title('image %d' % i)
     pylab.imshow(image, cmap = 'gray')
-    img = numpy.dot(u.T, sigma*v[:,i])
+#    img = numpy.dot(u.T, sigma*v[:,i])
+    img = numpy.dot(u.T, v[:,i])
     psvd_img = numpy.reshape(img, (ny, nx))
     pylab.figure()
     pylab.title('partial SVD approximation of the image')
     pylab.imshow(psvd_img, cmap = 'gray')
     pylab.figure()
-    pylab.plot(numpy.arange(1, nsv + 1, 1), sigma*v[:,i])
+#    pylab.plot(numpy.arange(1, nsv + 1, 1), sigma*v[:,i])
+    pylab.plot(numpy.arange(1, nsv + 1, 1), v[:,i])
     pylab.grid()
     pylab.title('coordinates in eigenimage basis')
     pylab.show()

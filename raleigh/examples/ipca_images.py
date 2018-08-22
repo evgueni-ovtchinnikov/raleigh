@@ -97,9 +97,13 @@ elapsed_time = opt.stopping_criteria.elapsed_time + \
 print('iterations: %d, time: %.2e' % (iterations, elapsed_time))
 
 ncon = sigma.shape[0]
-v = numpy.reshape(u.T, (ncon, m))
-u = numpy.reshape(vt, (ncon, ny, nx))    
+#v = numpy.reshape(u.T, (ncon, m))
+#u = numpy.reshape(vt, (ncon, ny, nx))    
+coord = numpy.reshape((sigma*u).T, (ncon, m))
+eigim = numpy.reshape(vt, (ncon, ny, nx))    
+numpy.save('eigim.npy', eigim)
+numpy.save('coord.npy', coord)
 numpy.save('sigma.npy', sigma[:ncon])
-numpy.save('u.npy', u)
-numpy.save('v.npy', v)
+#numpy.save('u.npy', u)
+#numpy.save('v.npy', v)
 print('done')
