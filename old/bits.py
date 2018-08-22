@@ -1699,3 +1699,6 @@ except:
 #image_dir = data_root + 'lfw2/'
 #image_dir = data_root + 'lfw_funneled/'
 
+#diff = numpy.dot(v.T*sigma, u) - images
+#err = nla.norm(diff, axis = 1)/nla.norm(images, axis = 1)
+#print(nla.norm(err - err1)/nla.norm(err))

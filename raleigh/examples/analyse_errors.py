@@ -69,15 +69,17 @@ images = numpy.reshape(images, (ni, n))
 u = numpy.reshape(u, (nsv, n))
 
 print('measuring svd errors...')
-diff = numpy.dot(v.T*sigma, u) - images
-err = nla.norm(diff, axis = 1)/nla.norm(images, axis = 1)
+w = v.T*sigma
+norm = nla.norm(images, axis = 1)
+proj = nla.norm(w, axis = 1)
+err = numpy.sqrt(norm*norm - proj*proj)
 ind = numpy.argsort(-err)
 pylab.figure()
 pylab.plot(numpy.arange(1, ni + 1, 1), err[ind])
 pylab.title('errors')
 pylab.show()
 k = 100
-print('%d worse approximations:' % k)
+print('%d worst approximations:' % k)
 print('images:')
 print(ind[:k])
 print('errors:')
