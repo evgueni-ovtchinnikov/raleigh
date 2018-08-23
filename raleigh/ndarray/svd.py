@@ -18,6 +18,32 @@ if raleigh_path not in sys.path:
 
 from raleigh.solver import Problem, Solver
 
+class PSVDErrorEstimator:
+    def __init__(self):
+        self.reset()
+    def reset(self):
+        self.solver = None
+        self.err = None
+        self.op = None
+        self.m = 0
+        self.n = 0
+        self.ncon = 0
+    def set_up(self, op, solver, eigenvectors):
+        self.op = op
+        self.solver = solver
+        self.eigenvectors = eigenvectors
+        m, n = op.shape()
+        if self.m != m or self.n != n:
+            self.m = m
+            self.n = n
+            self.err = numpy.ones((m,))
+        else:
+            print('%d converged eigenvectors found' % self.ncon)
+    def update(self):
+        # TODO: update error
+        self.ncon = self.eigenvectors.nvec()
+        return self.err
+
 def partial_svd(a, opt, nsv = -1, cstr = None, one_side = False, arch = 'cpu'):
 
     if arch[:3] == 'gpu':
@@ -70,12 +96,21 @@ def partial_svd(a, opt, nsv = -1, cstr = None, one_side = False, arch = 'cpu'):
             v = Vectors(cstr[0].T, data_type = dt)
         else:
             v = Vectors(cstr[1], data_type = dt)
+
     problem = Problem(v, lambda x, y: opSVD.apply(x, y, transp))
     solver = Solver(problem)
+    try:
+        opt.stopping_criteria.err_est.set_up(op, solver, v)
+        print('partial SVD error estimation set up')
+    except:
+        print('partial SVD error estimation not requested')
+        pass
     solver.solve(v, opt, which = (0, nsv))
     print('operator application time: %.2e' % opSVD.time)
+
     if one_side:
-        sigma = numpy.sqrt(solver.eigenvalues)
+        sigma = -numpy.sort(-numpy.sqrt(solver.eigenvalues))
+        # TODO: sort eigenvectors accordingly
         if transp:
             return sigma, v.data().T
         else:

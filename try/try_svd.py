@@ -14,7 +14,7 @@ if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 from raleigh.solver import Options
-from raleigh.ndarray.svd import partial_svd
+from raleigh.ndarray.svd import partial_svd, PSVDErrorEstimator
 from random_matrix_for_svd import random_singular_values, random_singular_vectors
 
 class MyStoppingCriteria:
@@ -23,12 +23,14 @@ class MyStoppingCriteria:
         self.th = 1.0
         self.m = -1
         self.iteration = -1
+        self.err_est = PSVDErrorEstimator()
     def set_threshold(self, th, relative = True):
         self.rel = relative
         self.th = th*th
     def set_how_many(self, m):
         self.m = m
     def satisfied(self, solver):
+        self.err_est.update()
         self.iteration = solver.iteration
         if solver.rcon < 1:
             return False
@@ -105,6 +107,8 @@ v = vt.transpose()[:,ind]
 err_sw = vec_err(v0[:,:n_sw], v)
 #err_sw = vec_err(v0[:,:n_sw], vt.transpose())
 
+opt.stopping_criteria.err_est.reset()
+
 # with restarts
 nsv = int(round(block_size*0.8))
 #opt.stopping_criteria.set_how_many(nsv)
@@ -120,7 +124,7 @@ while WITH_RESTARTS:
     if iter_wr == 0:
         sigma0 = numpy.amax(sigma_wr)
     iter_wr += opt.stopping_criteria.iteration
-#    print(sigma_wr)
+#    print(sigma_wr) #[-1], vt_wr.shape)
 #    if iter_wr > 100:
 #        break
     if sigma_wr[-1] < th*sigma0:
