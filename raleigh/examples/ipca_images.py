@@ -10,6 +10,7 @@ Arguments:
   data  .npy file containing images as ndarray of dimensions (ni, ny, nx)
 
 Options:
+  -n <nim> , --nimgs=<nim>   number of images to use, negative=all [default: -1]
   -b <blk> , --bsize=<blk>   block CG block size [default: 64]
   -t <tol> , --svtol=<tol>   singular vector error tolerance [default: 1e-2]
   -a <arch>, --arch=<arch>   architecture [default: cpu]
@@ -25,8 +26,9 @@ args = docopt(__doc__, version=__version__)
 
 #path = args['--path']
 file = args['<data>']
-svec_tol = float(args['--svtol'])
+ni = int(args['--nimgs'])
 block_size = int(args['--bsize'])
+svec_tol = float(args['--svtol'])
 arch = args['--arch']
 
 import numpy
@@ -71,12 +73,20 @@ numpy.random.seed(1) # make results reproducible
 
 images = numpy.load(file)
 
+m, ny, nx = images.shape
+n = nx*ny
+
+if ni < 0:
+    ni = m
+
+if ni < m:
+    print('ising first %d images only...' % ni)
+    m = ni
+    images = images[:m,:,:]
+
 vmin = numpy.amin(images)
 vmax = numpy.amax(images)
 print('data range: %e to %e' % (vmin, vmax))
-
-m, ny, nx = images.shape
-n = nx*ny
 
 images = numpy.reshape(images, (m, n))
 

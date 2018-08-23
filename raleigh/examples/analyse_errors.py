@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 '''Analyses errors of a partial SVD.
 
-SVD data is read from files <prefix>sigma.npy, <prefix>u.npy and <prefix>v.npy.
+SVD data is read from files <prefix>sigma.npy, <prefix>eigim.npy and 
+<prefix>coord.npy.
 
 Usage:
     test_psvd [--help | -h | options] <file> <prefix>
@@ -52,6 +53,9 @@ print('%d eigenimages of size %dx%d loaded' % (nsv, nyu, nxu))
 print('loading images from %s...' % file)
 images = numpy.load(file)
 ni, ny, nx = images.shape
+if ni > m:
+    ni = m
+    images = images[:ni,:,:]
 print('%d images of size %dx%d loaded' % (ni, ny, nx))
 
 if ni != m or nx != nxu or ny != nyu:
