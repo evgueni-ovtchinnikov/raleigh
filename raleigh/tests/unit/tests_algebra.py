@@ -128,11 +128,12 @@ def test(u, v):
     print('error: %e' % t)
     print('time: %.2e' % elapsed)
 
-    scale = numpy.ones(m)*3.0
+    scale = numpy.ones(m)*2.0
+    multiply = True
 
     print('----\n testing numpy scale...')
     start = time.time()
-    u_numpy.scale(scale)
+    u_numpy.scale(scale, multiply)
     stop = time.time()
     elapsed = stop - start
     s = nla.norm(u_numpy.data())
@@ -140,7 +141,7 @@ def test(u, v):
 
     print('----\n testing cblas scale...')
     start = time.time()
-    u_cblas.scale(scale)
+    u_cblas.scale(scale, multiply)
     stop = time.time()
     elapsed = stop - start
     t = nla.norm(u_cblas.data() - u_numpy.data())/s
@@ -149,7 +150,7 @@ def test(u, v):
 
     print('----\n testing cublas scale...')
     start = time.time()
-    u_cublas.scale(scale)
+    u_cublas.scale(scale, multiply)
     cuda.synchronize()
     stop = time.time()
     elapsed = stop - start
@@ -181,6 +182,38 @@ def test(u, v):
     elapsed = stop - start
     print('error: %e' % (nla.norm(q - p)/s))
     print('time: %.2e' % elapsed)
+
+    print('----\n testing numpy transposed dots...')
+    start = time.time()
+    p = u_numpy.dots(v_numpy, transp = True)
+    stop = time.time()
+    elapsed = stop - start
+    s = nla.norm(p)
+    print('time: %.2e' % elapsed)
+#    print(p)
+#    q = u_numpy.dots(v_numpy, transp = True)
+#    print(q)
+
+    print('----\n testing cblas transposed dots...')
+    start = time.time()
+    q = u_cblas.dots(v_cblas, transp = True)
+    stop = time.time()
+    elapsed = stop - start
+    print('error: %e' % (nla.norm(q - p)/s))
+    print('time: %.2e' % elapsed)
+#    q = u_cblas.dots(v_cblas, transp = True)
+#    print(q)
+
+    print('----\n testing cublas transposed dots...')
+    start = time.time()
+    q = u_cublas.dots(v_cublas, transp = True)
+    cuda.synchronize()
+    stop = time.time()
+    elapsed = stop - start
+    print('error: %e' % (nla.norm(q - p)/s))
+    print('time: %.2e' % elapsed)
+#    q = u_cublas.dots(v_cublas, transp = True)
+#    print(q)
 
     print('----\n testing numpy dot...')
     start = time.time()
@@ -268,10 +301,10 @@ try:
     else:
         print('running in single precision...')
         dt = numpy.float32
-##    u = numpy.ones((m, n), dtype = dt)
-##    v = numpy.ones((m, n), dtype = dt)
-    u = numpy.random.randn(m, n).astype(dt)
-    v = numpy.random.randn(m, n).astype(dt)
+    u = numpy.ones((m, n), dtype = dt)
+    v = numpy.ones((m, n), dtype = dt)
+#    u = numpy.random.randn(m, n).astype(dt)
+#    v = numpy.random.randn(m, n).astype(dt)
 
     if cmplx:
         print('testing on complex data...')

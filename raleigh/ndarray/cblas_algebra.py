@@ -81,38 +81,72 @@ class Vectors(NDArrayVectors):
                 ptr_u = array_ptr(self.all_data(), int(ind[k])*vsize)
                 ptr_v = array_ptr(other.all_data(), (j + k)*vsize)
                 self.__cblas.copy(mkl_n, ptr_u, mkl_inc, ptr_v, mkl_inc)
-    def scale(self, s):
+    def scale(self, s, multiply = False):
         f, n = self.selected()
         vdim = self.dimension()
         mkl_n = ctypes.c_int(vdim)
         mkl_inc = ctypes.c_int(1)
         vsize = self.__cblas.dsize * vdim
-        for i in range(n):
-            if s[i] != 0.0:
+        if multiply:
+            for i in range(n):
                 ptr_u = array_ptr(self.all_data(), (f + i)*vsize)
-                mkl_s = self.__to_float(1.0/s[i])
+                mkl_s = self.__to_float(s[i])
                 self.__cblas.scal(mkl_n, mkl_s, ptr_u, mkl_inc)
-    def dots(self, other):
-        n = self.nvec()
-        v = numpy.ndarray((n,), dtype = self.data_type())
-        vdim = self.dimension()
-        mkl_n = ctypes.c_int(vdim)
-        mkl_inc = ctypes.c_int(1)
-        vsize = self.__cblas.dsize * vdim
+        else:
+            for i in range(n):
+                if s[i] != 0.0:
+                    ptr_u = array_ptr(self.all_data(), (f + i)*vsize)
+                    mkl_s = self.__to_float(1.0/s[i])
+                    self.__cblas.scal(mkl_n, mkl_s, ptr_u, mkl_inc)
+    def dots(self, other, transp = False):
+        if transp:
+            u = self.all_data()
+            v = other.all_data()
+            n = self.dimension()
+            w = numpy.ndarray((n,), dtype = self.data_type())
+            if other.is_complex():
+                for i in range(n):
+                    w[i] = numpy.dot(v[:, i].conj(), u[:, i])
+            else:
+                for i in range(n):
+                    w[i] = numpy.dot(v[:, i], u[:, i])
+#            for i in range(n):
+#                if other.is_complex():
+#                    s = numpy.dot(other.data(i, transp).conj(), self.data(i, transp))
+#                else:
+#                    s = numpy.dot(other.data(i, transp), self.data(i, transp))
+#                w[i] = s
+            return w
         iu = self.selected()[0]
         iv = other.selected()[0]
+        vdim = self.dimension()
+        dsize = self.__cblas.dsize
+        vsize = dsize * vdim
+#        if transp:
+#            n = vdim
+#            mkl_n = ctypes.c_int(self.nvec())
+#            mkl_inc = ctypes.c_int(n)
+#        else:
+        n = self.nvec()
+        mkl_n = ctypes.c_int(vdim)
+        mkl_inc = ctypes.c_int(1)
+        w = numpy.ndarray((n,), dtype = self.data_type())
         for i in range(n):
+#            if transp:
+#                ptr_u = array_ptr(self.all_data(), iu*vsize + i*dsize)
+#                ptr_v = array_ptr(other.all_data(), iv*vsize + i*dsize)
+#            else:
             ptr_u = array_ptr(self.all_data(), (iu + i)*vsize)
             ptr_v = array_ptr(other.all_data(), (iv + i)*vsize)
             if self.is_complex():
                 s = self.__complex()
                 self.__cblas.inner \
                     (mkl_n, ptr_v, mkl_inc, ptr_u, mkl_inc, s)
-                v[i] = s[0] + 1j * s[1]
+                w[i] = s[0] + 1j * s[1]
             else:
-                v[i] = self.__cblas.inner \
+                w[i] = self.__cblas.inner \
                     (mkl_n, ptr_v, mkl_inc, ptr_u, mkl_inc)
-        return v
+        return w
 
     # BLAS level 3
     def dot(self, other):

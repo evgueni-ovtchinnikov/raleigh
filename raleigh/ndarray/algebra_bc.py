@@ -90,12 +90,18 @@ class NDArrayVectors:
         fill_ndarray_with_orthogonal_vectors(self.__data[iv : iv + nv, :])
     def all_data(self):
         return self.__data
+#    def data(self, i = None, transp = False):
     def data(self, i = None):
         f, n = self.__selected
         if i is None:
             return self.__data[f : f + n, :]
         else:
+#            if transp:
+#                return self.__data[f : f + n, i]
             return self.__data[f + i, :]
+#    def data_slice(self, i):
+#        f, n = self.__selected
+#        return self.__data[f : f + n, i]
     def append(self, other):
         self.__data = numpy.concatenate((self.__data, other.data()))
         self.__nvec += other.nvec()

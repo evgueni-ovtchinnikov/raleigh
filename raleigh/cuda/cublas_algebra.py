@@ -251,40 +251,76 @@ class Vectors:
                 ptr_v = shifted_ptr(data_v, (j + k)*vsize)
                 self.__cublas.copy \
                     (self.__cublas.handle, n, ptr_u, inc, ptr_v, inc)
-    def scale(self, s):
+    def scale(self, s, multiply = False):
         f, m = self.selected()
         vdim = self.dimension()
         n = ctypes.c_int(vdim)
         inc = ctypes.c_int(1)
         vsize = self.__cublas.dsize * vdim
         data_u = self.all_data_ptr()
-        for i in range(m):
-            ptr_u = shifted_ptr(data_u, (f + i)*vsize)
-            if s[i] != 0.0:
-                r = self.__to_floats(1.0/s[i])
+        if multiply:
+            for i in range(m):
+                ptr_u = shifted_ptr(data_u, (f + i)*vsize)
+                r = self.__to_floats(s[i])
                 self.__cublas.scal(self.__cublas.handle, n, r, ptr_u, inc)
-    def dots(self, other):
-        m = self.nvec()
-        v = numpy.ndarray((m,), dtype = self.data_type())
-        vdim = self.dimension()
-        n = ctypes.c_int(vdim)
-        inc = ctypes.c_int(1)
-        vsize = self.__dsize * vdim
-        data_u = self.all_data_ptr()
-        data_v = other.all_data_ptr()
+        else:
+            for i in range(m):
+                ptr_u = shifted_ptr(data_u, (f + i)*vsize)
+                if s[i] != 0.0:
+                    r = self.__to_floats(1.0/s[i])
+                    self.__cublas.scal(self.__cublas.handle, n, r, ptr_u, inc)
+    def dots(self, other, transp = False):
+        if transp:
+            dptr_u = self.data_ptr()
+            dptr_v = other.data_ptr()
+            m = self.nvec()
+            n = self.dimension()
+            u = numpy.ndarray((m, n), dtype = self.data_type())
+            v = numpy.ndarray((m, n), dtype = self.data_type())
+            w = numpy.ndarray((n,), dtype = self.data_type())
+            hptr_u = ctypes.c_void_p(u.ctypes.data)
+            hptr_v = ctypes.c_void_p(v.ctypes.data)
+            size = m*n*self.__dsize
+            try_calling(cuda.memcpy(hptr_u, dptr_u, size, cuda.memcpyD2H))
+            try_calling(cuda.memcpy(hptr_v, dptr_v, size, cuda.memcpyD2H))
+            if other.is_complex():
+                for i in range(n):
+                    w[i] = numpy.dot(v[:, i].conj(), u[:, i])
+            else:
+                for i in range(n):
+                    w[i] = numpy.dot(v[:, i], u[:, i])
+            return w
         iu = self.first()
         iv = other.first()
+        vdim = self.dimension()
+        dsize = self.__dsize
+        vsize = dsize * vdim
+#        if transp:
+#            m = vdim
+#            n = ctypes.c_int(self.nvec())
+#            inc = ctypes.c_int(vdim)
+#        else:
+        m = self.nvec()
+        n = ctypes.c_int(vdim)
+        inc = ctypes.c_int(1)
+        data_u = self.all_data_ptr()
+        data_v = other.all_data_ptr()
+        w = numpy.ndarray((m,), dtype = self.data_type())
         for i in range(m):
+#            if transp:
+#                ptr_u = shifted_ptr(data_u, iu*vsize + i*dsize)
+#                ptr_v = shifted_ptr(data_v, iv*vsize + i*dsize)
+#            else:
             ptr_u = shifted_ptr(data_u, (iu + i)*vsize)
             ptr_v = shifted_ptr(data_v, (iv + i)*vsize)
             s = self.__floats()
             self.__cublas.dot \
                 (self.__cublas.handle, n, ptr_v, inc, ptr_u, inc, s)
             if self.is_complex():
-                v[i] = s[0] + 1j * s[1]
+                w[i] = s[0] + 1j * s[1]
             else:
-                v[i] = s[0]
-        return v
+                w[i] = s[0]
+        return w
 
     # BLAS level 3
     def dot(self, other):

@@ -33,19 +33,45 @@ class Vectors(NDArrayVectors):
             other.data()[:,:] = self.data()
         else:
             other.all_data()[j : j + len(ind), :] = self.all_data()[ind, :]
-    def scale(self, s):
+    def scale(self, s, multiply = False):
         f, n = self.selected();
-        for i in range(n):
-            if s[i] != 0.0:
-                self.data(i)[:] /= s[i]
-    def dots(self, other):
-        n = self.nvec()
+        if multiply:
+            for i in range(n):
+                self.data(i)[:] *= s[i]
+        else:
+            for i in range(n):
+                if s[i] != 0.0:
+                    self.data(i)[:] /= s[i]
+    def dots(self, other, transp = False):
+        if transp:
+            u = self.all_data()
+            v = other.all_data()
+            n = self.dimension()
+            w = numpy.ndarray((n,), dtype = self.data_type())
+            if other.is_complex():
+                for i in range(n):
+                    w[i] = numpy.dot(v[:, i].conj(), u[:, i])
+            else:
+                for i in range(n):
+                    w[i] = numpy.dot(v[:, i], u[:, i])
+            return w
+#            if other.is_complex():
+#                for i in range(n):
+#                    w[i] = numpy.dot(other.data_slice(i).conj(), self.data_slice(i))
+#            else:
+#                for i in range(n):
+#                    w[i] = numpy.dot(other.data_slice(i), self.data_slice(i))
+            return w
+        else:
+            n = self.nvec()
         v = numpy.ndarray((n,), dtype = self.data_type())
         for i in range(n):
             if other.is_complex():
                 s = numpy.dot(other.data(i).conj(), self.data(i))
+#                s = numpy.dot(other.data(i, transp).conj(), self.data(i, transp))
             else:
                 s = numpy.dot(other.data(i), self.data(i))
+#                s = numpy.dot(other.data(i, transp), self.data(i, transp))
             v[i] = s
         return v
 
