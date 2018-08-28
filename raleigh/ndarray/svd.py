@@ -18,7 +18,7 @@ if raleigh_path not in sys.path:
 
 from raleigh.solver import Problem, Solver
 
-class PSVDErrorEstimator:
+class PSVDErrorCalculator:
     def __init__(self):
         self.reset()
     def reset(self):
@@ -100,10 +100,10 @@ def partial_svd(a, opt, nsv = -1, cstr = None, one_side = False, arch = 'cpu'):
     problem = Problem(v, lambda x, y: opSVD.apply(x, y, transp))
     solver = Solver(problem)
     try:
-        opt.stopping_criteria.err_est.set_up(op, solver, v)
-        print('partial SVD error estimation set up')
+        opt.stopping_criteria.err_calc.set_up(op, solver, v)
+        print('partial SVD error calculation set up')
     except:
-        print('partial SVD error estimation not requested')
+        print('partial SVD error calculation not requested')
         pass
     solver.solve(v, opt, which = (0, nsv))
     print('operator application time: %.2e' % opSVD.time)
