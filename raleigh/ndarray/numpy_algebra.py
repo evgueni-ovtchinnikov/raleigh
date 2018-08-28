@@ -44,8 +44,8 @@ class Vectors(NDArrayVectors):
                     self.data(i)[:] /= s[i]
     def dots(self, other, transp = False):
         if transp:
-            u = self.all_data()
-            v = other.all_data()
+            u = self.data()
+            v = other.data()
             n = self.dimension()
             w = numpy.ndarray((n,), dtype = self.data_type())
             if other.is_complex():

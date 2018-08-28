@@ -35,7 +35,9 @@ def fill_ndarray_with_orthogonal_vectors(a):
 class NDArrayVectors:
     def __init__(self, arg, nvec = 0, data_type = None):
         if isinstance(arg, NDArrayVectors):
-            self.__data = arg.__data.copy()
+            #print('in copy constructor')
+            i, n = arg.selected()
+            self.__data = arg.__data[i : i + n, :].copy()
         elif isinstance(arg, numpy.ndarray):
             self.__data = arg
         elif isinstance(arg, numbers.Number):

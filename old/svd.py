@@ -8,7 +8,6 @@ Created on Wed Mar 21 14:06:26 2018
 """
 
 import numpy
-import numpy.linalg as nla
 import scipy
 import sys
 import time
@@ -20,49 +19,32 @@ if raleigh_path not in sys.path:
 from raleigh.solver import Problem, Solver
 
 class PSVDErrorCalculator:
-    def __init__(self, a):
-#        self.reset()
-#    def reset(self):
+    def __init__(self):
+        self.reset()
+    def reset(self):
         self.solver = None
         self.err = None
         self.op = None
-        m, n = a.shape
-        self.m = m
-        self.n = n
+        self.m = 0
+        self.n = 0
         self.ncon = 0
-        self.norms = nla.norm(a, axis = 1)
-        self.err = self.norms
-        print('max data norm: %e' % numpy.amax(self.err))
     def set_up(self, op, solver, eigenvectors):
         self.op = op
         self.solver = solver
         self.eigenvectors = eigenvectors
-    def update_errors(self):
+        m, n = op.shape()
+        if self.m != m or self.n != n:
+            self.m = m
+            self.n = n
+            self.err = numpy.ones((m,))
+        else:
+            print('%d converged eigenvectors found' % self.ncon)
+    def update(self):
         # TODO: update error
-        ncon = self.eigenvectors.nvec()
-        new = ncon - self.ncon
-        if new > 0:
-            print('%d singular pairs converged' % new)
-            x = self.eigenvectors
-            sel = x.selected()
-            x.select(new, self.ncon)
-            m = self.m
-            n = self.n
-            if m < n:
-                y = x.clone()
-                lmd = self.solver.eigenvalues[self.ncon :]
-                y.scale(lmd, multiply = True)
-                q = x.dots(y, transp = True)
-            s = self.err*self.err - q
-            s[s < 0] = 0
-            self.err = numpy.sqrt(s)
-            errs = (numpy.amax(self.err), numpy.amax(self.err/self.norms))
-            print('max err: abs %e, rel %e' % errs)
-            self.eigenvectors.select(sel[1], sel[0])
-            self.ncon = ncon
+        self.ncon = self.eigenvectors.nvec()
         return self.err
 
-def partial_svd(a, opt, nsv = -1, arch = 'cpu'):
+def partial_svd(a, opt, nsv = -1, cstr = None, one_side = False, arch = 'cpu'):
 
     if arch[:3] == 'gpu':
         try:
@@ -78,7 +60,6 @@ def partial_svd(a, opt, nsv = -1, arch = 'cpu'):
         gpu = False
     if not gpu:
         from raleigh.algebra import Vectors, Matrix
-#        from raleigh.ndarray.numpy_algebra import Vectors, Matrix
         op = Matrix(a)
 
     class OperatorSVD:
@@ -108,7 +89,13 @@ def partial_svd(a, opt, nsv = -1, arch = 'cpu'):
         n, m = m, n
     opSVD = OperatorSVD(op, gpu)
     dt = a.dtype.type
-    v = Vectors(n, data_type = dt)
+    if cstr is None:
+        v = Vectors(n, data_type = dt)
+    else:
+        if transp:
+            v = Vectors(cstr[0].T, data_type = dt)
+        else:
+            v = Vectors(cstr[1], data_type = dt)
 
     problem = Problem(v, lambda x, y: opSVD.apply(x, y, transp))
     solver = Solver(problem)
@@ -121,6 +108,13 @@ def partial_svd(a, opt, nsv = -1, arch = 'cpu'):
     solver.solve(v, opt, which = (0, nsv))
     print('operator application time: %.2e' % opSVD.time)
 
+    if one_side:
+        sigma = -numpy.sort(-numpy.sqrt(solver.eigenvalues))
+        # TODO: sort eigenvectors accordingly
+        if transp:
+            return sigma, v.data().T
+        else:
+            return sigma, v.data()
     nv = v.nvec()
     u = Vectors(m, nv, v.data_type())
     op.apply(v, u, transp)

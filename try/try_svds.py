@@ -6,26 +6,27 @@ Created on Wed Apr  4 14:59:40 2018
 """
 
 import numpy
+import numpy.linalg as nla
 import sys
 import time
+
+from scipy.sparse.linalg import svds
 
 raleigh_path = '..'
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
-
-from scipy.sparse.linalg import svds
 from random_matrix_for_svd import random_matrix_for_svd
-
 from raleigh.solver import Options
-from raleigh.ndarray.svd import partial_svd
+from raleigh.ndarray.svd import partial_svd, PSVDErrorCalculator
 
 class MyStoppingCriteria:
-    def __init__(self):
+    def __init__(self, a):
         self.rel = True
         self.th = 1.0
         self.m = -1
         self.iteration = -1
+        self.err_calc = PSVDErrorCalculator(a)
     def set_threshold(self, th, relative = True):
         self.rel = relative
         self.th = th*th
@@ -40,6 +41,7 @@ class MyStoppingCriteria:
             th = self.th*numpy.amax(solver.eigenvalues)
         else:
             th = self.th
+        err = self.err_calc.update_errors()
         done = vmin < th or self.m > 0 and solver.rcon >= self.m
         return done
 
@@ -58,7 +60,7 @@ dtype = numpy.float32
 EXP = 1
 EPS = 0 # 1e-3
 
-m = 25000
+m = 5000
 n = 15000 # 40000
 k = 500
 
@@ -77,7 +79,7 @@ sigma0, u0, v0, A = random_matrix_for_svd(m, n, k, f_sigma, dtype)
 
 th = 0.01
 block_size = 64 #32 #150 # 128 #144
-vec_tol = 1e-4 #-26
+vec_tol = 1e-3 #-26
 
 print('\n--- solving with raleigh.ndarray.svd...')
 
@@ -88,7 +90,7 @@ opt.max_iter = 400
 #opt.verbosity = 2
 opt.convergence_criteria.set_error_tolerance \
     ('kinematic eigenvector error', vec_tol)
-opt.stopping_criteria = MyStoppingCriteria()
+opt.stopping_criteria = MyStoppingCriteria(A)
 opt.stopping_criteria.set_threshold(th, relative = False)
 
 start = time.time()
@@ -98,6 +100,11 @@ sigma, u, vt = partial_svd(A, opt, arch = 'gpu')
 stop = time.time()
 time_r = stop - start
 iter_r = opt.stopping_criteria.iteration
+
+B = A - numpy.dot(u*sigma, vt)
+err = nla.norm(B, axis = 1)
+print('max error: %e' % numpy.amax(err))
+
 sigma = sigma[sigma > th*sigma[0]]
 n_r = min(sigma.shape[0], sigma0.shape[0])
 #n_r = vt.shape[0]

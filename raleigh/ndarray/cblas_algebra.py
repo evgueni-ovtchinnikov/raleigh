@@ -100,8 +100,8 @@ class Vectors(NDArrayVectors):
                     self.__cblas.scal(mkl_n, mkl_s, ptr_u, mkl_inc)
     def dots(self, other, transp = False):
         if transp:
-            u = self.all_data()
-            v = other.all_data()
+            u = self.data()
+            v = other.data()
             n = self.dimension()
             w = numpy.ndarray((n,), dtype = self.data_type())
             if other.is_complex():

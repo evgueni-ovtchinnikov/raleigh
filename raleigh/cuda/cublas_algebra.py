@@ -42,7 +42,8 @@ class Vectors:
             dsize = arg.__dsize
             size = n*m*dsize
             try_calling(cuda.malloc(ctypes.byref(self.__data), size))
-            try_calling(cuda.memcpy(self.__data, arg.__data, size, cuda.memcpyD2D))
+            try_calling(cuda.memcpy(self.__data, arg.data_ptr(), size, \
+                cuda.memcpyD2D))
         elif isinstance(arg, numpy.ndarray):
             m, n = arg.shape
             dtype = arg.dtype.type
