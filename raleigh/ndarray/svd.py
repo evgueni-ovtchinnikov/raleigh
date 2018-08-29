@@ -32,7 +32,6 @@ class PSVDErrorCalculator:
         self.ncon = 0
         self.norms = nla.norm(a, axis = 1)
         self.err = self.norms
-        print('max data norm: %e' % numpy.amax(self.err))
     def set_up(self, op, solver, eigenvectors):
         self.op = op
         self.solver = solver
@@ -42,7 +41,7 @@ class PSVDErrorCalculator:
         ncon = self.eigenvectors.nvec()
         new = ncon - self.ncon
         if new > 0:
-            print('%d singular pairs converged' % new)
+#            print('%d singular pairs converged' % new)
             x = self.eigenvectors
             sel = x.selected()
             x.select(new, self.ncon)
@@ -53,11 +52,13 @@ class PSVDErrorCalculator:
                 lmd = self.solver.eigenvalues[self.ncon :]
                 y.scale(lmd, multiply = True)
                 q = x.dots(y, transp = True)
+            else:
+                y = x.new_vectors(new, m)
+                self.op.apply(x, y)
+                q = y.dots(y, transp = True)
             s = self.err*self.err - q
             s[s < 0] = 0
             self.err = numpy.sqrt(s)
-            errs = (numpy.amax(self.err), numpy.amax(self.err/self.norms))
-            print('max err: abs %e, rel %e' % errs)
             self.eigenvectors.select(sel[1], sel[0])
             self.ncon = ncon
         return self.err
