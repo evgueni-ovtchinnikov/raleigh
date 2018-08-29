@@ -31,6 +31,7 @@ block_size = int(args['--bsize'])
 svec_tol = float(args['--svtol'])
 arch = args['--arch']
 
+import math
 import numpy
 import sys
 import time
@@ -38,15 +39,19 @@ import time
 sys.path.append('../..')
 
 from raleigh.solver import Options
-from raleigh.ndarray.svd import partial_svd
+from raleigh.ndarray.svd import partial_svd, PSVDErrorCalculator
 
 class MyStoppingCriteria:
-    def __init__(self):
+    def __init__(self, a):
         self.ncon = 0
         self.sigma = 1
         self.iteration = 0
         self.start_time = time.time()
         self.elapsed_time = 0
+        self.err_calc = PSVDErrorCalculator(a)
+        self.norms = self.err_calc.norms
+        self.err = self.norms
+        print('max data norm: %e' % numpy.amax(self.err))
     def satisfied(self, solver):
         iterations = solver.iteration - self.iteration
         if solver.rcon <= self.ncon:
@@ -63,6 +68,17 @@ class MyStoppingCriteria:
         for i in range(solver.rcon - self.ncon):
             print('sigma[%4d] = %14f = %10f*sigma[0]' % \
             (self.ncon + i, sigma[i], sigma[i]/self.sigma))
+        self.err = self.err_calc.update_errors()
+        err_max = (numpy.amax(self.err), numpy.amax(self.err/self.norms))
+        print('max err: abs %e, rel %e' % err_max)
+        err_av = (numpy.sum(self.err)/len(self.err))
+        print('average err: %e' % err_av)
+#        std_dev = math.sqrt(self.err.var())
+#        print('std dev: %e' % std_dev)
+#        k = (len(self.err[self.err > err_av + 3*std_dev]))
+#        print('above average + 3*std_dev: %d' % k)
+        k = (len(self.err[self.err > 0.2]))
+        print('above 0.2: %d' % k)
         self.ncon = solver.rcon
         done = (input('more? ') == 'n')
         self.iteration = solver.iteration
@@ -96,7 +112,7 @@ opt.max_iter = 300
 opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
     ('kinematic eigenvector error', svec_tol)
-opt.stopping_criteria = MyStoppingCriteria()
+opt.stopping_criteria = MyStoppingCriteria(images)
 
 sigma, u, vt = partial_svd(images, opt, arch = arch)
 
