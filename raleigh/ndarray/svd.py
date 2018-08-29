@@ -63,7 +63,7 @@ class PSVDErrorCalculator:
             self.ncon = ncon
         return self.err
 
-def partial_svd(a, opt, nsv = -1, arch = 'cpu'):
+def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu'):
 
     if arch[:3] == 'gpu':
         try:
@@ -110,6 +110,12 @@ def partial_svd(a, opt, nsv = -1, arch = 'cpu'):
     opSVD = OperatorSVD(op, gpu)
     dt = a.dtype.type
     v = Vectors(n, data_type = dt)
+    if isv is not None:
+        k = isv.shape[0]
+        if k != n:
+            msg = 'initial singular vectors must have dimension %d, not %d'
+            raise ValueError(msg % (n, k))
+        isv = Vectors(isv.T)
 
     problem = Problem(v, lambda x, y: opSVD.apply(x, y, transp))
     solver = Solver(problem)
@@ -119,7 +125,7 @@ def partial_svd(a, opt, nsv = -1, arch = 'cpu'):
     except:
         print('partial SVD error calculation not requested')
         pass
-    solver.solve(v, opt, which = (0, nsv))
+    solver.solve(v, opt, which = (0, nsv), init = (None, isv))
     print('operator application time: %.2e' % opSVD.time)
 
     nv = v.nvec()
