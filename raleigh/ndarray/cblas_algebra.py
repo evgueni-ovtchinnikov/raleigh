@@ -55,8 +55,12 @@ class Vectors(NDArrayVectors):
         else:
             raise ValueError('data type %s not supported' % repr(dt))
         return s
-    def new_vectors(self, nv = 0):
-        return Vectors(self.dimension(), nv, self.data_type())
+    def new_vectors(self, nv = 0, dim = None):
+        if dim is None:
+            dim = self.dimension()
+        return Vectors(dim, nv, self.data_type())
+#    def new_vectors(self, nv = 0):
+#        return Vectors(self.dimension(), nv, self.data_type())
     def clone(self):
         return Vectors(self)
     def cblas(self):

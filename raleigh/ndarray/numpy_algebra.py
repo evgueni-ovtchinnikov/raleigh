@@ -19,8 +19,10 @@ from raleigh.ndarray.algebra_bc import NDArrayVectors, NDArrayMatrix
 class Vectors(NDArrayVectors):
     def __init__(self, arg, nvec = 0, data_type = None):
         super(Vectors, self).__init__(arg, nvec, data_type)
-    def new_vectors(self, nv = 0):
-        return Vectors(self.dimension(), nv, self.data_type())
+    def new_vectors(self, nv = 0, dim = None):
+        if dim is None:
+            dim = self.dimension()
+        return Vectors(dim, nv, self.data_type())
     def clone(self):
         return Vectors(self)
 
