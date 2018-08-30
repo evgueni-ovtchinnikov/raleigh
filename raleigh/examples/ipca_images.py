@@ -11,6 +11,7 @@ Arguments:
 
 Options:
   -n <nim> , --nimgs=<nim>   number of images to use, negative=all [default: -1]
+  -m <mim> , --mimgs=<mim>   number of images to add [default: 0]
   -b <blk> , --bsize=<blk>   block CG block size [default: 64]
   -t <tol> , --svtol=<tol>   singular vector error tolerance [default: 1e-2]
   -a <arch>, --arch=<arch>   architecture [default: cpu]
@@ -27,6 +28,7 @@ args = docopt(__doc__, version=__version__)
 #path = args['--path']
 file = args['<data>']
 ni = int(args['--nimgs'])
+mi = int(args['--mimgs'])
 block_size = int(args['--bsize'])
 svec_tol = float(args['--svtol'])
 arch = args['--arch']
@@ -87,18 +89,24 @@ class MyStoppingCriteria:
 
 numpy.random.seed(1) # make results reproducible
 
-images = numpy.load(file)
+all_images = numpy.load(file)
 
-m, ny, nx = images.shape
+m, ny, nx = all_images.shape
 n = nx*ny
 
-if ni < 0:
+if ni < 0 or ni > m:
     ni = m
 
 if ni < m:
     print('ising first %d images only...' % ni)
+    m_all = m
     m = ni
-    images = images[:m,:,:]
+    images = all_images[:m,:,:]
+else:
+    images = all_images
+
+if ni + mi > m_all:
+    mi = m_all - ni
 
 vmin = numpy.amin(images)
 vmax = numpy.amax(images)
@@ -123,6 +131,18 @@ elapsed_time = opt.stopping_criteria.elapsed_time + \
 print('iterations: %d, time: %.2e' % (iterations, elapsed_time))
 
 ncon = sigma.shape[0]
+
+if mi > 0:
+    print('adding %d images...' % mi)
+    m = ni + mi
+    images = all_images[:m,:,:]
+    images = numpy.reshape(images, (m, n))
+    opt.stopping_criteria = MyStoppingCriteria(images)
+    opt.block_size = -1
+    sigma, u, vt = partial_svd(images, opt, nsv = ncon + mi, isv = vt.T, arch = arch)
+
+ncon = sigma.shape[0]
+
 #v = numpy.reshape(u.T, (ncon, m))
 #u = numpy.reshape(vt, (ncon, ny, nx))    
 coord = numpy.reshape((sigma*u).T, (ncon, m))
