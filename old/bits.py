@@ -1702,3 +1702,16 @@ except:
 #diff = numpy.dot(v.T*sigma, u) - images
 #err = nla.norm(diff, axis = 1)/nla.norm(images, axis = 1)
 #print(nla.norm(err - err1)/nla.norm(err))
+
+#            A[i, :], A[j, :] = A[j, :], A[i, :].copy()
+#            A[:, i], A[:, j] = A[:, j], A[:, i].copy()
+
+        #print('pivot: %e' % last_piv)
+#        if A[i, i] <= eps:
+
+#            return ind, n - i, last_piv
+#        A[i, i] = math.sqrt(abs(A[i, i]))
+
+#            return ind, n - i, last_piv
+
+#    return ind, 0, A[n - 1, n - 1]**2

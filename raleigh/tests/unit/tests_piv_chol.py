@@ -25,9 +25,13 @@ def conjugate(a):
     else:
         return a.T
 
-def piv_chol_new(A, k, eps, blk = 4, verb = 0):
+def piv_chol_new(A, k, eps, blk = 64, verb = 0):
     n = A.shape[0]
+    buff = A[0,:].copy()
     ind = [i for i in range(n)]
+    drop_case = 0
+    dropped = 0
+    last_check = -1
     if k > 0:
         U = sla.cholesky(A[:k,:k])
         A[:k,:k] = U.copy()
@@ -44,31 +48,61 @@ def piv_chol_new(A, k, eps, blk = 4, verb = 0):
         j = i + numpy.argmax(s)
         if i != j:
             #print('swapping %d and %d' % (i, j))
-            A[i, :], A[j, :] = A[j, :], A[i, :].copy()
-            A[:, i], A[:, j] = A[:, j], A[:, i].copy()
+            buff[:] = A[i,:]
+            A[i,:] = A[j,:]
+            A[j,:] = buff
+            buff[:] = A[:,i]
+            A[:,i] = A[:,j]
+            A[:,j] = buff
             ind[i], ind[j] = ind[j], ind[i]
         if i > l:
             A[i, i : n] -= numpy.dot(conjugate(A[l : i, i]), A[l : i, i : n])
-        last_piv = A[i, i]
-        #print('pivot: %e' % last_piv)
-        if A[i, i] <= eps:
+        last_piv = A[i, i].real
+        if last_piv <= eps:
             A[i : n, :].fill(0.0)
-            return ind, n - i, last_piv
-        A[i, i] = math.sqrt(abs(A[i, i]))
+            drop_case = 1
+            dropped = n - i
+            break
+        A[i, i] = math.sqrt(last_piv)
         A[i, i + 1 : n] /= A[i, i]
         A[i + 1 : n, i].fill(0.0)
-        lmin = estimate_lmin(A[: i + 1, : i + 1])
-        lmax = estimate_lmax(A[: i + 1, : i + 1])
-        if verb > 0:
-            print('%e %e %e' % (A[i,i], lmin, lmax))
-        if lmin/lmax <= eps:
-            A[i : n, :].fill(0.0)
-            return ind, n - i, last_piv
+        if i - l == blk - 1 or i == n - 1:
+            last_check = i
+            lmin = estimate_lmin(A[: i + 1, : i + 1])
+            lmax = estimate_lmax(A[: i + 1, : i + 1])
+            if verb > 0:
+                print('%e %e %e' % (A[i,i], lmin, lmax))
+            if lmin/lmax <= eps:
+                A[i : n, :].fill(0.0)
+                drop_case = 2
+                dropped = n - i
+                break
         if i - l == blk - 1 and i < n - 1:
             j = i + 1
             A[j : n, j : n] -= numpy.dot(conjugate(A[l : j, j : n]), A[l : j, j : n])
             l += blk
-    return ind, 0, A[n - 1, n - 1]**2
+    if last_check < n - 1 and drop_case != 2:
+        i = last_check
+        j = n - dropped - 1
+        while i < j:
+            m = i + (j - i + 1)//2
+            lmin = estimate_lmin(A[: m + 1, : m + 1])
+            lmax = estimate_lmax(A[: m + 1, : m + 1])
+            if verb > 0:
+                print('%d %e %e' % (m, lmin, lmax))
+            if lmin/lmax <= eps:
+                if j > m:
+                    j = m
+                    continue
+                else:
+                    A[j : n, :].fill(0.0)
+                    dropped = n - j
+                    last_piv = A[j - 1, j - 1]**2
+                    break
+            else:
+                i = m
+                continue
+    return ind, dropped, last_piv
 
 def estimate_lmax(U):
     U = numpy.triu(U)
@@ -97,10 +131,10 @@ dtype = numpy.float32
 
 EPS = 0 # 1e-3
 
-m = 10
-n = 21
-k = 10
-l = 10
+m = 1000
+n = 4000
+k = 1000
+l = 1000
 
 print('\n--- generating the matrix...')
 alpha = 0.05
@@ -108,27 +142,33 @@ f_sigma = lambda t: 2**(-alpha*t).astype(dtype)
 sigma, u, v0, w = random_matrix_for_svd(m, n, k, f_sigma, dtype)
 sigma, u, v, w0 = random_matrix_for_svd(m, n, k, f_sigma, dtype)
 print(v.shape)
+print(w.shape)
 w = numpy.concatenate((v.T[:l,:], w))
 print(w.shape)
 s = 1/nla.norm(w, axis = 1)
 w = numpy.dot(numpy.diag(s), w)
-print(nla.norm(w, axis = 1))
+#print(nla.norm(w, axis = 1))
 
 g = numpy.dot(w, w.T)
 #print(g[:l,:l])
 lmd, q = sla.eigh(g)
-print(lmd)
+print(lmd[0], lmd[-1])
 
 u = g.copy()
-#ind, dropped, last_piv = piv_chol(u, l, 1e-2, verb = 1)
-ind, dropped, last_piv = piv_chol_new(u, l, 1e-2, blk = 4, verb = 1)
-print(ind)
+print('factorizing...')
+start = time.time()
+ind, dropped, last_piv = piv_chol(u, l, 1e-4, verb = 0)
+#ind, dropped, last_piv = piv_chol_new(u, l, 1e-4, blk = 64, verb = 0)
+stop = time.time()
+print('time: %.1e' % (stop - start))
+#print(ind)
 print(dropped)
 print(last_piv)
 s = nla.norm(g)
-h = numpy.dot(conjugate(u), u)
+k = u.shape[0] - dropped
+h = numpy.dot(conjugate(u[:k, :k]), u[:k, :k])
 g = g[ind,:]
 g = g[:,ind]
-g -= h
-s = nla.norm(g)/s
+g[:k, :k] -= h
+s = nla.norm(g[:k, :k])/s
 print(s)

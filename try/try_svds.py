@@ -110,59 +110,59 @@ B = A - numpy.dot(u*sigma, vt)
 err = nla.norm(B, axis = 1)
 print('max error: %e' % numpy.amax(err))
 
-#sigma = sigma[sigma > th*sigma[0]]
-#n_r = min(sigma.shape[0], sigma0.shape[0])
-##n_r = vt.shape[0]
-#print('\n%d singular values converged in %d iterations' % (sigma.shape[0], iter_r))
-#if EPS == 0:
-#    err_r = vec_err(v0[:,:n_r], vt.transpose()[:,:n_r])
-#    print('\nsingular vector errors (raleigh):')
-#    print(err_r)
-#    print('\nsingular value errors (raleigh):')
-#    print(abs(sigma[:n_r] - sigma0[:n_r]))
+sigma = sigma[sigma > th*sigma[0]]
+n_r = min(sigma.shape[0], sigma0.shape[0])
+#n_r = vt.shape[0]
+print('\n%d singular values converged in %d iterations' % (sigma.shape[0], iter_r))
+if EPS == 0:
+    err_r = vec_err(v0[:,:n_r], vt.transpose()[:,:n_r])
+    print('\nsingular vector errors (raleigh):')
+    print(err_r)
+    print('\nsingular value errors (raleigh):')
+    print(abs(sigma[:n_r] - sigma0[:n_r]))
+else:
+    print('\nsingular values (raleigh):')
+    print(sigma)
+
+print('\n--- solving with restarted scipy.sparse.linalg.svds...')
+
+sigma = numpy.ndarray((0,), dtype = dtype)
+vt = numpy.ndarray((0, n), dtype = dtype)
+sigma_max = None
+
+start = time.time()
+
+while True:
+    u, s, vti = svds(A, k = block_size, tol = vec_tol)
+    sigma = numpy.concatenate((sigma, s[::-1]))
+    vt = numpy.concatenate((vt, vti[::-1, :]))
+    print('last singular value computed: %e' % s[0])
+#    print(s[::-1])
+    if sigma_max is None:
+        sigma_max = numpy.amax(s) # s[-1]
+    if s[0] <= th*sigma_max:
+        break
+    print('deflating...')
+    A -= numpy.dot(u*s, vti)
+    print('restarting...')
+
+stop = time.time()
+time_s = stop - start
+
+sigma = sigma[sigma > th*sigma[0]]
+n_s = min(sigma.shape[0], sigma0.shape[0])
+if EPS == 0:
+    #n_s = vt.shape[0]
+    err_s = vec_err(v0[:,:n_s], vt.transpose()[:,:n_s])
+    print('\nsingular vector errors (svds):')
+    print(err_s) #[::-1])
+#    print(err_s.shape, n_s)
+    print('\nsingular value errors (svds):')
+    print(abs(sigma[:n_s] - sigma0[:n_s]))
+#    print(abs(sigma - sigma0[:sigma.shape[0]]))
 #else:
-#    print('\nsingular values (raleigh):')
-#    print(sigma)
-#
-#print('\n--- solving with restarted scipy.sparse.linalg.svds...')
-#
-#sigma = numpy.ndarray((0,), dtype = dtype)
-#vt = numpy.ndarray((0, n), dtype = dtype)
-#sigma_max = None
-#
-#start = time.time()
-#
-#while True:
-#    u, s, vti = svds(A, k = block_size, tol = vec_tol)
-#    sigma = numpy.concatenate((sigma, s[::-1]))
-#    vt = numpy.concatenate((vt, vti[::-1, :]))
-#    print('last singular value computed: %e' % s[0])
-##    print(s[::-1])
-#    if sigma_max is None:
-#        sigma_max = numpy.amax(s) # s[-1]
-#    if s[0] <= th*sigma_max:
-#        break
-#    print('deflating...')
-#    A -= numpy.dot(u*s, vti)
-#    print('restarting...')
-#
-#stop = time.time()
-#time_s = stop - start
-#
-#sigma = sigma[sigma > th*sigma[0]]
-#n_s = min(sigma.shape[0], sigma0.shape[0])
-#if EPS == 0:
-#    #n_s = vt.shape[0]
-#    err_s = vec_err(v0[:,:n_s], vt.transpose()[:,:n_s])
-#    print('\nsingular vector errors (svds):')
-#    print(err_s) #[::-1])
-##    print(err_s.shape, n_s)
-#    print('\nsingular value errors (svds):')
-#    print(abs(sigma[:n_s] - sigma0[:n_s]))
-##    print(abs(sigma - sigma0[:sigma.shape[0]]))
-##else:
-#print('\nsingular values (svds):')
-#print(sigma[:n_s])
-##print(sigma0[:n_s])
-#
-#print('\n time: raleigh %.1e, svds %.1e' % (time_r, time_s))
+print('\nsingular values (svds):')
+print(sigma[:n_s])
+#print(sigma0[:n_s])
+
+print('\n time: raleigh %.1e, svds %.1e' % (time_r, time_s))
