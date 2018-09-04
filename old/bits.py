@@ -1715,3 +1715,10 @@ except:
 #            return ind, n - i, last_piv
 
 #    return ind, 0, A[n - 1, n - 1]**2
+
+#        std_dev = math.sqrt(self.err.var())
+#        print('std dev: %e' % std_dev)
+#        k = (len(self.err[self.err > err_av + 3*std_dev]))
+#        print('above average + 3*std_dev: %d' % k)
+#        k = (len(self.err[self.err > 0.2]))
+#        print('above 0.2: %d' % k)

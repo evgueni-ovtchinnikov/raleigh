@@ -12,6 +12,8 @@ Arguments:
 Options:
   -n <nim> , --nimgs=<nim>   number of images to use, negative=all [default: -1]
   -m <mim> , --mimgs=<mim>   number of images to add [default: 0]
+  -e <err> , --imerr=<err>   acceptable image approximation error (<=0: to be 
+                             decided interactively) [default: 0]
   -b <blk> , --bsize=<blk>   block CG block size [default: 64]
   -t <tol> , --svtol=<tol>   singular vector error tolerance [default: 1e-2]
   -a <arch>, --arch=<arch>   architecture [default: cpu]
@@ -29,6 +31,7 @@ args = docopt(__doc__, version=__version__)
 file = args['<data>']
 ni = int(args['--nimgs'])
 mi = int(args['--mimgs'])
+max_err = float(args['--imerr'])
 block_size = int(args['--bsize'])
 svec_tol = float(args['--svtol'])
 arch = args['--arch']
@@ -44,7 +47,7 @@ from raleigh.solver import Options
 from raleigh.ndarray.svd import partial_svd, PSVDErrorCalculator
 
 class MyStoppingCriteria:
-    def __init__(self, a):
+    def __init__(self, a, max_err = 0):
         self.ncon = 0
         self.sigma = 1
         self.iteration = 0
@@ -54,6 +57,7 @@ class MyStoppingCriteria:
         self.norms = self.err_calc.norms
         self.err = self.norms
         print('max data norm: %e' % numpy.amax(self.err))
+        self.max_err = max_err
     def satisfied(self, solver):
         iterations = solver.iteration - self.iteration
         if solver.rcon <= self.ncon:
@@ -63,26 +67,24 @@ class MyStoppingCriteria:
         self.elapsed_time += elapsed_time
         print('elapsed time: +%.1e = %.2e, iterations: +%d = %d' % \
             (elapsed_time, self.elapsed_time, iterations, solver.iteration))
-        lmd = solver.eigenvalues[self.ncon : solver.rcon]
-        sigma = -numpy.sort(-numpy.sqrt(lmd))
-        if self.ncon == 0:
-            self.sigma = sigma[0]
-        for i in range(solver.rcon - self.ncon):
-            print('sigma[%4d] = %14f = %10f*sigma[0]' % \
-            (self.ncon + i, sigma[i], sigma[i]/self.sigma))
+        if self.max_err <= 0:
+            lmd = solver.eigenvalues[self.ncon : solver.rcon]
+            sigma = -numpy.sort(-numpy.sqrt(lmd))
+            if self.ncon == 0:
+                self.sigma = sigma[0]
+            for i in range(solver.rcon - self.ncon):
+                print('sigma[%4d] = %14f = %10f*sigma[0]' % \
+                (self.ncon + i, sigma[i], sigma[i]/self.sigma))
         self.err = self.err_calc.update_errors()
         err_max = (numpy.amax(self.err), numpy.amax(self.err/self.norms))
         print('max err: abs %e, rel %e' % err_max)
         err_av = (numpy.sum(self.err)/len(self.err))
         print('average err: %e' % err_av)
-#        std_dev = math.sqrt(self.err.var())
-#        print('std dev: %e' % std_dev)
-#        k = (len(self.err[self.err > err_av + 3*std_dev]))
-#        print('above average + 3*std_dev: %d' % k)
-        k = (len(self.err[self.err > 0.2]))
-        print('above 0.2: %d' % k)
         self.ncon = solver.rcon
-        done = (input('more? ') == 'n')
+        if self.max_err > 0:
+            done = err_max[1] <= self.max_err
+        else:
+            done = (input('more? ') == 'n')
         self.iteration = solver.iteration
         self.start_time = time.time()
         return done
@@ -120,14 +122,13 @@ opt.max_iter = 300
 opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
     ('kinematic eigenvector error', svec_tol)
-opt.stopping_criteria = MyStoppingCriteria(images)
+opt.stopping_criteria = MyStoppingCriteria(images, max_err)
 
 sigma, u, vt = partial_svd(images, opt, arch = arch)
 
 iterations = opt.stopping_criteria.iteration
 elapsed_time = opt.stopping_criteria.elapsed_time + \
     time.time() - opt.stopping_criteria.start_time
-
 print('iterations: %d, time: %.2e' % (iterations, elapsed_time))
 
 ncon = sigma.shape[0]
@@ -137,9 +138,17 @@ if mi > 0:
     m = ni + mi
     images = all_images[:m,:,:]
     images = numpy.reshape(images, (m, n))
-    opt.stopping_criteria = MyStoppingCriteria(images)
-    opt.block_size = -1
-    sigma, u, vt = partial_svd(images, opt, nsv = ncon + mi, isv = vt.T, arch = arch)
+    opt.convergence_criteria.set_error_tolerance \
+        ('residual eigenvector error', svec_tol)
+    opt.stopping_criteria = MyStoppingCriteria(images, max_err)
+    opt.block_size = ncon
+    sigma, u, vt = partial_svd \
+        (images, opt, nsv = ncon + mi, isv = vt.T, arch = arch)
+
+iterations = opt.stopping_criteria.iteration
+elapsed_time = opt.stopping_criteria.elapsed_time + \
+    time.time() - opt.stopping_criteria.start_time
+print('iterations: %d, time: %.2e' % (iterations, elapsed_time))
 
 ncon = sigma.shape[0]
 

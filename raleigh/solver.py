@@ -655,8 +655,8 @@ class Solver:
                 l = 0
                 for k in range(1, leftX):
                     i = ix + k
-    #                if dX[i] > 0.01:
-                    if abs(err_X[0, i]) > 0.01:
+                    if dX[i] > 0.01:
+#                    if abs(err_X[0, i]) > 0.01:
                         break
                     if lmd[i] - lmd[i - 1] > res[i]:
                         l = k
@@ -674,8 +674,8 @@ class Solver:
                 l = 0
                 for k in range(1, rightX):
                     i = ix + nx - k - 1
-    #                if dX[i] > 0.01:
-                    if abs(err_X[0, i]) > 0.01:
+                    if dX[i] > 0.01:
+#                    if abs(err_X[0, i]) > 0.01:
                         break
                     if lmd[i + 1] - lmd[i] > res[i]:
                         l = k
