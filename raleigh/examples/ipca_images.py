@@ -65,8 +65,10 @@ class MyStoppingCriteria:
         now = time.time()
         elapsed_time = now - self.start_time
         self.elapsed_time += elapsed_time
-        print('elapsed time: +%.1e = %.2e, iterations: +%d = %d' % \
-            (elapsed_time, self.elapsed_time, iterations, solver.iteration))
+        print('iterations: %d, eigenimages computed: %d, elapsed time %.2e' % \
+            (solver.iteration, solver.rcon, self.elapsed_time))
+#        print('elapsed time: +%.1e = %.2e, iterations: +%d = %d' % \
+#            (elapsed_time, self.elapsed_time, iterations, solver.iteration))
         if self.max_err <= 0:
             lmd = solver.eigenvalues[self.ncon : solver.rcon]
             sigma = -numpy.sort(-numpy.sqrt(lmd))
@@ -126,12 +128,12 @@ opt.stopping_criteria = MyStoppingCriteria(images, max_err)
 
 sigma, u, vt = partial_svd(images, opt, arch = arch)
 
+ncon = sigma.shape[0]
 iterations = opt.stopping_criteria.iteration
 elapsed_time = opt.stopping_criteria.elapsed_time + \
     time.time() - opt.stopping_criteria.start_time
-print('iterations: %d, time: %.2e' % (iterations, elapsed_time))
-
-ncon = sigma.shape[0]
+print('%d eigenimages computed in %d iterations, elapsed time: %.2e' % \
+    (ncon, iterations, elapsed_time))
 
 if mi > 0:
     print('adding %d images...' % mi)
@@ -145,12 +147,12 @@ if mi > 0:
     sigma, u, vt = partial_svd \
         (images, opt, nsv = ncon + mi, isv = vt.T, arch = arch)
 
+ncon = sigma.shape[0]
 iterations = opt.stopping_criteria.iteration
 elapsed_time = opt.stopping_criteria.elapsed_time + \
     time.time() - opt.stopping_criteria.start_time
-print('iterations: %d, time: %.2e' % (iterations, elapsed_time))
-
-ncon = sigma.shape[0]
+print('%d eigenimages computed in %d iterations, elapsed time: %.2e' % \
+    (ncon, iterations, elapsed_time))
 
 #v = numpy.reshape(u.T, (ncon, m))
 #u = numpy.reshape(vt, (ncon, ny, nx))    
