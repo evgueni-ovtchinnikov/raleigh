@@ -42,7 +42,9 @@ import numpy
 import sys
 import time
 
-sys.path.append('../..')
+raleigh_path = '../..'
+if raleigh_path not in sys.path:
+    sys.path.append(raleigh_path)
 
 from raleigh.solver import Options
 from raleigh.ndarray.svd import partial_svd, PSVDErrorCalculator
