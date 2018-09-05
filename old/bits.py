@@ -1722,3 +1722,5 @@ except:
 #        print('above average + 3*std_dev: %d' % k)
 #        k = (len(self.err[self.err > 0.2]))
 #        print('above 0.2: %d' % k)
+
+  -e <err> , --svderr=<err>  acceptable svd approximation error [default: 0.1]
