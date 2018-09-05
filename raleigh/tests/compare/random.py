@@ -14,6 +14,7 @@ Options:
   -b <blk> , --bsize=<blk>   block CG block size [default: 64]
   -s <ths> , --thresh=<ths>  singular values threshold [default: 0.01]
   -t <tol> , --svtol=<tol>   singular vector error tolerance [default: 1e-2]
+  -f, --full  compute full SVD too (using scipy.linalg.svd)
 
 @author: Evgueni Ovtchinnikov, UKRI
 """
@@ -31,9 +32,11 @@ block_size = int(args['--bsize'])
 #err_tol = float(args['--svderr'])
 th = float(args['--thresh'])
 svec_tol = float(args['--svtol'])
+full = args['--full']
 
 import numpy
 import numpy.linalg as nla
+import scipy.linalg as sla
 import sys
 import time
 
@@ -91,7 +94,7 @@ alpha = 0.05
 f_sigma = lambda t: 2**(-alpha*t).astype(dtype)
 sigma0, u0, v0, A = random_matrix_for_svd(m, n, k, f_sigma, dtype)
 
-print('\n--- solving with raleigh.ndarray.svd...')
+print('\n--- solving with raleigh.ndarray.partial_svd...')
 
 # set raleigh solver options
 opt = Options()
@@ -109,8 +112,6 @@ else:
 #    opt.stopping_criteria.set_how_many(block_size)
 #opt.stopping_criteria.set_error_tolerance(err_tol)
 
-print('solving with raleigh.ndarray.partial_svd...')
-
 start = time.time()
 if th > 0:
     sigma, u, vt = partial_svd(A, opt, arch = arch)
@@ -120,7 +121,7 @@ stop = time.time()
 time_r = stop - start
 iter_r = opt.stopping_criteria.iteration
 
-print('\n%d singular values converged' % sigma.shape[0])
+print('\n%d singular vectors computed' % sigma.shape[0])
 n_r = min(sigma.shape[0], sigma0.shape[0])
 err_vec = vec_err(v0[:,:n_r], vt.transpose()[:,:n_r])
 err_val = abs(sigma[:n_r] - sigma0[:n_r])
@@ -130,7 +131,10 @@ err_val = abs(sigma[:n_r] - sigma0[:n_r])
 print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
 print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
 
-print('\n--- solving with restarted scipy.sparse.linalg.svds...')
+if th > 0:
+    print('\n--- solving with restarted scipy.sparse.linalg.svds...')
+else:
+    print('\n--- solving with scipy.sparse.linalg.svds...')
 
 sigma = numpy.ndarray((0,), dtype = dtype)
 vt = numpy.ndarray((0, n), dtype = dtype)
@@ -158,7 +162,7 @@ while True:
 stop = time.time()
 time_s = stop - start
 
-print('\n%d singular values converged' % sigma.shape[0])
+print('\n%d singular vectors computed' % sigma.shape[0])
 n_s = min(sigma.shape[0], sigma0.shape[0])
 err_vec = vec_err(v0[:,:n_s], vt.transpose()[:,:n_s])
 err_val = abs(sigma[:n_s] - sigma0[:n_s])
@@ -166,3 +170,12 @@ print('\nmax singular vector error (svds): %.1e' % numpy.amax(err_vec))
 print('\nmax singular value error (svds): %.1e' % numpy.amax(err_val))
 
 print('\n time: raleigh %.1e, svds %.1e' % (time_r, time_s))
+
+if full:
+    start = time.time()
+    u, sigma, vt = sla.svd(A, full_matrices = False)
+    stop = time.time()
+    time_f = stop - start
+    print('\n full SVD time: %.1e' % time_f)
+
+print('\ndone')
