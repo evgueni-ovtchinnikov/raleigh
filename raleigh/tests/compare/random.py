@@ -131,6 +131,14 @@ err_val = abs(sigma[:n_r] - sigma0[:n_r])
 print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
 print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
 
+if full:
+    print('\n--- solving with scipy.linalg.svd...')
+    start = time.time()
+    u, sigma, vt = sla.svd(A, full_matrices = False)
+    stop = time.time()
+    time_f = stop - start
+    print('\n full SVD time: %.1e' % time_f)
+
 if th > 0:
     print('\n--- solving with restarted scipy.sparse.linalg.svds...')
 else:
@@ -170,12 +178,5 @@ print('\nmax singular vector error (svds): %.1e' % numpy.amax(err_vec))
 print('\nmax singular value error (svds): %.1e' % numpy.amax(err_val))
 
 print('\n time: raleigh %.1e, svds %.1e' % (time_r, time_s))
-
-if full:
-    start = time.time()
-    u, sigma, vt = sla.svd(A, full_matrices = False)
-    stop = time.time()
-    time_f = stop - start
-    print('\n full SVD time: %.1e' % time_f)
 
 print('\ndone')
