@@ -2,6 +2,7 @@
 '''
 Incremental PCA demo. Computes Principal Components for a set of 2D images
 in small portions until stopped by user's entering 'n' in answer to 'more?'
+or the error of PCA approximation falls below the tolerance for each image
 
 Usage:
   ipca_images [--help | -h | options] <data>
@@ -12,10 +13,10 @@ Arguments:
 Options:
   -n <nim> , --nimgs=<nim>   number of images to use (negative: all) 
                              [default: -1]
-  -m <mim> , --mimgs=<mim>   number of images to add [default: 0]
-  -e <err> , --imerr=<err>   acceptable image approximation error (negative: 
-                             to be decided interactively) [default: 0]
-  -b <blk> , --bsize=<blk>   block CG block size [default: 64]
+  -m <mim> , --mimgs=<mim>   number of images to add for update [default: 0]
+  -e <err> , --imerr=<err>   image approximation error tolerance (non-positive:
+                             not used) [default: 0]
+  -b <blk> , --bsize=<blk>   CG block size [default: 64]
   -t <tol> , --svtol=<tol>   singular vector error tolerance [default: 1e-2]
   -a <arch>, --arch=<arch>   architecture [default: cpu]
 
@@ -32,12 +33,11 @@ args = docopt(__doc__, version=__version__)
 file = args['<data>']
 ni = int(args['--nimgs'])
 mi = int(args['--mimgs'])
-max_err = float(args['--imerr'])
+err_tol = float(args['--imerr'])
 block_size = int(args['--bsize'])
 svec_tol = float(args['--svtol'])
 arch = args['--arch']
 
-import math
 import numpy
 import sys
 import time
@@ -48,7 +48,7 @@ from raleigh.solver import Options
 from raleigh.ndarray.svd import partial_svd, PSVDErrorCalculator
 
 class MyStoppingCriteria:
-    def __init__(self, a, max_err = 0):
+    def __init__(self, a, err_tol = 0):
         self.ncon = 0
         self.sigma = 1
         self.iteration = 0
@@ -58,9 +58,9 @@ class MyStoppingCriteria:
         self.norms = self.err_calc.norms
         self.err = self.norms
         print('max data norm: %e' % numpy.amax(self.err))
-        self.max_err = max_err
+        self.err_tol = err_tol
     def satisfied(self, solver):
-        iterations = solver.iteration - self.iteration
+#        iterations = solver.iteration - self.iteration
         if solver.rcon <= self.ncon:
             return False
         now = time.time()
@@ -70,7 +70,7 @@ class MyStoppingCriteria:
             (solver.iteration, solver.rcon, self.elapsed_time))
 #        print('elapsed time: +%.1e = %.2e, iterations: +%d = %d' % \
 #            (elapsed_time, self.elapsed_time, iterations, solver.iteration))
-        if self.max_err <= 0:
+        if self.err_tol <= 0:
             lmd = solver.eigenvalues[self.ncon : solver.rcon]
             sigma = -numpy.sort(-numpy.sqrt(lmd))
             if self.ncon == 0:
@@ -79,13 +79,14 @@ class MyStoppingCriteria:
                 print('sigma[%4d] = %14f = %10f*sigma[0]' % \
                 (self.ncon + i, sigma[i], sigma[i]/self.sigma))
         self.err = self.err_calc.update_errors()
-        err_max = (numpy.amax(self.err), numpy.amax(self.err/self.norms))
-        print('max err: abs %e, rel %e' % err_max)
-        err_av = (numpy.sum(self.err)/len(self.err))
-        print('average err: %e' % err_av)
+        err_abs = numpy.amax(self.err)
+        err_rel = numpy.amax(self.err/self.norms)
+        err_ave = (numpy.sum(self.err)/len(self.err))
+        print('partial svd error: abs %.3e, rel %.3e, average %.3e' % \
+            (err_abs, err_rel, err_ave))
         self.ncon = solver.rcon
-        if self.max_err > 0:
-            done = err_max[1] <= self.max_err
+        if self.err_tol > 0:
+            done = err_rel <= self.err_tol
         else:
             done = (input('more? ') == 'n')
         self.iteration = solver.iteration
@@ -125,7 +126,7 @@ opt.max_iter = 300
 opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
     ('kinematic eigenvector error', svec_tol)
-opt.stopping_criteria = MyStoppingCriteria(images, max_err)
+opt.stopping_criteria = MyStoppingCriteria(images, err_tol)
 
 sigma, u, vt = partial_svd(images, opt, arch = arch)
 
@@ -143,7 +144,7 @@ if mi > 0:
     images = numpy.reshape(images, (m, n))
     opt.convergence_criteria.set_error_tolerance \
         ('residual eigenvector error', svec_tol)
-    opt.stopping_criteria = MyStoppingCriteria(images, max_err)
+    opt.stopping_criteria = MyStoppingCriteria(images, err_tol)
     opt.block_size = ncon
     sigma, u, vt = partial_svd \
         (images, opt, nsv = ncon + mi, isv = vt.T, arch = arch)
