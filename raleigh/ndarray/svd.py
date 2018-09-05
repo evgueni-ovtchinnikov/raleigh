@@ -91,6 +91,7 @@ def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu'):
     class OperatorSVD:
         def __init__(self, op, gpu):
             self.op = op
+            self.gpu = gpu
             self.time = 0
         def apply(self, x, y, transp = False):
             m, n = self.op.shape()
@@ -104,7 +105,7 @@ def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu'):
                 z = Vectors(m, k, x.data_type())
                 self.op.apply(x, z)
                 self.op.apply(z, y, transp = True)
-            if gpu:
+            if self.gpu:
                 cuda.synchronize()
             stop = time.time()
             self.time += stop - start
@@ -134,13 +135,16 @@ def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu'):
 
     try:
         opt.stopping_criteria.err_calc.set_up(op, solver, v)
-        print('partial SVD error calculation set up')
+        if opt.verbosity > 0:
+            print('partial SVD error calculation set up')
     except:
-        print('partial SVD error calculation not requested')
+        if opt.verbosity > 0:
+            print('partial SVD error calculation not requested')
         pass
 
     solver.solve(v, opt, which = (0, nsv), init = (None, isv))
-    print('operator application time: %.2e' % opSVD.time)
+    if opt.verbosity > 0:
+        print('operator application time: %.2e' % opSVD.time)
 
     nv = v.nvec()
     u = Vectors(m, nv, v.data_type())
