@@ -10,10 +10,11 @@ Arguments:
   data  .npy file containing images as ndarray of dimensions (ni, ny, nx)
 
 Options:
-  -n <nim> , --nimgs=<nim>   number of images to use, negative=all [default: -1]
+  -n <nim> , --nimgs=<nim>   number of images to use (negative: all) 
+                             [default: -1]
   -m <mim> , --mimgs=<mim>   number of images to add [default: 0]
-  -e <err> , --imerr=<err>   acceptable image approximation error (<=0: to be 
-                             decided interactively) [default: 0]
+  -e <err> , --imerr=<err>   acceptable image approximation error (negative: 
+                             to be decided interactively) [default: 0]
   -b <blk> , --bsize=<blk>   block CG block size [default: 64]
   -t <tol> , --svtol=<tol>   singular vector error tolerance [default: 1e-2]
   -a <arch>, --arch=<arch>   architecture [default: cpu]
@@ -95,18 +96,18 @@ numpy.random.seed(1) # make results reproducible
 
 all_images = numpy.load(file)
 
-m, ny, nx = all_images.shape
+m_all, ny, nx = all_images.shape
 n = nx*ny
 
-if ni < 0 or ni > m:
-    ni = m
+if ni < 0 or ni > m_all:
+    ni = m_all
 
-if ni < m:
+if ni < m_all:
     print('ising first %d images only...' % ni)
-    m_all = m
     m = ni
     images = all_images[:m,:,:]
 else:
+    m = m_all
     images = all_images
 
 if ni + mi > m_all:
@@ -147,12 +148,12 @@ if mi > 0:
     sigma, u, vt = partial_svd \
         (images, opt, nsv = ncon + mi, isv = vt.T, arch = arch)
 
-ncon = sigma.shape[0]
-iterations = opt.stopping_criteria.iteration
-elapsed_time = opt.stopping_criteria.elapsed_time + \
-    time.time() - opt.stopping_criteria.start_time
-print('%d eigenimages computed in %d iterations, elapsed time: %.2e' % \
-    (ncon, iterations, elapsed_time))
+    ncon = sigma.shape[0]
+    iterations = opt.stopping_criteria.iteration
+    elapsed_time = opt.stopping_criteria.elapsed_time + \
+        time.time() - opt.stopping_criteria.start_time
+    print('%d eigenimages computed in %d iterations, elapsed time: %.2e' % \
+        (ncon, iterations, elapsed_time))
 
 #v = numpy.reshape(u.T, (ncon, m))
 #u = numpy.reshape(vt, (ncon, ny, nx))    

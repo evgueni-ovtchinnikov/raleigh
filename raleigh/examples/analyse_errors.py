@@ -2,10 +2,10 @@
 '''Analyses errors of a partial SVD.
 
 SVD data is read from files <prefix>sigma.npy, <prefix>eigim.npy and 
-<prefix>coord.npy.
+<prefix>coord.npy, which must be in the same folder as the images file.
 
 Usage:
-    test_psvd [--help | -h | options] <file> <prefix>
+    analyse_errors [--help | -h | options] <file> <prefix>
 
 Arguments:
     file       images file (must end with .npy)
