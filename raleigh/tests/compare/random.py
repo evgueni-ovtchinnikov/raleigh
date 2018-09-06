@@ -12,6 +12,7 @@ Arguments:
 Options:
   -a <arch>, --arch=<arch>   architecture [default: cpu]
   -b <blk> , --bsize=<blk>   block CG block size [default: 64]
+  -r <alph>, --alpha=<alph>  singular values decay rate [default: 0.01]
   -s <ths> , --thresh=<ths>  singular values threshold [default: 0.01]
   -t <tol> , --svtol=<tol>   singular vector error tolerance [default: 1e-2]
   -f, --full  compute full SVD too (using scipy.linalg.svd)
@@ -27,6 +28,7 @@ args = docopt(__doc__, version=__version__)
 m = int(args['<m>'])
 n = int(args['<n>'])
 k = int(args['<k>'])
+alpha = float(args['--alpha'])
 arch = args['--arch']
 block_size = int(args['--bsize'])
 #err_tol = float(args['--svderr'])
@@ -35,7 +37,7 @@ svec_tol = float(args['--svtol'])
 full = args['--full']
 
 import numpy
-import numpy.linalg as nla
+#import numpy.linalg as nla
 import scipy.linalg as sla
 import sys
 import time
@@ -48,7 +50,7 @@ if raleigh_path not in sys.path:
 
 from random_matrix_for_svd import random_matrix_for_svd
 from raleigh.solver import Options
-from raleigh.ndarray.svd import partial_svd, PSVDErrorCalculator
+from raleigh.ndarray.svd import partial_svd #, PSVDErrorCalculator
 
 class MyStoppingCriteria:
     def __init__(self, a):
@@ -90,7 +92,7 @@ numpy.random.seed(1) # make results reproducible
 dtype = numpy.float32
 
 print('\n--- generating the matrix...')
-alpha = 0.05
+#alpha = 0.01
 f_sigma = lambda t: 2**(-alpha*t).astype(dtype)
 sigma0, u0, v0, A = random_matrix_for_svd(m, n, k, f_sigma, dtype)
 
