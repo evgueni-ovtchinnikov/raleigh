@@ -102,6 +102,14 @@ if ptb:
     s = numpy.linalg.norm(a, axis = 0)
     A += a*(sigma0[-1]/s)
 
+if block_size < 1:
+    b = max(1, min(m, n)//100)
+#    block_size = ((b - 1)//8 + 1)*8
+    block_size = 32
+    while block_size < b:
+        block_size += 32
+    print('using block size %d' % block_size)
+
 print('\n--- solving with raleigh.ndarray.partial_svd...')
 
 # set raleigh solver options
