@@ -16,6 +16,7 @@ Options:
   -s <ths> , --thresh=<ths>  singular values threshold [default: 0.01]
   -t <tol> , --svtol=<tol>   singular vector error tolerance [default: 1e-2]
   -f, --full  compute full SVD too (using scipy.linalg.svd)
+  -p, --ptb   add random perturbation to make the matrix full rank
 
 @author: Evgueni Ovtchinnikov, UKRI
 """
@@ -35,6 +36,7 @@ block_size = int(args['--bsize'])
 th = float(args['--thresh'])
 svec_tol = float(args['--svtol'])
 full = args['--full']
+ptb = args['--ptb']
 
 import numpy
 #import numpy.linalg as nla
@@ -95,6 +97,10 @@ print('\n--- generating the matrix...')
 #alpha = 0.01
 f_sigma = lambda t: 2**(-alpha*t).astype(dtype)
 sigma0, u0, v0, A = random_matrix_for_svd(m, n, k, f_sigma, dtype)
+if ptb:
+    a = 2*numpy.random.rand(m, n).astype(dtype) - 1
+    s = numpy.linalg.norm(a, axis = 0)
+    A += a*(sigma0[-1]/s)
 
 print('\n--- solving with raleigh.ndarray.partial_svd...')
 
@@ -122,23 +128,27 @@ else:
 stop = time.time()
 time_r = stop - start
 iter_r = opt.stopping_criteria.iteration
+print('raleigh time: %.1e' % time_r)
 
 print('\n%d singular vectors computed' % sigma.shape[0])
 n_r = min(sigma.shape[0], sigma0.shape[0])
-err_vec = vec_err(v0[:,:n_r], vt.transpose()[:,:n_r])
-err_val = abs(sigma[:n_r] - sigma0[:n_r])
-#B = A - numpy.dot(u*sigma, vt)
-#err = nla.norm(B, axis = 1)/nla.norm(A, axis = 1)
-#print('\nmax SVD error: %e' % numpy.amax(err))
-print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
-print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
+if not ptb:
+    err_vec = vec_err(v0[:,:n_r], vt.transpose()[:,:n_r])
+    err_val = abs(sigma[:n_r] - sigma0[:n_r])
+    #B = A - numpy.dot(u*sigma, vt)
+    #err = nla.norm(B, axis = 1)/nla.norm(A, axis = 1)
+    #print('\nmax SVD error: %e' % numpy.amax(err))
+    print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
+    print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
 
 if full:
     print('\n--- solving with scipy.linalg.svd...')
     start = time.time()
-    u, sigma, vt = sla.svd(A, full_matrices = False)
+    u, sigma, vt = sla.svd(A, full_matrices = False)#, lapack_driver = 'gesvd')
     stop = time.time()
     time_f = stop - start
+#    print(sigma[-100:-1])
+#    print(sigma[k : k + 100])
     print('\n full SVD time: %.1e' % time_f)
 
 if th > 0:
@@ -154,6 +164,8 @@ start = time.time()
 
 while True:
     u, s, vti = svds(A, k = block_size, tol = svec_tol)
+    #print(s[::-1])
+    #print(s[-1])
     sigma = numpy.concatenate((sigma, s[::-1]))
     vt = numpy.concatenate((vt, vti[::-1, :]))
     print('last singular value computed: %e' % s[0])
@@ -171,14 +183,18 @@ while True:
 
 stop = time.time()
 time_s = stop - start
+#print(sigma)
 
 print('\n%d singular vectors computed' % sigma.shape[0])
 n_s = min(sigma.shape[0], sigma0.shape[0])
-err_vec = vec_err(v0[:,:n_s], vt.transpose()[:,:n_s])
-err_val = abs(sigma[:n_s] - sigma0[:n_s])
-print('\nmax singular vector error (svds): %.1e' % numpy.amax(err_vec))
-print('\nmax singular value error (svds): %.1e' % numpy.amax(err_val))
+if not ptb:
+    err_vec = vec_err(v0[:,:n_s], vt.transpose()[:,:n_s])
+    err_val = abs(sigma[:n_s] - sigma0[:n_s])
+    print('\nmax singular vector error (svds): %.1e' % numpy.amax(err_vec))
+    print('\nmax singular value error (svds): %.1e' % numpy.amax(err_val))
 
 print('\n time: raleigh %.1e, svds %.1e' % (time_r, time_s))
+if full:
+    print('\n full SVD time: %.1e' % time_f)
 
 print('\ndone')
