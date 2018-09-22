@@ -23,6 +23,8 @@ args = docopt(__doc__, version=__version__)
 file = args['<file>']
 pref = args['<prefix>']
 
+import matplotlib.animation as animation
+import matplotlib.pyplot as plt
 import numpy
 import numpy.linalg as nla
 import pylab
@@ -57,18 +59,19 @@ if ni > m:
     ni = m
     images = images[:ni,:,:]
 print('%d images of size %dx%d loaded' % (ni, ny, nx))
+vmax = numpy.amax(images)
 
 if ni != m or nx != nxu or ny != nyu:
     raise ValueError('data sizes (%d, %d, %d) and (%d, %d, %d) do not match' % \
           (ni, ny, nx, m, nyu, nxu))
 
-pylab.figure()
-pylab.plot(numpy.arange(1, nsv + 1, 1), sigma)
-pylab.xscale('log')
-pylab.yscale('log')
-pylab.grid()
-pylab.title('singular values')
-pylab.show()
+#pylab.figure()
+#pylab.plot(numpy.arange(1, nsv + 1, 1), sigma)
+#pylab.xscale('log')
+#pylab.yscale('log')
+#pylab.grid()
+#pylab.title('singular values')
+#pylab.show()
 
 n = nx*ny
 images = numpy.reshape(images, (ni, n))
@@ -81,10 +84,10 @@ norm = nla.norm(images, axis = 1)
 proj = nla.norm(v, axis = 0)
 err = numpy.sqrt(norm*norm - proj*proj)
 ind = numpy.argsort(-err)
-pylab.figure()
-pylab.plot(numpy.arange(1, ni + 1, 1), err[ind])
-pylab.title('errors')
-pylab.show()
+#pylab.figure()
+#pylab.plot(numpy.arange(1, ni + 1, 1), err[ind])
+#pylab.title('errors')
+#pylab.show()
 k = 100
 print('%d worst approximations:' % k)
 print('images:')
@@ -101,17 +104,30 @@ while True:
     pylab.figure()
     pylab.title('image %d' % i)
     pylab.imshow(image, cmap = 'gray')
-#    img = numpy.dot(u.T, sigma*v[:,i])
-    img = numpy.dot(u.T, v[:,i])
-    psvd_img = numpy.reshape(img, (ny, nx))
-    pylab.figure()
-    pylab.title('partial SVD approximation of the image')
-    pylab.imshow(psvd_img, cmap = 'gray')
-    pylab.figure()
-#    pylab.plot(numpy.arange(1, nsv + 1, 1), sigma*v[:,i])
-    pylab.plot(numpy.arange(1, nsv + 1, 1), v[:,i])
-    pylab.grid()
-    pylab.title('coordinates in eigenimage basis')
+    imgi = numpy.zeros((ny, nx), dtype = images.dtype)
+    bitmaps = []
+    fig = plt.figure()
+    step = 1
+    for j in range(nsv):
+        imgi += numpy.reshape(u[j,:], (ny, nx))*v[j,i]
+        x = (j*nx)//nsv
+        imgi[:10, :x] = vmax/10
+        if j % step == 0:
+            bitmap = plt.imshow(imgi, cmap = 'gray')
+            bitmaps.append([bitmap])
+    ani = animation.ArtistAnimation \
+        (fig, bitmaps, interval = 10, blit = True, repeat = False);
+##    img = numpy.dot(u.T, sigma*v[:,i])
+#    img = numpy.dot(u.T, v[:,i])
+#    psvd_img = numpy.reshape(img, (ny, nx))
+#    pylab.figure()
+#    pylab.title('partial SVD approximation of the image')
+#    pylab.imshow(psvd_img, cmap = 'gray')
+#    pylab.figure()
+##    pylab.plot(numpy.arange(1, nsv + 1, 1), sigma*v[:,i])
+#    pylab.plot(numpy.arange(1, nsv + 1, 1), v[:,i])
+#    pylab.grid()
+#    pylab.title('coordinates in eigenimage basis')
     pylab.show()
 
 print('done')
