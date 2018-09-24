@@ -86,8 +86,13 @@ def test(u, v):
     x_cblas = cblasVectors(u_cblas)
     y_cblas = cblasVectors(v_cblas)
     
+    start = time.time()
     u_cublas = cublasVectors(u)
     v_cublas = cublasVectors(v)
+    cuda.synchronize()
+    stop = time.time()
+    elapsed = stop - start
+    print('    cublas vectors uploading time: %.2e' % elapsed)    
     x_cublas = cublasVectors(u_cublas)
     y_cublas = cublasVectors(v_cublas)
     
@@ -96,7 +101,12 @@ def test(u, v):
     k = u_cublas.nvec()
 
     a_cblas = cblasMatrix(numpy.ones((m, n), dtype = u_cblas.data_type()))
+    start = time.time()
     a_cublas = cublasMatrix(numpy.ones((m, n), dtype = u_cublas.data_type()))
+    cuda.synchronize()
+    stop = time.time()
+    elapsed = stop - start
+    print('    cublas matrix uploading time: %.2e' % elapsed)    
 
     print('\n--- testing multiplication by a...')    
     start = time.time()
