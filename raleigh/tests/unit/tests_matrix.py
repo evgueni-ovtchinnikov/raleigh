@@ -90,6 +90,13 @@ def test(u, v):
     mv, nv = v.shape
     u_cublas = cublasVectors(nu, mu, u.dtype)
     v_cublas = cublasVectors(nv, mv, v.dtype)
+
+    n = u_cublas.dimension()
+    m = v_cublas.dimension()
+#    k = u_cublas.nvec()
+    ones = numpy.ones((m, n), dtype = u_cblas.data_type())
+    a_cublas = cublasMatrix(ones)
+
     start = time.time()
     u_cublas.fill(u)
     v_cublas.fill(v)
@@ -102,13 +109,14 @@ def test(u, v):
     x_cublas = cublasVectors(u_cublas)
     y_cublas = cublasVectors(v_cublas)
     
-    n = u_cublas.dimension()
-    m = v_cublas.dimension()
-    k = u_cublas.nvec()
 
-    a_cblas = cblasMatrix(numpy.ones((m, n), dtype = u_cblas.data_type()))
+#    a_cblas = cblasMatrix(numpy.ones((m, n), dtype = u_cblas.data_type()))
+    a_cblas = cblasMatrix(ones)
+#    a_cublas = cublasMatrix(ones)
+    cuda.synchronize()
     start = time.time()
-    a_cublas = cublasMatrix(numpy.ones((m, n), dtype = u_cublas.data_type()))
+    a_cublas.fill(ones)
+#    a_cublas.fill(numpy.ones((m, n), dtype = u_cublas.data_type()))
     cuda.synchronize()
     stop = time.time()
     elapsed = stop - start

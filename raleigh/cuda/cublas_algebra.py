@@ -449,6 +449,7 @@ class Matrix:
         self.__data = ctypes.POINTER(ctypes.c_ubyte)()
         self.__shape = array.shape
         self.__dtype = array.dtype.type
+        self.__dsize = array.itemsize
         self.__is_complex = (array.dtype.kind == 'c')
         if self.__is_complex and not array.flags['F_CONTIGUOUS']:
             print('copying to F-contiguous array...')
@@ -457,9 +458,8 @@ class Matrix:
         else:
             a = array
         self.__flags = a.flags
-        m, n = a.shape
-        dsize = a.itemsize
-        size = n*m*dsize
+        m, n = self.__shape
+        size = n*m*self.__dsize
         try_calling(cuda.malloc(ctypes.byref(self.__data), size))
         ptr = ctypes.c_void_p(a.ctypes.data)
         try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
@@ -496,6 +496,11 @@ class Matrix:
     def is_complex(self):
         return self.__is_complex
 
+    def fill(self, data):
+        m, n = self.__shape
+        size = n*m*self.__dsize
+        ptr = ctypes.c_void_p(data.ctypes.data)
+        try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
     def apply(self, x, y, transp = False):
         if x.data_type() != self.__dtype or y.data_type() != self.__dtype:
             raise ValueError('Matrix and vectors data types differ')
