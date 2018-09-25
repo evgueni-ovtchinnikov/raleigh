@@ -206,6 +206,18 @@ class Vectors:
             return
         vsize = self.__dsize * self.__vdim
         try_calling(cuda.memset(self.data_ptr(), 0, m*vsize))
+    def fill(self, data):
+        m, n = data.shape
+        if m != self.__nvec or n != self.__vdim:
+            raise ValueError('mismatching dimensions in fill()')
+        if m < 1:
+            return
+        dtype = data.dtype.type
+        if dtype != self.__dtype:
+            raise ValueError('mismatching data types in fill()')
+        size = m * self.__dsize * self.__vdim
+        ptr = ctypes.c_void_p(data.ctypes.data)
+        try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
     def fill_random(self):
         n = self.dimension()
         m = self.nvec()

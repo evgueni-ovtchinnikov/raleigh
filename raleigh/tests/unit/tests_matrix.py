@@ -85,10 +85,16 @@ def test(u, v):
     v_cblas = cblasVectors(v)
     x_cblas = cblasVectors(u_cblas)
     y_cblas = cblasVectors(v_cblas)
-    
+
+    mu, nu = u.shape
+    mv, nv = v.shape
+    u_cublas = cublasVectors(nu, mu, u.dtype)
+    v_cublas = cublasVectors(nv, mv, v.dtype)
     start = time.time()
-    u_cublas = cublasVectors(u)
-    v_cublas = cublasVectors(v)
+    u_cublas.fill(u)
+    v_cublas.fill(v)
+#    u_cublas = cublasVectors(u)
+#    v_cublas = cublasVectors(v)
     cuda.synchronize()
     stop = time.time()
     elapsed = stop - start
