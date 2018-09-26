@@ -1724,3 +1724,21 @@ except:
 #        print('above 0.2: %d' % k)
 
   -e <err> , --svderr=<err>  acceptable svd approximation error [default: 0.1]
+
+#        self.err_tol = 0.0
+
+#        self.err_calc = PSVDErrorCalculator(a)
+#        self.norms = self.err_calc.norms
+#        self.err = self.norms
+#        print('max data norm: %e' % numpy.amax(self.err))
+#    def set_error_tolerance(self, err_tol):
+#        self.err_tol = err_tol
+
+#        self.err = self.err_calc.update_errors()
+#        errs = (numpy.amax(self.err), numpy.amax(self.err/self.norms))
+#        print('max err: abs %e, rel %e' % errs)
+#        done = errs[1] <= self.err_tol or self.m > 0 and solver.rcon >= self.m
+
+#    opt.stopping_criteria.set_how_many(block_size)
+#opt.stopping_criteria.set_error_tolerance(err_tol)
+

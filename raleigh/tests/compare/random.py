@@ -12,11 +12,14 @@ Arguments:
 Options:
   -a <arch>, --arch=<arch>   architecture [default: cpu]
   -b <blk> , --bsize=<blk>   block CG block size [default: 64]
+  -e <err> , --error=<err>   error measure [default: vec]
   -r <alph>, --alpha=<alph>  singular values decay rate [default: 0.01]
   -s <ths> , --thresh=<ths>  singular values threshold [default: 0.01]
-  -t <tol> , --svtol=<tol>   singular vector error tolerance [default: 1e-2]
-  -f, --full  compute full SVD too (using scipy.linalg.svd)
-  -p, --ptb   add random perturbation to make the matrix full rank
+  -t <tol> , --tol=<tol>     error or residual tolerance [default: 1e-3]
+  -v <verb>, --verb=<verb>   verbosity level [default: -1]
+  -d, --double  use double precision
+  -f, --full    compute full SVD too (using scipy.linalg.svd)
+  -p, --ptb     add random perturbation to make the matrix full rank
 
 @author: Evgueni Ovtchinnikov, UKRI
 """
@@ -34,7 +37,10 @@ arch = args['--arch']
 block_size = int(args['--bsize'])
 #err_tol = float(args['--svderr'])
 th = float(args['--thresh'])
-svec_tol = float(args['--svtol'])
+tol = float(args['--tol'])
+verb = int(args['--verb'])
+err = args['--error']
+dble = args['--double']
 full = args['--full']
 ptb = args['--ptb']
 
@@ -56,16 +62,9 @@ from raleigh.ndarray.svd import partial_svd #, PSVDErrorCalculator
 
 class MyStoppingCriteria:
     def __init__(self, a):
-#        self.err_tol = 0.0
         self.th = 1.0
         self.m = -1
         self.iteration = -1
-#        self.err_calc = PSVDErrorCalculator(a)
-#        self.norms = self.err_calc.norms
-#        self.err = self.norms
-#        print('max data norm: %e' % numpy.amax(self.err))
-#    def set_error_tolerance(self, err_tol):
-#        self.err_tol = err_tol
     def set_threshold(self, th):
         self.th = th*th
     def set_how_many(self, m):
@@ -76,10 +75,6 @@ class MyStoppingCriteria:
             return False
         vmin = numpy.amin(solver.eigenvalues)
         done = vmin < self.th or self.m > 0 and solver.rcon >= self.m
-#        self.err = self.err_calc.update_errors()
-#        errs = (numpy.amax(self.err), numpy.amax(self.err/self.norms))
-#        print('max err: abs %e, rel %e' % errs)
-#        done = errs[1] <= self.err_tol or self.m > 0 and solver.rcon >= self.m
         return done
 
 def vec_err(u, v):
@@ -91,10 +86,12 @@ def vec_err(u, v):
 
 numpy.random.seed(1) # make results reproducible
 
-dtype = numpy.float32
+if dble:
+    dtype = numpy.float64
+else:
+    dtype = numpy.float32
 
 print('\n--- generating the matrix...')
-#alpha = 0.01
 f_sigma = lambda t: 2**(-alpha*t).astype(dtype)
 sigma0, u0, v0, A = random_matrix_for_svd(m, n, k, f_sigma, dtype)
 if ptb:
@@ -117,16 +114,17 @@ opt = Options()
 if th > 0:
     opt.block_size = block_size
 opt.max_iter = 400
-opt.verbosity = -1
-opt.convergence_criteria.set_error_tolerance \
-    ('kinematic eigenvector error', svec_tol)
+opt.verbosity = verb
+if err[0] == 'r':
+    opt.convergence_criteria.set_error_tolerance \
+        ('residual', tol)
+else:
+    ('kinematic eigenvector error', tol)
 opt.stopping_criteria = MyStoppingCriteria(A)
 if th > 0:
     opt.stopping_criteria.set_threshold(th)
 else:
     opt.stopping_criteria.set_threshold(0)
-#    opt.stopping_criteria.set_how_many(block_size)
-#opt.stopping_criteria.set_error_tolerance(err_tol)
 
 start = time.time()
 if th > 0:
@@ -171,7 +169,7 @@ vt = numpy.ndarray((0, n), dtype = dtype)
 start = time.time()
 
 while True:
-    u, s, vti = svds(A, k = block_size, tol = svec_tol)
+    u, s, vti = svds(A, k = block_size, tol = tol)
     #print(s[::-1])
     #print(s[-1])
     sigma = numpy.concatenate((sigma, s[::-1]))
