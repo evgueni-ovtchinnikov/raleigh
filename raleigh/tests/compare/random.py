@@ -73,7 +73,7 @@ class MyStoppingCriteria:
         self.iteration = solver.iteration
         if solver.rcon < 1:
             return False
-        vmin = numpy.amin(solver.eigenvalues)
+        vmin = max(0, numpy.amin(solver.eigenvalues))
         done = vmin < self.th or self.m > 0 and solver.rcon >= self.m
         return done
 
