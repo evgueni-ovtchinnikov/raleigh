@@ -182,7 +182,7 @@ class Solver:
         if left == 0 and right == 0:
             if verb > -1:
                 print('No eigenpairs requested, quit')
-            return
+            return 0
 
         m = int(options.block_size)
         if m < 0:
