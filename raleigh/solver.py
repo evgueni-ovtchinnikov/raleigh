@@ -216,10 +216,12 @@ class Solver:
         if m < n//2:
             try:
                 status = self._solve(eigenvectors, options, which, extra, init)
+                if status > 1:
+                    return status
             except:
                 return -1
         else:
-            status = 3
+            status = 1
             
         if status == 0:
             return 0 # success
@@ -230,8 +232,8 @@ class Solver:
         if verb > -1:
             print('%d eigenpairs not computed' % m)
             
-        if status == 2:
-            return 1 # cannot compute the rest        
+#        if status == 2:
+#            return 1 # cannot compute the rest        
 
         X = eigenvectors.new_vectors(m)
         X.fill_random()
@@ -981,7 +983,7 @@ class Solver:
             if ny < 1:
                 if verb > -1:
                     print('no search directions left, terminating')
-                return 2
+                return 3
 #                break
 
             # re-arrange/drop-linear-dependent search directions
@@ -1221,3 +1223,5 @@ class Solver:
             leftX = leftX_new
             rightX = rightX_new
             left_block_size = left_block_size_new
+
+        return 2
