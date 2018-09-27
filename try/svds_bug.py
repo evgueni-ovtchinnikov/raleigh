@@ -68,7 +68,7 @@ f_sigma = lambda t: 2**(-alpha*t).astype(numpy.float32)
 sigma0, u0, v0, A = random_matrix_for_svd(m, n, k, f_sigma, numpy.float32)
 a = 2*numpy.random.rand(m, n).astype(numpy.float32) - 1
 s = numpy.linalg.norm(a, axis = 0)
-A += a*(sigma0[-1]/s)
+A += a*(min(sigma0[-1], 1e-3)/s)
 print('\n computing 128 largest singular values...')
 u, sigma, vt = svds(A, k = 128)
 print('\n 128 largest singular values from svds:')

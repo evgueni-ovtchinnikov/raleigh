@@ -97,7 +97,7 @@ sigma0, u0, v0, A = random_matrix_for_svd(m, n, k, f_sigma, dtype)
 if ptb:
     a = 2*numpy.random.rand(m, n).astype(dtype) - 1
     s = numpy.linalg.norm(a, axis = 0)
-    A += a*(sigma0[-1]/s)
+    A += a*(min(sigma0[-1], 1e-3)/s)
 
 if block_size < 1:
     b = max(1, min(m, n)//100)
@@ -136,23 +136,31 @@ time_r = stop - start
 iter_r = opt.stopping_criteria.iteration
 print('raleigh time: %.1e' % time_r)
 
+n_r = sigma.shape[0]
 print('\n%d singular vectors computed' % sigma.shape[0])
-n_r = min(sigma.shape[0], sigma0.shape[0])
 if not ptb:
-    err_vec = vec_err(v0[:,:n_r], vt.transpose()[:,:n_r])
+    n_r = min(sigma.shape[0], sigma0.shape[0])
+    #err_vec = vec_err(v0[:,:n_r], vt.transpose()[:,:n_r])
     err_val = abs(sigma[:n_r] - sigma0[:n_r])
     #B = A - numpy.dot(u*sigma, vt)
     #err = nla.norm(B, axis = 1)/nla.norm(A, axis = 1)
     #print('\nmax SVD error: %e' % numpy.amax(err))
-    print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
+    #print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
     print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
+else:
+    print(sigma)
 
 if full:
     print('\n--- solving with scipy.linalg.svd...')
     start = time.time()
-    u, sigma, vt = sla.svd(A, full_matrices = False)#, lapack_driver = 'gesvd')
+    u0, sigma0, vt0 = sla.svd(A, full_matrices = False)#, lapack_driver = 'gesvd')
     stop = time.time()
     time_f = stop - start
+    print(sigma0[:n_r])
+    err_vec = vec_err(vt0.transpose()[:,:n_r], vt.transpose()[:,:n_r])
+    err_val = abs(sigma[:n_r] - sigma0[:n_r])
+    print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
+    print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
 #    print(sigma[-100:-1])
 #    print(sigma[k : k + 100])
     print('\n full SVD time: %.1e' % time_f)
@@ -198,6 +206,8 @@ if not ptb:
     err_val = abs(sigma[:n_s] - sigma0[:n_s])
     print('\nmax singular vector error (svds): %.1e' % numpy.amax(err_vec))
     print('\nmax singular value error (svds): %.1e' % numpy.amax(err_val))
+else:
+    print(sigma)
 
 print('\n time: raleigh %.1e, svds %.1e' % (time_r, time_s))
 if full:
