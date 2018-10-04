@@ -49,6 +49,7 @@ s = numpy.linalg.norm(w, axis = 0)
 w -= u*s
 r = numpy.linalg.norm(w, axis = 0)
 print('norms of residuals:')
+numpy.set_printoptions(suppress = True)
 print(r)
 
 u, sigma0, vt = svd(A)
