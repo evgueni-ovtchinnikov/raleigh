@@ -31,6 +31,7 @@ numpy.random.seed(100)
 m = 2000
 n = 2000
 k = 300
+l = 144
 alpha = 0.05
 print('\n generating the matrix, may take a while...')
 f_sigma = lambda t: 2**(-alpha*t).astype(numpy.float32)
@@ -39,15 +40,21 @@ a = 2*numpy.random.rand(m, n).astype(numpy.float32) - 1
 s = numpy.linalg.norm(a, axis = 0)
 a /= s
 A += 5e-3*a
-print('\n computing 144 largest singular values...')
-u, sigma, vt = svds(A, k = 144)
-print('\n 144 largest singular values from svds:')
+print('\n computing %d largest singular values...' % l)
+u, sigma, vt = svds(A, k = l)
+print('\n %d largest singular values from svds:' % l)
 print(sigma)
+w = numpy.dot(A, vt.T)
+s = numpy.linalg.norm(w, axis = 0)
+w -= u*s
+r = numpy.linalg.norm(w, axis = 0)
+print('norms of residuals:')
+print(r)
 
 u, sigma0, vt = svd(A)
-print('\n 144 largest singular values from svd:')
-print(sigma0[:144])
+print('\n %d largest singular values from svd:' % l)
+print(sigma0[:l])
 print('\n next 5 largest singular values:')
-print(sigma0[144:149])
+print(sigma0[l : l + 5])
 print('\n smallest 5 singular values:')
 print(sigma0[-5:])
