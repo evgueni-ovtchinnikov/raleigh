@@ -542,7 +542,7 @@ class Solver:
             delta_R_abs = numpy.amax(delta_R)
             s = numpy.sqrt(abs(AX.dots(AX)))
             delta_R_rel = numpy.amax(delta_R/s)
-            delta_R *= 10
+#            delta_R *= 10
             
             lmd_min = min(lmd_min, new_lmd[0])
             lmd_max = max(lmd_max, new_lmd[-1])
@@ -616,7 +616,7 @@ class Solver:
                 s = W.dots(Y)
             else:
                 s = W.dots(W)
-            res[ix : ix + nx] = numpy.sqrt(abs(s))
+            res[ix : ix + nx] = numpy.sqrt(abs(s)) + 3*delta_R
 
             # kinematic error estimates
             if rec > 3: # sufficient history available
@@ -710,6 +710,7 @@ class Solver:
             for i in range(leftX - 1):
                 j = self.lcon + i
                 k = ix + i
+                res_err = 10*delta_R[i]
                 if options.convergence_criteria.satisfied(self, k):
                     if verb > 0:
                         msg = 'left eigenpair %d converged,\n' + \
@@ -717,8 +718,9 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     lcon += 1
                     self.cnv[k] = self.iteration + 1
-                elif detect_stagn and res[k] >= 0 and res[k] < delta_R[i] and \
-                            acf[0, k] > acf[1, k]:
+#                elif detect_stagn and res[k] >= 0 and res[k] < delta_R[i] and \
+                elif detect_stagn and res[k] >= 0 and res[k] < res_err and \
+                            acf[0, k] >= acf[1, k]:
                     if verb > -1:
                         msg = 'left eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
@@ -745,6 +747,7 @@ class Solver:
             for i in range(rightX - 1):
                 j = self.rcon + i
                 k = ix + nx - i - 1
+                res_err = 10*delta_R[nx - i - 1]
                 if options.convergence_criteria.satisfied(self, k):
                     if verb > 0:
                         msg = 'right eigenpair %d converged,\n' + \
@@ -752,9 +755,11 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
                     self.cnv[k] = self.iteration + 1
-                elif detect_stagn and res[k] >= 0 and \
-                        res[k] < delta_R[nx - i - 1] and \
-                        acf[0, k] > acf[1, k]:
+#                elif detect_stagn and res[k] >= 0 and \
+#                        res[k] < delta_R[nx - i - 1] and \
+#                        acf[0, k] > acf[1, k]:
+                elif detect_stagn and res[k] >= 0 and res[k] < res_err and \
+                        acf[0, k] >= acf[1, k]:
                     if verb > -1:
                         msg = 'right eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'

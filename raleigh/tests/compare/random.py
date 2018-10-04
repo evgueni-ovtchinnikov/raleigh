@@ -140,12 +140,12 @@ n_r = sigma.shape[0]
 print('\n%d singular vectors computed' % sigma.shape[0])
 if not ptb:
     n_r = min(sigma.shape[0], sigma0.shape[0])
-    #err_vec = vec_err(v0[:,:n_r], vt.transpose()[:,:n_r])
+    err_vec = vec_err(v0[:,:n_r], vt.transpose()[:,:n_r])
     err_val = abs(sigma[:n_r] - sigma0[:n_r])
     #B = A - numpy.dot(u*sigma, vt)
     #err = nla.norm(B, axis = 1)/nla.norm(A, axis = 1)
     #print('\nmax SVD error: %e' % numpy.amax(err))
-    #print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
+    print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
     print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
 else:
     print(sigma)
