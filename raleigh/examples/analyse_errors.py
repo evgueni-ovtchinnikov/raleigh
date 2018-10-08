@@ -101,22 +101,25 @@ while True:
         break
     image = numpy.reshape(images[i,:], (ny, nx))
     print('partial svd error: %.1e' % err[i])
-    pylab.figure()
-    pylab.title('image %d' % i)
-    pylab.imshow(image, cmap = 'gray')
     imgi = numpy.zeros((ny, nx), dtype = images.dtype)
     bitmaps = []
     fig = plt.figure()
     step = 1
+    k = 0
     for j in range(nsv):
         imgi += numpy.reshape(u[j,:], (ny, nx))*v[j,i]
         x = (j*nx)//nsv
         imgi[:10, :x] = vmax/10
-        if j % step == 0:
+        if j % step == 0 or j == nsv - 1:
             bitmap = plt.imshow(imgi, cmap = 'gray')
             bitmaps.append([bitmap])
+        k += 1
+        if k == 16:
+            if step < 32:
+                step *= 2
+            k = 0
     ani = animation.ArtistAnimation \
-        (fig, bitmaps, interval = 10, blit = True, repeat = False);
+        (fig, bitmaps, interval = 400, blit = True, repeat = False);
 ##    img = numpy.dot(u.T, sigma*v[:,i])
 #    img = numpy.dot(u.T, v[:,i])
 #    psvd_img = numpy.reshape(img, (ny, nx))
@@ -128,6 +131,10 @@ while True:
 #    pylab.plot(numpy.arange(1, nsv + 1, 1), v[:,i])
 #    pylab.grid()
 #    pylab.title('coordinates in eigenimage basis')
+    pylab.show()
+    pylab.figure()
+    pylab.title('image %d' % i)
+    pylab.imshow(image, cmap = 'gray')
     pylab.show()
 
 print('done')
