@@ -10,11 +10,11 @@ Arguments:
 
 Options:
   -a <arch>, --arch=<arch>   architecture [default: cpu]
-  -b <blk> , --bsize=<blk>   CG block size [default: 64]
+  -b <blk> , --bsize=<blk>   CG block size [default: -1]
   -e <err> , --imerr=<err>   image approximation error tolerance [default: 0.3]
   -n <nim> , --nimgs=<nim>   number of images to use (negative: all) 
                              [default: -1]
-  -t <tol> , --svtol=<tol>   singular vector error tolerance [default: 1e-2]
+  -t <tol> , --restol=<tol>  residual tolerance [default: 1e-3]
   -f, --full  compute full SVD too (using scipy.linalg.svd)
 
 Created on Wed Sep  5 14:44:23 2018
@@ -31,7 +31,8 @@ file = args['<data>']
 ni = int(args['--nimgs'])
 err_tol = float(args['--imerr'])
 block_size = int(args['--bsize'])
-svec_tol = float(args['--svtol'])
+#svec_tol = float(args['--svtol'])
+tol = float(args['--restol'])
 arch = args['--arch']
 full = args['--full']
 
@@ -81,7 +82,7 @@ if ni < 0 or ni > m_all:
     ni = m_all
 
 if ni < m_all:
-    print('ising first %d images only...' % ni)
+    print('using first %d images only...' % ni)
     m = ni
     images = all_images[:m,:,:]
 else:
@@ -94,6 +95,13 @@ print('data range: %e to %e' % (vmin, vmax))
 
 images = numpy.reshape(images, (m, n))
 
+if block_size < 1:
+    b = max(1, min(m, n)//100)
+    block_size = 32
+    while block_size <= b - 16:
+        block_size += 32
+    print('using block size %d' % block_size)
+
 print('\n--- solving with raleigh.ndarray.partial_svd...')
 
 opt = Options()
@@ -101,7 +109,8 @@ opt.block_size = block_size
 opt.max_iter = 300
 opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
-    ('kinematic eigenvector error', svec_tol)
+    ('residual tolerance', tol)
+#    ('kinematic eigenvector error', svec_tol)
 opt.stopping_criteria = MyStoppingCriteria(images, err_tol)
 
 start = time.time()
@@ -132,7 +141,8 @@ norms = numpy.amax(nla.norm(images, axis = 1))
 start = time.time()
 
 while True:
-    u, s, vti = svds(images, k = block_size, tol = svec_tol)
+#    u, s, vti = svds(images, k = block_size, tol = svec_tol)
+    u, s, vti = svds(images, k = block_size, tol = tol)
     sigma = numpy.concatenate((sigma, s[::-1]))
     vt = numpy.concatenate((vt, vti[::-1, :]))
     print('last singular value computed: %e' % s[0])

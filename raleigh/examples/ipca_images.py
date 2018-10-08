@@ -16,7 +16,7 @@ Options:
   -m <mim> , --mimgs=<mim>   number of images to add for update [default: 0]
   -e <err> , --imerr=<err>   image approximation error tolerance (non-positive:
                              not used) [default: 0]
-  -b <blk> , --bsize=<blk>   CG block size [default: 64]
+  -b <blk> , --bsize=<blk>   CG block size [default: -1]
   -t <tol> , --svtol=<tol>   singular vector error tolerance [default: 1e-2]
   -a <arch>, --arch=<arch>   architecture [default: cpu]
 
@@ -106,7 +106,7 @@ if ni < 0 or ni > m_all:
     ni = m_all
 
 if ni < m_all:
-    print('ising first %d images only...' % ni)
+    print('using first %d images only...' % ni)
     m = ni
     images = all_images[:m,:,:]
 else:
@@ -121,6 +121,13 @@ vmax = numpy.amax(images)
 print('data range: %e to %e' % (vmin, vmax))
 
 images = numpy.reshape(images, (m, n))
+
+if block_size < 1:
+    b = max(1, min(m, n)//100)
+    block_size = 32
+    while block_size <= b - 16:
+        block_size += 32
+    print('using block size %d' % block_size)
 
 opt = Options()
 opt.block_size = block_size
