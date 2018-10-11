@@ -65,13 +65,13 @@ if ni != m or nx != nxu or ny != nyu:
     raise ValueError('data sizes (%d, %d, %d) and (%d, %d, %d) do not match' % \
           (ni, ny, nx, m, nyu, nxu))
 
-#pylab.figure()
-#pylab.plot(numpy.arange(1, nsv + 1, 1), sigma)
-#pylab.xscale('log')
-#pylab.yscale('log')
-#pylab.grid()
-#pylab.title('singular values')
-#pylab.show()
+pylab.figure()
+pylab.plot(numpy.arange(1, nsv + 1, 1), sigma)
+pylab.xscale('log')
+pylab.yscale('log')
+pylab.grid()
+pylab.title('singular values')
+pylab.show()
 
 n = nx*ny
 images = numpy.reshape(images, (ni, n))
@@ -79,21 +79,19 @@ u = numpy.reshape(u, (nsv, n))
 
 print('measuring svd errors...')
 norm = nla.norm(images, axis = 1)
-#w = v.T*sigma
-#proj = nla.norm(w, axis = 1)
 proj = nla.norm(v, axis = 0)
-err = numpy.sqrt(norm*norm - proj*proj)
+err = numpy.sqrt(norm*norm - proj*proj)/norm
 ind = numpy.argsort(-err)
-#pylab.figure()
-#pylab.plot(numpy.arange(1, ni + 1, 1), err[ind])
-#pylab.title('errors')
-#pylab.show()
-k = 100
-print('%d worst approximations:' % k)
-print('images:')
-print(ind[:k])
-print('errors:')
-print(err[ind[:k]])
+pylab.figure()
+pylab.plot(numpy.arange(1, ni + 1, 1), err[ind])
+pylab.title('errors')
+pylab.show()
+#k = 100
+#print('%d worst approximations:' % k)
+#print('images:')
+#print(ind[:k])
+#print('errors:')
+#print(err[ind[:k]])
 
 while True:
     i = int(input('image number (negative to exit): '))
@@ -114,27 +112,25 @@ while True:
             bitmap = plt.imshow(imgi, cmap = 'gray')
             bitmaps.append([bitmap])
         k += 1
-        if k == 16:
-            if step < 32:
+        if k == 32:
+            if step < 1: #32:
                 step *= 2
             k = 0
     ani = animation.ArtistAnimation \
-        (fig, bitmaps, interval = 400, blit = True, repeat = False);
-##    img = numpy.dot(u.T, sigma*v[:,i])
+        (fig, bitmaps, interval = 5, blit = True, repeat = False);
 #    img = numpy.dot(u.T, v[:,i])
 #    psvd_img = numpy.reshape(img, (ny, nx))
 #    pylab.figure()
 #    pylab.title('partial SVD approximation of the image')
 #    pylab.imshow(psvd_img, cmap = 'gray')
 #    pylab.figure()
-##    pylab.plot(numpy.arange(1, nsv + 1, 1), sigma*v[:,i])
 #    pylab.plot(numpy.arange(1, nsv + 1, 1), v[:,i])
 #    pylab.grid()
 #    pylab.title('coordinates in eigenimage basis')
     pylab.show()
-    pylab.figure()
-    pylab.title('image %d' % i)
-    pylab.imshow(image, cmap = 'gray')
-    pylab.show()
+#    pylab.figure()
+#    pylab.title('image %d' % i)
+#    pylab.imshow(image, cmap = 'gray')
+#    pylab.show()
 
 print('done')
