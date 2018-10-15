@@ -125,6 +125,7 @@ dtype = numpy.float32
 if full:
     print('\n--- solving with scipy.linalg.svd...')
     start = time.time()
+#    s = sla.svd(images, full_matrices = False, compute_uv = False)
     u, s, vt = sla.svd(images, full_matrices = False)
     stop = time.time()
     time_f = stop - start
