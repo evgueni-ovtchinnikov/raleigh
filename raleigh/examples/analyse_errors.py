@@ -55,13 +55,14 @@ print('%d eigenimages of size %dx%d loaded' % (nsv, nyu, nxu))
 print('loading images from %s...' % file)
 images = numpy.load(file)
 ni, ny, nx = images.shape
-if ni > m:
-    ni = m
-    images = images[:ni,:,:]
+#if ni > m:
+#    ni = m
+#    images = images[:ni,:,:]
 print('%d images of size %dx%d loaded' % (ni, ny, nx))
 vmax = numpy.amax(images)
 
-if ni != m or nx != nxu or ny != nyu:
+#if ni != m or nx != nxu or ny != nyu:
+if nx != nxu or ny != nyu:
     raise ValueError('data sizes (%d, %d, %d) and (%d, %d, %d) do not match' % \
           (ni, ny, nx, m, nyu, nxu))
 
@@ -77,16 +78,16 @@ n = nx*ny
 images = numpy.reshape(images, (ni, n))
 u = numpy.reshape(u, (nsv, n))
 
-print('measuring svd errors...')
-norm = nla.norm(images, axis = 1)
-proj = nla.norm(v, axis = 0)
-err = numpy.sqrt(norm*norm - proj*proj)/norm
-ind = numpy.argsort(-err)
-pylab.figure()
-pylab.plot(numpy.arange(1, ni + 1, 1), err[ind])
-pylab.title('errors')
-pylab.show()
-#k = 100
+#print('measuring svd errors...')
+#norm = nla.norm(images, axis = 1)
+#proj = nla.norm(v, axis = 0)
+#err = numpy.sqrt(norm*norm - proj*proj)/norm
+#ind = numpy.argsort(-err)
+#pylab.figure()
+#pylab.plot(numpy.arange(1, ni + 1, 1), err[ind])
+#pylab.title('errors')
+#pylab.show()
+##k = 100
 #print('%d worst approximations:' % k)
 #print('images:')
 #print(ind[:k])
@@ -98,14 +99,18 @@ while True:
     if i < 0 or i >= ni:
         break
     image = numpy.reshape(images[i,:], (ny, nx))
-    print('partial svd error: %.1e' % err[i])
+#    print('partial svd error: %.1e' % err[i])
+    if i < m:
+        w = v[:,i]
+    else:
+        w = numpy.dot(u, images[i,:])
     imgi = numpy.zeros((ny, nx), dtype = images.dtype)
     bitmaps = []
     fig = plt.figure()
     step = 1
     k = 0
     for j in range(nsv):
-        imgi += numpy.reshape(u[j,:], (ny, nx))*v[j,i]
+        imgi += numpy.reshape(u[j,:], (ny, nx))*w[j] #v[j,i]
         x = (j*nx)//nsv
         imgi[:10, :x] = vmax/10
         if j % step == 0 or j == nsv - 1:

@@ -131,7 +131,7 @@ if block_size < 1:
 
 opt = Options()
 opt.block_size = block_size
-opt.max_iter = 300
+opt.max_iter = 500
 opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
     ('kinematic eigenvector error', svec_tol)
