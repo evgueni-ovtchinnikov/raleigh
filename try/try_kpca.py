@@ -8,9 +8,8 @@ Arguments:
   data  .npy file containing images as ndarray of dimensions (ni, ny, nx)
 
 Options:
-  -n <nim>, --nimgs=<nim>   number of images to use (negative: all) 
-                             [default: -1]
-  -a <alp>, --alpha=<alp>   l2 term factor [default: 0]
+  -n <nim>, --nimgs=<nim>   number of images to use (< 0 : all) [default: -1]
+  -a <alp>, --alpha=<alp>   H1 term factor [default: 0]
 
 Created on Mon Oct 29 11:11:41 2018
 
@@ -52,14 +51,14 @@ class Laplace2D:
         m = u.shape[0]
         nx = self.nx
         ny = self.ny
-        xh = self.xh
-        yh = self.yh
+        xh = self.xh*alpha
+        yh = self.yh*alpha
         mx = nx - 1
         my = ny - 1
         n = nx*ny
         u = numpy.reshape(u, (m, nx, ny))
         v = numpy.reshape(v, (m, nx, ny))
-        d = 2*(xh + yh) + alpha
+        d = 2*(xh + yh) + 1.0
         v[:, :, :] = d*u
         v[:, 1 : nx, :] -= xh*u[:, 0 : mx, :]
         v[:, 0 : mx, :] -= xh*u[:, 1 : nx, :]
@@ -104,6 +103,7 @@ class MyStoppingCriteria:
 
 numpy.random.seed(1) # make results reproducible
 
+print('loading images...')
 all_images = numpy.load(file)
 
 m_all, ny, nx = all_images.shape
@@ -123,7 +123,7 @@ else:
 dt = images.dtype.type
 
 b = max(1, min(m, n)//100)
-block_size = 32
+block_size = 128 #32
 while block_size <= b - 16:
     block_size += 32
 print('using block size %d' % block_size)
@@ -137,10 +137,19 @@ opt.verbosity = -1
 images = numpy.reshape(images, (m, n))
 op = Matrix(images)
 kernel = Laplace2D(ny/nx, 1.0, ny, nx, alpha)
+if (alpha != 0):
+    print('normalizing images...')
+    v = Vectors(images)
+    w = Vectors(numpy.ndarray((m, n), dtype = dt))
+    kernel.apply(v, w)
+    s = numpy.sqrt(abs(w.dots(v)))
+    v.scale(s)
+
 opSVD = OperatorSVD(op, kernel)
 v = Vectors(m, data_type = dt)
 problem = Problem(v, lambda x, y: opSVD.apply(x, y))
 solver = Solver(problem)
+
 solver.solve(v, opt, which = (0, -1))
 
 ncon = v.nvec()
@@ -160,13 +169,33 @@ u.multiply(x, w)
 w.copy(u)
 sigma = numpy.sqrt(abs(u.dots(u)))
 u.scale(sigma)
+v.scale(sigma, multiply = True)
 
-while True:
-    i = int(input('image number (negative to exit): '))
-    if i < 0 or i >= ncon:
-        break
-    image = numpy.reshape(u.data()[i,:], (ny, nx))
-    pylab.figure()
-    pylab.title('eigenface %d' % i)
-    pylab.imshow(image, cmap = 'gray')
-    pylab.show()
+eigim = numpy.reshape(u.data(), (ncon, ny, nx))
+coord = v.data()
+numpy.save('eigim.npy', eigim)
+numpy.save('coord.npy', coord)
+numpy.save('sigma.npy', sigma[:ncon])
+
+images -= numpy.dot(v.data().T, u.data())
+if (alpha != 0):
+    print('computing errors...')
+    v = Vectors(images)
+    w = Vectors(numpy.ndarray((m, n), dtype = dt))
+    kernel.apply(v, w)
+    s = numpy.sqrt(abs(w.dots(v)))
+else:
+    s = numpy.linalg.norm(images, axis = 1)
+print(numpy.amax(s))
+#print(s.shape)
+
+#while True:
+#    i = int(input('image number (negative to exit): '))
+#    if i < 0 or i >= ncon:
+#        break
+#    #image = numpy.reshape(u.data()[i,:], (ny, nx))
+#    image = eigim[i,:,:]
+#    pylab.figure()
+#    pylab.title('eigenface %d' % i)
+#    pylab.imshow(image, cmap = 'gray')
+#    pylab.show()
