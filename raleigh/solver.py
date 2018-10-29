@@ -116,6 +116,12 @@ class EstimatedErrors:
         self.kinematic = self.kinematic[ind]
         self.residual = self.residual[ind]
 
+class error(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return '??? ' + repr(self.value)
+
 class Problem:
     def __init__(self, v, A, B = None, prod = None):
         self.__vector = v
@@ -218,7 +224,8 @@ class Solver:
                 status = self._solve(eigenvectors, options, which, extra, init)
                 if status > 1:
                     return status
-            except:
+            except error as err:
+                print('%s' % err.value)
                 return -1
         else:
             status = 1
