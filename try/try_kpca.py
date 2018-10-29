@@ -159,7 +159,12 @@ print('%d eigenimages computed in %d iterations' % (ncon, iterations))
 u = Vectors(n, ncon, v.data_type())
 op.apply(v, u, transp = True)
 vv = v.dot(v)
-uu = -u.dot(u)
+if alpha != 0:
+    w = u.new_vectors(ncon)
+    kernel.apply(u, w)
+    uu = -u.dot(w)
+else:
+    uu = -u.dot(u)
 lmd, x = sla.eigh(uu, vv, turbo = False)
 w = v.new_vectors(ncon)
 v.multiply(x, w)
@@ -167,7 +172,11 @@ w.copy(v)
 w = u.new_vectors(ncon)
 u.multiply(x, w)
 w.copy(u)
-sigma = numpy.sqrt(abs(u.dots(u)))
+if alpha != 0:
+    kernel.apply(u, w)
+    sigma = numpy.sqrt(abs(u.dots(w)))
+else:
+    sigma = numpy.sqrt(abs(u.dots(u)))
 u.scale(sigma)
 v.scale(sigma, multiply = True)
 
