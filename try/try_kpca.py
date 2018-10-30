@@ -2,7 +2,7 @@
 """ Kernel PCA demo
 
 Usage:
-  ipca_images [--help | -h | options] <data>
+  try_kpca [--help | -h | options] <data>
 
 Arguments:
   data  .npy file containing images as ndarray of dimensions (ni, ny, nx)
