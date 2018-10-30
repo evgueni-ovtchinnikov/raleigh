@@ -11,6 +11,7 @@ Arguments:
 Options:
   -a <alpha>, --alpha=<alpha>  H1 term factor [default: 0]
   -b <beta> , --beta =<beta>   L2 term factor [default: 1]
+  -s <stncl>, --stncl=<stncl>  Laplace discretization stencil pts [default: 5]
 
 Created on Tue Oct 30 09:30:40 2018
 
@@ -39,31 +40,48 @@ if raleigh_path not in sys.path:
 from raleigh.algebra import Vectors, Matrix
 
 class Laplace2D:
-    def __init__(self, sx, sy, nx, ny, alpha = 0.0, beta = 1.0):
+    def __init__(self, sx, sy, nx, ny, alpha = 0.0, beta = 1.0, stencil = 5):
         self.nx = nx
         self.ny = ny
         self.alpha = alpha
+        self.beta = beta
+        self.stencil = stencil
         self.hx = sx/(nx + 1)
         self.hy = sy/(ny + 1)
-        self.xh = 1/(self.hx*self.hx)
-        self.yh = 1/(self.hy*self.hy)
+        self.xh = 1/(self.hx * self.hx)
+        self.yh = 1/(self.hy * self.hy)
     def apply(self, u, v):
         m = u.shape[0]
         nx = self.nx
         ny = self.ny
-        xh = self.xh*alpha
-        yh = self.yh*alpha
+        xh = self.xh * self.alpha
+        yh = self.yh * self.alpha
         mx = nx - 1
         my = ny - 1
         n = nx*ny
         u = numpy.reshape(u, (m, nx, ny))
         v = numpy.reshape(v, (m, nx, ny))
-        d = 2*(xh + yh) + beta
-        v[:, :, :] = d*u
-        v[:, 1 : nx, :] -= xh*u[:, 0 : mx, :]
-        v[:, 0 : mx, :] -= xh*u[:, 1 : nx, :]
-        v[:, :, 1 : ny] -= yh*u[:, :, 0 : my]
-        v[:, :, 0 : my] -= yh*u[:, :, 1 : ny]
+        if self.stencil == 5:
+            d = 2*(xh + yh) + self.beta
+            v[:, :, :] = d*u
+            v[:, 1 : nx, :] -= xh*u[:, 0 : mx, :]
+            v[:, 0 : mx, :] -= xh*u[:, 1 : nx, :]
+            v[:, :, 1 : ny] -= yh*u[:, :, 0 : my]
+            v[:, :, 0 : my] -= yh*u[:, :, 1 : ny]
+        else:
+            xxh = (yh - 2*xh)/3
+            yyh = (xh - 2*yh)/3
+            xyh = -(xh + yh)/6
+            d = (xh + yh)*4/3 + self.beta
+            v[:, :, :] = d*u
+            v[:, 1 : nx, :] -= xxh*u[:, 0 : mx, :]
+            v[:, 0 : mx, :] -= xxh*u[:, 1 : nx, :]
+            v[:, :, 1 : ny] -= yyh*u[:, :, 0 : my]
+            v[:, :, 0 : my] -= yyh*u[:, :, 1 : ny]
+            v[:, 1 : nx, 1 : ny] -= xyh*u[:, 0 : mx, 0 : my]
+            v[:, 0 : mx, 1 : ny] -= xyh*u[:, 1 : nx, 0 : my]
+            v[:, 1 : nx, 0 : my] -= xyh*u[:, 0 : mx, 1 : ny]
+            v[:, 0 : mx, 0 : my] -= xyh*u[:, 1 : nx, 1 : ny]
         u = numpy.reshape(u, (m, n))
         v = numpy.reshape(v, (m, n))
 
@@ -133,6 +151,10 @@ eigimK = (vB.T/sB).T
 coordK = uB*sB
 D = A - numpy.dot(coordK, eigimK)
 print(nla.norm(D))
+#v = Vectors(A)
+#w = Vectors(KA)
+#s = numpy.sqrt(abs(w.dots(v)))
+#print(s)
 errK = numpy.ndarray((m, m))
 #errK[:,0] = nla.norm(coordK, axis = 1)
 errK = coordK*coordK
@@ -172,7 +194,12 @@ while True:
         j = int(input('number of PCs (negative to exit): '))
         if j <= 0 or j > m:
             break
-        print('errors: %.1e %.1e' % (err[i, j], errK[i,j]))
+        D = A - numpy.dot(coordK[:, : j], eigimK[: j, :])
+        K.apply(D, KA)
+        v = Vectors(D)
+        w = Vectors(KA)
+        s = numpy.sqrt(abs(w.dots(v)))
+        print('errors: %.1e %.1e %.1e' % (err[i, j], errK[i,j], s[i]))
         img = numpy.dot(coord[i, : j], eigim[: j, :])
         pylab.figure()
         pylab.title('image %d, %d PCs' % (i, j))

@@ -8,8 +8,9 @@ Arguments:
   data  .npy file containing images as ndarray of dimensions (ni, ny, nx)
 
 Options:
-  -n <nim>, --nimgs=<nim>   number of images to use (< 0 : all) [default: -1]
-  -a <alp>, --alpha=<alp>   H1 term factor [default: 0]
+  -n <nim> , --nimgs=<nim>   number of images to use (< 0 : all) [default: -1]
+  -a <alph>, --alpha=<alph>  H1 term factor [default: 0]
+  -b <beta>, --beta=<beta>   L2 term factor [default: 1]
 
 Created on Mon Oct 29 11:11:41 2018
 
@@ -23,6 +24,7 @@ args = docopt(__doc__, version=__version__)
 file = args['<data>']
 ni = int(args['--nimgs'])
 alpha = float(args['--alpha'])
+beta = float(args['--beta'])
 
 import numpy
 import pylab
@@ -36,34 +38,82 @@ if raleigh_path not in sys.path:
 from raleigh.solver import Problem, Solver, Options
 from raleigh.algebra import Vectors, Matrix
 
+#class Laplace2D:
+#    def __init__(self, sx, sy, nx, ny, alpha = 0.0):
+#        self.nx = nx
+#        self.ny = ny
+#        self.alpha = alpha
+#        self.hx = sx/(nx + 1)
+#        self.hy = sy/(ny + 1)
+#        self.xh = 1/(self.hx*self.hx)
+#        self.yh = 1/(self.hy*self.hy)
+#    def apply(self, vu, vv):
+#        u = vu.data()
+#        v = vv.data()
+#        m = u.shape[0]
+#        nx = self.nx
+#        ny = self.ny
+#        xh = self.xh*alpha
+#        yh = self.yh*alpha
+#        mx = nx - 1
+#        my = ny - 1
+#        n = nx*ny
+#        u = numpy.reshape(u, (m, nx, ny))
+#        v = numpy.reshape(v, (m, nx, ny))
+#        d = 2*(xh + yh) + 1.0
+#        v[:, :, :] = d*u
+#        v[:, 1 : nx, :] -= xh*u[:, 0 : mx, :]
+#        v[:, 0 : mx, :] -= xh*u[:, 1 : nx, :]
+#        v[:, :, 1 : ny] -= yh*u[:, :, 0 : my]
+#        v[:, :, 0 : my] -= yh*u[:, :, 1 : ny]
+#        u = numpy.reshape(u, (m, n))
+#        v = numpy.reshape(v, (m, n))
+
 class Laplace2D:
-    def __init__(self, sx, sy, nx, ny, alpha = 0.0):
+    def __init__(self, sx, sy, nx, ny, alpha = 1.0, beta = 0.0, stencil = 9):
         self.nx = nx
         self.ny = ny
         self.alpha = alpha
+        self.beta = beta
+        self.stencil = stencil
         self.hx = sx/(nx + 1)
         self.hy = sy/(ny + 1)
-        self.xh = 1/(self.hx*self.hx)
-        self.yh = 1/(self.hy*self.hy)
+        self.xh = 1/(self.hx * self.hx)
+        self.yh = 1/(self.hy * self.hy)
     def apply(self, vu, vv):
         u = vu.data()
         v = vv.data()
         m = u.shape[0]
         nx = self.nx
         ny = self.ny
-        xh = self.xh*alpha
-        yh = self.yh*alpha
+        xh = self.xh * self.alpha
+        yh = self.yh * self.alpha
         mx = nx - 1
         my = ny - 1
         n = nx*ny
         u = numpy.reshape(u, (m, nx, ny))
         v = numpy.reshape(v, (m, nx, ny))
-        d = 2*(xh + yh) + 1.0
-        v[:, :, :] = d*u
-        v[:, 1 : nx, :] -= xh*u[:, 0 : mx, :]
-        v[:, 0 : mx, :] -= xh*u[:, 1 : nx, :]
-        v[:, :, 1 : ny] -= yh*u[:, :, 0 : my]
-        v[:, :, 0 : my] -= yh*u[:, :, 1 : ny]
+        if self.stencil == 5:
+            d = 2*(xh + yh) + self.beta
+            v[:, :, :] = d*u
+            v[:, 1 : nx, :] -= xh*u[:, 0 : mx, :]
+            v[:, 0 : mx, :] -= xh*u[:, 1 : nx, :]
+            v[:, :, 1 : ny] -= yh*u[:, :, 0 : my]
+            v[:, :, 0 : my] -= yh*u[:, :, 1 : ny]
+        else:
+            xxh = (yh - 2*xh)/3
+            yyh = (xh - 2*yh)/3
+            xyh = -(xh + yh)/6
+            d = (xh + yh)*4/3 + self.beta
+            v[:, :, :] = d*u
+            v[:, 1 : nx, :] -= xxh*u[:, 0 : mx, :]
+            v[:, 0 : mx, :] -= xxh*u[:, 1 : nx, :]
+            v[:, :, 1 : ny] -= yyh*u[:, :, 0 : my]
+            v[:, :, 0 : my] -= yyh*u[:, :, 1 : ny]
+            v[:, 1 : nx, 1 : ny] -= xyh*u[:, 0 : mx, 0 : my]
+            v[:, 0 : mx, 1 : ny] -= xyh*u[:, 1 : nx, 0 : my]
+            v[:, 1 : nx, 0 : my] -= xyh*u[:, 0 : mx, 1 : ny]
+            v[:, 0 : mx, 0 : my] -= xyh*u[:, 1 : nx, 1 : ny]
         u = numpy.reshape(u, (m, n))
         v = numpy.reshape(v, (m, n))
 
@@ -135,9 +185,9 @@ opt.stopping_criteria = MyStoppingCriteria()
 opt.verbosity = -1
 
 images = numpy.reshape(images, (m, n))
-op = Matrix(images)
-kernel = Laplace2D(ny/nx, 1.0, ny, nx, alpha)
-if (alpha != 0):
+print(alpha, beta)
+kernel = Laplace2D(ny/nx, 1.0, ny, nx, alpha, beta)
+if alpha != 0:
     print('normalizing images...')
     v = Vectors(images)
     w = Vectors(numpy.ndarray((m, n), dtype = dt))
@@ -145,6 +195,7 @@ if (alpha != 0):
     s = numpy.sqrt(abs(w.dots(v)))
     v.scale(s)
 
+op = Matrix(images)
 opSVD = OperatorSVD(op, kernel)
 v = Vectors(m, data_type = dt)
 problem = Problem(v, lambda x, y: opSVD.apply(x, y))
@@ -159,12 +210,12 @@ print('%d eigenimages computed in %d iterations' % (ncon, iterations))
 u = Vectors(n, ncon, v.data_type())
 op.apply(v, u, transp = True)
 vv = v.dot(v)
-#if alpha != 0:
-#    w = u.new_vectors(ncon)
-#    kernel.apply(u, w)
-#    uu = -u.dot(w)
-#else:
-uu = -u.dot(u)
+if alpha != 0:
+    w = u.new_vectors(ncon)
+    kernel.apply(u, w)
+    uu = -u.dot(w)
+else:
+    uu = -u.dot(u)
 lmd, x = sla.eigh(uu, vv, turbo = False)
 w = v.new_vectors(ncon)
 v.multiply(x, w)
@@ -172,11 +223,12 @@ w.copy(v)
 w = u.new_vectors(ncon)
 u.multiply(x, w)
 w.copy(u)
-#if alpha != 0:
-#    kernel.apply(u, w)
-#    sigma = numpy.sqrt(abs(u.dots(w)))
-#else:
-sigma = numpy.sqrt(abs(u.dots(u)))
+if alpha != 0:
+    kernel.apply(u, w)
+    sigma = numpy.sqrt(abs(u.dots(w)))
+else:
+    sigma = numpy.sqrt(abs(u.dots(u)))
+#print(sigma)
 u.scale(sigma)
 v.scale(sigma, multiply = True)
 
@@ -186,25 +238,40 @@ numpy.save('eigim.npy', eigim)
 numpy.save('coord.npy', coord)
 numpy.save('sigma.npy', sigma[:ncon])
 
+t = numpy.linalg.norm(images, axis = 1)
 images -= numpy.dot(v.data().T, u.data())
+s = numpy.linalg.norm(images, axis = 1)
+print(numpy.amax(s/t))
 if (alpha != 0):
     print('computing errors...')
     v = Vectors(images)
     w = Vectors(numpy.ndarray((m, n), dtype = dt))
     kernel.apply(v, w)
-    s = numpy.sqrt(abs(w.dots(v)))
+    #r = numpy.sqrt(abs(v.dots(v)))
+    err = numpy.sqrt(abs(w.dots(v)))
+    #t = numpy.sqrt(abs(w.dots(w)))
+    #print(numpy.amax(r))
+    #print(numpy.amax(t))
 else:
-    s = numpy.linalg.norm(images, axis = 1)
-print(numpy.amax(s))
+    err = numpy.linalg.norm(images, axis = 1)
+print(numpy.amax(err))
 #print(s.shape)
 
-#while True:
-#    i = int(input('image number (negative to exit): '))
-#    if i < 0 or i >= ncon:
-#        break
+eigim = numpy.reshape(eigim, (ncon, n))
+while True:
+    i = int(input('image number (negative to exit): '))
+    if i < 0 or i >= m:
+        break
+    print('error: %.1e' % err[i])
+    img = numpy.dot(eigim.T, coord[:, i])
+    pylab.figure()
+    pylab.title('image %d' % i)
+    pylab.imshow(numpy.reshape(img, (ny, nx)), cmap = 'gray')
 #    #image = numpy.reshape(u.data()[i,:], (ny, nx))
 #    image = eigim[i,:,:]
 #    pylab.figure()
 #    pylab.title('eigenface %d' % i)
 #    pylab.imshow(image, cmap = 'gray')
-#    pylab.show()
+    pylab.show()
+
+print('done')
