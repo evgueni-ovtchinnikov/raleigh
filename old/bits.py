@@ -1742,3 +1742,34 @@ except:
 #    opt.stopping_criteria.set_how_many(block_size)
 #opt.stopping_criteria.set_error_tolerance(err_tol)
 
+#class Laplace2D:
+#    def __init__(self, sx, sy, nx, ny, alpha = 0.0):
+#        self.nx = nx
+#        self.ny = ny
+#        self.alpha = alpha
+#        self.hx = sx/(nx + 1)
+#        self.hy = sy/(ny + 1)
+#        self.xh = 1/(self.hx*self.hx)
+#        self.yh = 1/(self.hy*self.hy)
+#    def apply(self, vu, vv):
+#        u = vu.data()
+#        v = vv.data()
+#        m = u.shape[0]
+#        nx = self.nx
+#        ny = self.ny
+#        xh = self.xh*alpha
+#        yh = self.yh*alpha
+#        mx = nx - 1
+#        my = ny - 1
+#        n = nx*ny
+#        u = numpy.reshape(u, (m, nx, ny))
+#        v = numpy.reshape(v, (m, nx, ny))
+#        d = 2*(xh + yh) + 1.0
+#        v[:, :, :] = d*u
+#        v[:, 1 : nx, :] -= xh*u[:, 0 : mx, :]
+#        v[:, 0 : mx, :] -= xh*u[:, 1 : nx, :]
+#        v[:, :, 1 : ny] -= yh*u[:, :, 0 : my]
+#        v[:, :, 0 : my] -= yh*u[:, :, 1 : ny]
+#        u = numpy.reshape(u, (m, n))
+#        v = numpy.reshape(v, (m, n))
+

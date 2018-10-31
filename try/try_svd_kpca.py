@@ -26,6 +26,7 @@ file = args['<data>']
 ni = int(args['<nim>'])
 alpha = float(args['--alpha'])
 beta = float(args['--beta'])
+stncl = int(args['--stncl'])
 
 import numpy
 import numpy.linalg as nla
@@ -74,14 +75,14 @@ class Laplace2D:
             xyh = -(xh + yh)/6
             d = (xh + yh)*4/3 + self.beta
             v[:, :, :] = d*u
-            v[:, 1 : nx, :] -= xxh*u[:, 0 : mx, :]
-            v[:, 0 : mx, :] -= xxh*u[:, 1 : nx, :]
-            v[:, :, 1 : ny] -= yyh*u[:, :, 0 : my]
-            v[:, :, 0 : my] -= yyh*u[:, :, 1 : ny]
-            v[:, 1 : nx, 1 : ny] -= xyh*u[:, 0 : mx, 0 : my]
-            v[:, 0 : mx, 1 : ny] -= xyh*u[:, 1 : nx, 0 : my]
-            v[:, 1 : nx, 0 : my] -= xyh*u[:, 0 : mx, 1 : ny]
-            v[:, 0 : mx, 0 : my] -= xyh*u[:, 1 : nx, 1 : ny]
+            v[:, 1 : nx, :] += xxh*u[:, 0 : mx, :]
+            v[:, 0 : mx, :] += xxh*u[:, 1 : nx, :]
+            v[:, :, 1 : ny] += yyh*u[:, :, 0 : my]
+            v[:, :, 0 : my] += yyh*u[:, :, 1 : ny]
+            v[:, 1 : nx, 1 : ny] += xyh*u[:, 0 : mx, 0 : my]
+            v[:, 0 : mx, 1 : ny] += xyh*u[:, 1 : nx, 0 : my]
+            v[:, 1 : nx, 0 : my] += xyh*u[:, 0 : mx, 1 : ny]
+            v[:, 0 : mx, 0 : my] += xyh*u[:, 1 : nx, 1 : ny]
         u = numpy.reshape(u, (m, n))
         v = numpy.reshape(v, (m, n))
 
@@ -126,7 +127,7 @@ for j in range(m - 1):
 err = numpy.sqrt(err)
 #print(err[:,0])
 
-K = Laplace2D(ny/nx, 1.0, ny, nx, alpha, beta)
+K = Laplace2D(ny/nx, 1.0, ny, nx, alpha, beta, stncl)
 KA = numpy.ndarray((m, n), dtype = dt)
 K.apply(A, KA)
 #if (alpha != 0.0 or beta != 1.0):
@@ -194,20 +195,26 @@ while True:
         j = int(input('number of PCs (negative to exit): '))
         if j <= 0 or j > m:
             break
-        D = A - numpy.dot(coordK[:, : j], eigimK[: j, :])
-        K.apply(D, KA)
-        v = Vectors(D)
-        w = Vectors(KA)
-        s = numpy.sqrt(abs(w.dots(v)))
-        print('errors: %.1e %.1e %.1e' % (err[i, j], errK[i,j], s[i]))
+#        D = A - numpy.dot(coordK[:, : j], eigimK[: j, :])
+#        K.apply(D, KA)
+#        v = Vectors(D)
+#        w = Vectors(KA)
+#        s = numpy.sqrt(abs(w.dots(v)))
         img = numpy.dot(coord[i, : j], eigim[: j, :])
         pylab.figure()
         pylab.title('image %d, %d PCs' % (i, j))
         pylab.imshow(numpy.reshape(img, (ny, nx)), cmap = 'gray')
         img = numpy.dot(coordK[i, : j], eigimK[: j, :])
+        d = numpy.reshape(img - A[i,:], (1, n))
+        Kd = d.copy()
+        K.apply(d, Kd)
+        v = Vectors(d)
+        w = Vectors(Kd)
+        s = numpy.sqrt(abs(w.dots(v)))
         pylab.figure()
         pylab.title('image %d, %d kernel PCs' % (i, j))
         pylab.imshow(numpy.reshape(img, (ny, nx)), cmap = 'gray')
+        print('errors: %.1e %.1e %.1e' % (err[i, j], errK[i,j], s))
         pylab.show()
 
 print('done')
