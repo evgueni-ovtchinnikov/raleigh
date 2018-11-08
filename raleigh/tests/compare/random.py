@@ -11,8 +11,8 @@ Arguments:
 
 Options:
   -a <arch>, --arch=<arch>   architecture [default: cpu]
-  -b <blk> , --bsize=<blk>   block CG block size [default: 64]
-  -e <err> , --error=<err>   error measure [default: vec]
+  -b <blk> , --bsize=<blk>   block CG block size [default: -1]
+  -e <err> , --error=<err>   error measure [default: kinematic-eigenvector-error]
   -r <alph>, --alpha=<alph>  singular values decay rate [default: 0.01]
   -s <ths> , --thresh=<ths>  singular values threshold [default: 0.01]
   -t <tol> , --tol=<tol>     error or residual tolerance [default: 1e-3]
@@ -35,7 +35,6 @@ k = int(args['<k>'])
 alpha = float(args['--alpha'])
 arch = args['--arch']
 block_size = int(args['--bsize'])
-#err_tol = float(args['--svderr'])
 th = float(args['--thresh'])
 tol = float(args['--tol'])
 verb = int(args['--verb'])
@@ -103,7 +102,7 @@ if block_size < 1:
     b = max(1, min(m, n)//100)
 #    block_size = ((b - 1)//8 + 1)*8
     block_size = 32
-    while block_size < b:
+    while block_size <= b - 16:
         block_size += 32
     print('using block size %d' % block_size)
 
@@ -115,11 +114,7 @@ if th > 0:
     opt.block_size = block_size
 opt.max_iter = 400
 opt.verbosity = verb
-if err[0] == 'r':
-    opt.convergence_criteria.set_error_tolerance \
-        ('relative residual', tol)
-else:
-    ('kinematic eigenvector error', tol)
+opt.convergence_criteria.set_error_tolerance(err, tol)
 opt.stopping_criteria = MyStoppingCriteria(A)
 if th > 0:
     opt.stopping_criteria.set_threshold(th)
@@ -142,7 +137,7 @@ if not ptb:
     n_r = min(sigma.shape[0], sigma0.shape[0])
     err_vec = vec_err(v0[:,:n_r], vt.transpose()[:,:n_r])
     err_val = abs(sigma[:n_r] - sigma0[:n_r])
-    print(err_vec)
+    #print(err_vec)
     #B = A - numpy.dot(u*sigma, vt)
     #err = nla.norm(B, axis = 1)/nla.norm(A, axis = 1)
     #print('\nmax SVD error: %e' % numpy.amax(err))
@@ -157,7 +152,7 @@ if full:
     u0, sigma0, vt0 = sla.svd(A, full_matrices = False)#, lapack_driver = 'gesvd')
     stop = time.time()
     time_f = stop - start
-    print(sigma0[:n_r])
+    #print(sigma0[:n_r])
     err_vec = vec_err(vt0.transpose()[:,:n_r], vt.transpose()[:,:n_r])
     err_val = abs(sigma[:n_r] - sigma0[:n_r])
     print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
