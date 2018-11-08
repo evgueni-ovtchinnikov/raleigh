@@ -155,6 +155,8 @@ class Solver:
         if what.find('block') > -1:
             return self.block_size
         elif what.find('res') > -1 and what.find('vec') == -1:
+            if what.find('rel') > -1:
+                return self.res[which]/abs(self.lmd[which])
             return self.res[which]
         elif what.find('val') > -1:
             if what.find('err') > -1:
@@ -1139,6 +1141,16 @@ class Solver:
                     err_X[:, i] = -1.0
                     dX[i] = 0
                     have_prev[i] = 0
+            else:
+                for i in range(l):
+                    cnv[i] = 0
+                    res[i] = -1.0
+                    acf[:, i] = 1.0
+                    err_lmd[:, i] = -1.0
+                    dlmd[i, :] = 0
+                    err_X[:, i] = -1.0
+                    dX[i] = 0
+                    have_prev[i] = 0
             if shift_right > 0:
                 for i in range(m - 1, l + shift_right - 1, -1):
                     cnv[i] = cnv[i - shift_right]
@@ -1152,6 +1164,16 @@ class Solver:
                     have_prev[i] = have_prev[i - shift_right]
             if shift_right >= 0:
                 for i in range(l + shift_right - 1, nl - 1, -1):
+                    cnv[i] = 0
+                    res[i] = -1.0
+                    acf[:, i] = 1.0
+                    err_lmd[:, i] = -1.0
+                    dlmd[i, :] = 0
+                    err_X[:, i] = -1.0
+                    dX[i] = 0
+                    have_prev[i] = 0
+            else:
+                for i in range(l, block_size):
                     cnv[i] = 0
                     res[i] = -1.0
                     acf[:, i] = 1.0
