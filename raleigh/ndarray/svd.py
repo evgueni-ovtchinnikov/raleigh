@@ -89,20 +89,30 @@ def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu'):
         op = Matrix(a)
 
     class OperatorSVD:
-        def __init__(self, op, gpu):
+        def __init__(self, op, gpu, transp = False):
             self.op = op
             self.gpu = gpu
+            self.transp = transp
             self.time = 0
-        def apply(self, x, y, transp = False):
+            m, n = self.op.shape()
+            if transp:
+                self.w = Vectors(n)
+            else:
+                self.w = Vectors(m)
+        def apply(self, x, y):
             m, n = self.op.shape()
             k = x.nvec()
             start = time.time()
-            if transp:
-                z = Vectors(n, k, x.data_type())
+            if self.transp:
+                if self.w.nvec() < k:
+                    self.w = Vectors(n, k, x.data_type())
+                z = self.w
                 self.op.apply(x, z, transp = True)
                 self.op.apply(z, y)
             else:
-                z = Vectors(m, k, x.data_type())
+                if self.w.nvec() < k:
+                    self.w = Vectors(m, k, x.data_type())
+                z = self.w
                 self.op.apply(x, z)
                 self.op.apply(z, y, transp = True)
             if self.gpu:
@@ -128,9 +138,9 @@ def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu'):
             op.apply(isv, tmp)
             isv = tmp
 
-    opSVD = OperatorSVD(op, gpu)
+    opSVD = OperatorSVD(op, gpu, transp)
     v = Vectors(n, data_type = dt)
-    problem = Problem(v, lambda x, y: opSVD.apply(x, y, transp))
+    problem = Problem(v, lambda x, y: opSVD.apply(x, y))
     solver = Solver(problem)
 
     try:
