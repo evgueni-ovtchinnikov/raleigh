@@ -109,7 +109,7 @@ opt.block_size = block_size
 opt.max_iter = 300
 opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
-    ('residual tolerance', tol)
+    ('relative residual tolerance', tol)
 #    ('kinematic eigenvector error', svec_tol)
 opt.stopping_criteria = MyStoppingCriteria(images, err_tol)
 

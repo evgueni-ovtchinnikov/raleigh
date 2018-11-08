@@ -117,7 +117,7 @@ opt.max_iter = 400
 opt.verbosity = verb
 if err[0] == 'r':
     opt.convergence_criteria.set_error_tolerance \
-        ('residual', tol)
+        ('relative residual', tol)
 else:
     ('kinematic eigenvector error', tol)
 opt.stopping_criteria = MyStoppingCriteria(A)
@@ -142,6 +142,7 @@ if not ptb:
     n_r = min(sigma.shape[0], sigma0.shape[0])
     err_vec = vec_err(v0[:,:n_r], vt.transpose()[:,:n_r])
     err_val = abs(sigma[:n_r] - sigma0[:n_r])
+    print(err_vec)
     #B = A - numpy.dot(u*sigma, vt)
     #err = nla.norm(B, axis = 1)/nla.norm(A, axis = 1)
     #print('\nmax SVD error: %e' % numpy.amax(err))
