@@ -84,8 +84,8 @@ def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu'):
     else:
         gpu = False
     if not gpu:
-#        from raleigh.algebra import Vectors, Matrix
-        from raleigh.ndarray.numpy_algebra import Vectors, Matrix
+        from raleigh.algebra import Vectors, Matrix
+#        from raleigh.ndarray.numpy_algebra import Vectors, Matrix
         op = Matrix(a)
 
     class OperatorSVD:
