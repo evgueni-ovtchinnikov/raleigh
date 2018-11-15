@@ -160,18 +160,21 @@ def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu'):
 
     nv = v.nvec()
     u = Vectors(m, nv, v.data_type())
-    op.apply(v, u, transp)
-    vv = v.dot(v)
-    uu = -u.dot(u)
-    lmd, x = scipy.linalg.eigh(uu, vv, turbo = False)
-    w = v.new_vectors(nv)
-    v.multiply(x, w)
-    w.copy(v)
-    w = u.new_vectors(nv)
-    u.multiply(x, w)
-    w.copy(u)
-    sigma = numpy.sqrt(abs(u.dots(u)))
-    u.scale(sigma)
+    if nv > 0:
+        op.apply(v, u, transp)
+        vv = v.dot(v)
+        uu = -u.dot(u)
+        lmd, x = scipy.linalg.eigh(uu, vv, turbo = False)
+        w = v.new_vectors(nv)
+        v.multiply(x, w)
+        w.copy(v)
+        w = u.new_vectors(nv)
+        u.multiply(x, w)
+        w.copy(u)
+        sigma = numpy.sqrt(abs(u.dots(u)))
+        u.scale(sigma)
+    else:
+        sigma = numpy.ndarray((0,), dtype = v.data_type())
     if transp:
         return sigma, v.data().T, conj(u.data())
     else:

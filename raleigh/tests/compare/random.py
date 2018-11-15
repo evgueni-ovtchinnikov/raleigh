@@ -132,7 +132,7 @@ print('raleigh time: %.1e' % time_r)
 
 n_r = sigma.shape[0]
 print('\n%d singular vectors computed' % sigma.shape[0])
-if not ptb:
+if not ptb and n_r > 0:
     n_r = min(sigma.shape[0], sigma0.shape[0])
     err_vec = vec_err(v0[:,:n_r], vt.transpose()[:,:n_r])
     err_val = abs(sigma[:n_r] - sigma0[:n_r])
@@ -190,7 +190,7 @@ time_s = stop - start
 
 print('\n%d singular vectors computed' % sigma.shape[0])
 n_s = min(sigma.shape[0], sigma0.shape[0])
-if not ptb:
+if not ptb and n_s > 0:
     err_vec = vec_err(v0[:,:n_s], vt.transpose()[:,:n_s])
     err_val = abs(sigma[:n_s] - sigma0[:n_s])
     print('\nmax singular vector error (svds): %.1e' % numpy.amax(err_vec))
