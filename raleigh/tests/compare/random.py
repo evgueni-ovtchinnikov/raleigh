@@ -12,13 +12,14 @@ Arguments:
 Options:
   -a <arch>, --arch=<arch>   architecture [default: cpu]
   -b <blk> , --bsize=<blk>   block CG block size [default: -1]
-  -e <err> , --error=<err>   error measure [default: kinematic-eigenvector-error]
+  -e <err> , --error=<err>   error measure [default: kinematic-eigenvector-err]
   -r <alph>, --alpha=<alph>  singular values decay rate [default: 0.01]
   -s <ths> , --thresh=<ths>  singular values threshold [default: 0.01]
   -t <tol> , --tol=<tol>     error or residual tolerance [default: 1e-3]
   -v <verb>, --verb=<verb>   verbosity level [default: -1]
   -d, --double  use double precision
   -f, --full    compute full SVD too (using scipy.linalg.svd)
+  -o, --linop   for svds use LinearOperator instead of ndarray
   -p, --ptb     add random perturbation to make the matrix full rank
 
 @author: Evgueni Ovtchinnikov, UKRI
@@ -27,7 +28,6 @@ Options:
 __version__ = '0.1.0'
 from docopt import docopt
 args = docopt(__doc__, version=__version__)
-#print(args)
 
 m = int(args['<m>'])
 n = int(args['<n>'])
@@ -41,15 +41,15 @@ verb = int(args['--verb'])
 err = args['--error']
 dble = args['--double']
 full = args['--full']
+use_op = args['--linop']
 ptb = args['--ptb']
 
 import numpy
-#import numpy.linalg as nla
 import scipy.linalg as sla
 import sys
 import time
 
-from scipy.sparse.linalg import svds
+from scipy.sparse.linalg import svds, LinearOperator
 
 raleigh_path = '../../..'
 if raleigh_path not in sys.path:
@@ -57,7 +57,7 @@ if raleigh_path not in sys.path:
 
 from random_matrix_for_svd import random_matrix_for_svd
 from raleigh.solver import Options
-from raleigh.ndarray.svd import partial_svd #, PSVDErrorCalculator
+from raleigh.ndarray.svd import partial_svd
 
 class MyStoppingCriteria:
     def __init__(self, a):
@@ -100,7 +100,6 @@ if ptb:
 
 if block_size < 1:
     b = max(1, min(m, n)//100)
-#    block_size = ((b - 1)//8 + 1)*8
     block_size = 32
     while block_size <= b - 16:
         block_size += 32
@@ -137,10 +136,6 @@ if not ptb:
     n_r = min(sigma.shape[0], sigma0.shape[0])
     err_vec = vec_err(v0[:,:n_r], vt.transpose()[:,:n_r])
     err_val = abs(sigma[:n_r] - sigma0[:n_r])
-    #print(err_vec)
-    #B = A - numpy.dot(u*sigma, vt)
-    #err = nla.norm(B, axis = 1)/nla.norm(A, axis = 1)
-    #print('\nmax SVD error: %e' % numpy.amax(err))
     print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
     print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
 else:
@@ -152,13 +147,10 @@ if full:
     u0, sigma0, vt0 = sla.svd(A, full_matrices = False)#, lapack_driver = 'gesvd')
     stop = time.time()
     time_f = stop - start
-    #print(sigma0[:n_r])
     err_vec = vec_err(vt0.transpose()[:,:n_r], vt.transpose()[:,:n_r])
     err_val = abs(sigma[:n_r] - sigma0[:n_r])
     print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
     print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
-#    print(sigma[-100:-1])
-#    print(sigma[k : k + 100])
     print('\n full SVD time: %.1e' % time_f)
 
 if th > 0:
@@ -168,14 +160,20 @@ else:
 
 sigma = numpy.ndarray((0,), dtype = dtype)
 vt = numpy.ndarray((0, n), dtype = dtype)
-#normA = numpy.amax(nla.norm(A, axis = 1))
+
+if use_op:
+    Ax = lambda x : numpy.dot(A, x)
+    ATx = lambda x : numpy.dot(A.T, x)
+    opA = LinearOperator(dtype = dtype, shape = (m,n), matmat = Ax, \
+                         matvec = Ax, rmatvec = ATx)
 
 start = time.time()
 
 while True:
-    u, s, vti = svds(A, k = block_size, tol = tol)
-    #print(s[::-1])
-    #print(s[-1])
+    if use_op:
+        u, s, vti = svds(opA, k = block_size, tol = tol)
+    else:
+        u, s, vti = svds(A, k = block_size, tol = tol)
     sigma = numpy.concatenate((sigma, s[::-1]))
     vt = numpy.concatenate((vt, vti[::-1, :]))
     print('last singular value computed: %e' % s[0])
@@ -185,15 +183,10 @@ while True:
         break
     print('deflating...')
     A -= numpy.dot(u*s, vti)
-#    errs = numpy.amax(nla.norm(A, axis = 1))/normA
-#    print('max SVD error: %.1e' % errs)
-#    if errs <= err_tol:
-#        break
     print('restarting...')
 
 stop = time.time()
 time_s = stop - start
-#print(sigma)
 
 print('\n%d singular vectors computed' % sigma.shape[0])
 n_s = min(sigma.shape[0], sigma0.shape[0])
