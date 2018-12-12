@@ -192,7 +192,7 @@ def check_eigenvectors_accuracy \
         else:
             st = ' '
         print('%e        %.1e / %.1e        %.1e    %s %d' % \
-            (lmdu_i, err_ik, err_ir, sr[i], st, abs(cnv_u[i]) - 1))
+            (lmdu_i, err_ik, err_ir, sl[i], st, abs(cnv_u[i]) - 1))
     for j in range(rcon):
         i = nconu - rcon + j
         lmdu_i = lmdu[i]
