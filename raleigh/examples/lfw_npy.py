@@ -8,6 +8,7 @@ Arguments:
   datapath           lfw images folder or .npy file
 
 Options:
+  -m, --how-many=<m>   number of images to process (<0: all) [default: -1]
   -o, --output=<file>  output file name [default: images.npy]
   -n, --normalize      l2-normalize the images
   -s, --shift          shift to zero-average
@@ -23,12 +24,13 @@ __version__ = '0.1.0'
 from docopt import docopt
 args = docopt(__doc__, version=__version__)
 
+datapath = args['<datapath>']
+m = int(args['--how-many'])
+output = args['--output']
 normalize = args['--normalize']
 shift = args['--shift']
 focus = args['--focus']
 view = args['--view']
-output = args['--output']
-datapath = args['<datapath>']
 
 import numpy
 import numpy.linalg as nla
@@ -53,6 +55,9 @@ if datapath.endswith('.npy'):
     print('loading images from %s...' % datapath)
     images = numpy.load(datapath)
     nimg, ny, nx = images.shape
+    if m > 0 and m < nimg:
+        nimg = m
+        images = images[:m, :, :]
 
 else:
 
@@ -84,7 +89,11 @@ else:
                 continue
             fullname = fulldir + '/' + filename
             nimg += 1
+            if m > 0 and nimg >= m:
+                break
         ndir += 1
+        if m > 0 and nimg >= m:
+            break
     
     images = numpy.zeros((nimg, ny, nx), dtype = numpy.float32)
     print('collecting %d images from %d folders...' % (nimg, ndir))
@@ -99,6 +108,10 @@ else:
             fullname = fulldir + '/' + filename
             images[nimg,:,:] = ndimage.imread(fullname, mode = 'L')
             nimg += 1
+            if m > 0 and nimg >= m:
+                break
+        if m > 0 and nimg >= m:
+            break
 
 if normalize or shift or focus:
     print('preprocessing images...')
