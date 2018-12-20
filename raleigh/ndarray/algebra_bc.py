@@ -113,9 +113,12 @@ class NDArrayMatrix:
     def __init__(self, data):
         self.__data = data
         self.__shape = data.shape
+        self.__dtype = data.dtype.type
     def data(self):
         return self.__data
     def shape(self):
         return self.__shape
+    def data_type(self):
+        return self.__dtype
     def is_complex(self):
         return (self.__data.dtype.kind == 'c')

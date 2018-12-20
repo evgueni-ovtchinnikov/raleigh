@@ -29,13 +29,32 @@ class PSVDErrorCalculator:
         m, n = a.shape
         self.m = m
         self.n = n
+        self.dt = a.dtype.type
         self.ncon = 0
         self.norms = nla.norm(a, axis = 1)
-        self.err = self.norms
-    def set_up(self, op, solver, eigenvectors):
+        self.err = nla.norm(a, axis = 1) #self.norms
+    def set_up(self, op, solver, eigenvectors, shift = False):
         self.op = op
         self.solver = solver
         self.eigenvectors = eigenvectors
+        #print(self.norms[:10])
+        if shift:
+            self.ones = eigenvectors.new_vectors(1, self.n)
+            ones = numpy.ones((1, self.n), dtype = eigenvectors.data_type())
+            self.ones.fill(ones)
+            self.aves = eigenvectors.new_vectors(1, self.m)
+            self.op.apply(self.ones, self.aves)
+            aves = numpy.zeros((self.m,), dtype = eigenvectors.data_type())
+            aves[:] = self.aves.data()
+            #print(self.norms.shape)
+            #print(aves.shape)
+            s = self.norms*self.norms - aves*aves/self.n
+            #print(s.shape)
+            self.norms = numpy.sqrt(abs(s))
+            #print(self.norms.shape)
+            print(self.norms[:10])
+            self.aves.scale(self.n*ones[0,:1])
+            self.err = self.norms.copy()
     def update_errors(self):
         # TODO: update error
         ncon = self.eigenvectors.nvec()
@@ -55,6 +74,9 @@ class PSVDErrorCalculator:
             else:
                 y = x.new_vectors(new, m)
                 self.op.apply(x, y)
+                if self.shift:
+                    s = x.dot(self.ones)
+                    y.add(self.aves, -1, s)
                 q = y.dots(y, transp = True)
             s = self.err*self.err - q
             s[s < 0] = 0
@@ -69,7 +91,7 @@ def conj(a):
     else:
         return a
 
-def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu'):
+def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu', shift = False):
 
     if arch[:3] == 'gpu':
         try:
@@ -88,17 +110,34 @@ def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu'):
 #        from raleigh.ndarray.numpy_algebra import Vectors, Matrix
         op = Matrix(a)
 
+    m, n = a.shape
+    dt = a.dtype.type
+    e = numpy.ones((n, 1), dtype = dt)
+    s = numpy.dot(a, e)/n
+    b = a - numpy.dot(s, e.T)
+    ops = Matrix(b)
+
     class OperatorSVD:
-        def __init__(self, op, gpu, transp = False):
+        def __init__(self, op, gpu, transp = False, shift = False):
             self.op = op
+            self.ops = ops
             self.gpu = gpu
             self.transp = transp
+            self.shift = shift
             self.time = 0
             m, n = self.op.shape()
             if transp:
                 self.w = Vectors(n)
             else:
                 self.w = Vectors(m)
+            if shift:
+                dt = op.data_type()
+                ones = numpy.ones((1, n), dtype = dt)
+                self.ones = Vectors(n, 1, data_type = dt)
+                self.ones.fill(ones)
+                self.aves = Vectors(m, 1, data_type = dt)
+                self.op.apply(self.ones, self.aves)
+                self.aves.scale(n*ones[0,:1])
         def apply(self, x, y):
             m, n = self.op.shape()
             k = x.nvec()
@@ -108,15 +147,31 @@ def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu'):
                     self.w = Vectors(n, k, x.data_type())
                 z = self.w
                 z.select(k)
-                self.op.apply(x, z, transp = True)
-                self.op.apply(z, y)
+#                self.op.apply(x, z, transp = True)
+#                self.op.apply(z, y)
+                if self.shift:
+                    self.op.apply(x, z, transp = True)
+                    self.op.apply(z, y)
+                    s = x.dot(self.aves)*n
+                    y.add(self.aves, -1, s)
+#                    self.ops.apply(x, z, transp = True)
+#                    self.ops.apply(z, y)
+                else:
+                    self.op.apply(x, z, transp = True)
+                    self.op.apply(z, y)
             else:
                 if self.w.nvec() < k:
                     self.w = Vectors(m, k, x.data_type())
                 z = self.w
                 z.select(k)
                 self.op.apply(x, z)
+                if self.shift:
+                    s = x.dot(self.ones)
+                    z.add(self.aves, -1, s)
                 self.op.apply(z, y, transp = True)
+                if self.shift:
+                    s = z.dot(self.aves)
+                    y.add(self.ones, -1, s)
             if self.gpu:
                 cuda.synchronize()
             stop = time.time()
@@ -140,13 +195,13 @@ def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu'):
             op.apply(isv, tmp)
             isv = tmp
 
-    opSVD = OperatorSVD(op, gpu, transp)
+    opSVD = OperatorSVD(op, gpu, transp, shift)
     v = Vectors(n, data_type = dt)
     problem = Problem(v, lambda x, y: opSVD.apply(x, y))
     solver = Solver(problem)
 
     try:
-        opt.stopping_criteria.err_calc.set_up(op, solver, v)
+        opt.stopping_criteria.err_calc.set_up(op, solver, v, shift)
         if opt.verbosity > 0:
             print('partial SVD error calculation set up')
     except:
@@ -162,6 +217,18 @@ def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu'):
     u = Vectors(m, nv, v.data_type())
     if nv > 0:
         op.apply(v, u, transp)
+        if shift:
+            m, n = a.shape
+            dt = op.data_type()
+            ones = numpy.ones((1, n), dtype = dt)
+            e = Vectors(n, 1, data_type = dt)
+            e.fill(ones)
+            w = Vectors(m, 1, data_type = dt)
+            op.apply(e, w)
+            w.scale(n*ones[0,:1])
+            s = v.dot(w)
+            u.add(e, -1, s)
+
         vv = v.dot(v)
         uu = -u.dot(u)
         lmd, x = scipy.linalg.eigh(uu, vv, turbo = False)
