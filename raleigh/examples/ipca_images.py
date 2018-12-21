@@ -85,7 +85,7 @@ class MyStoppingCriteria:
         self.err = self.err_calc.update_errors()
         err_abs = numpy.amax(self.err)
         err_rel = numpy.amax(self.err/self.norms)
-        err_ave = (numpy.sum(self.err)/len(self.err))
+        err_ave = (numpy.sum(self.err/self.norms)/len(self.err))
         print('partial svd error: abs %.3e, rel %.3e, average %.3e' % \
             (err_abs, err_rel, err_ave))
         self.ncon = solver.rcon
@@ -153,24 +153,24 @@ elapsed_time = opt.stopping_criteria.elapsed_time + \
 print('%d eigenimages computed in %d iterations, elapsed time: %.2e' % \
     (ncon, iterations, elapsed_time))
 
-#if mi > 0:
-#    print('adding %d images...' % mi)
-#    m = ni + mi
-#    images = all_images[:m,:,:]
-#    images = numpy.reshape(images, (m, n))
-#    opt.convergence_criteria.set_error_tolerance \
-#        ('residual eigenvector error', svec_tol)
-#    opt.stopping_criteria = MyStoppingCriteria(images, err_tol)
-#    opt.block_size = ncon
-#    sigma, u, vt = partial_svd \
-#        (images, opt, nsv = ncon + mi, isv = vt.T, arch = arch)
-#
-#    ncon = sigma.shape[0]
-#    iterations = opt.stopping_criteria.iteration
-#    elapsed_time = opt.stopping_criteria.elapsed_time + \
-#        time.time() - opt.stopping_criteria.start_time
-#    print('%d eigenimages computed in %d iterations, elapsed time: %.2e' % \
-#        (ncon, iterations, elapsed_time))
+if mi > 0:
+    print('adding %d images...' % mi)
+    m = ni + mi
+    images = all_images[:m,:,:]
+    images = numpy.reshape(images, (m, n))
+    opt.convergence_criteria.set_error_tolerance \
+        ('residual eigenvector error', svec_tol)
+    opt.stopping_criteria = MyStoppingCriteria(images, err_tol)
+    opt.block_size = ncon
+    sigma, u, vt = partial_svd \
+        (images, opt, nsv = ncon + mi, isv = vt.T, arch = arch)
+
+    ncon = sigma.shape[0]
+    iterations = opt.stopping_criteria.iteration
+    elapsed_time = opt.stopping_criteria.elapsed_time + \
+        time.time() - opt.stopping_criteria.start_time
+    print('%d eigenimages computed in %d iterations, elapsed time: %.2e' % \
+        (ncon, iterations, elapsed_time))
 #
 ##v = numpy.reshape(u.T, (ncon, m))
 ##u = numpy.reshape(vt, (ncon, ny, nx))    
@@ -183,10 +183,10 @@ nrm = nla.norm(images, axis = 1)
 images -= numpy.dot(coord.T, vt)
 err = nla.norm(images, axis = 1)/nrm
 print('svd error %e' % numpy.amax(err))
-#eigim = numpy.reshape(vt, (ncon, ny, nx))    
-#numpy.save('eigim.npy', eigim)
-#numpy.save('coord.npy', coord)
-#numpy.save('sigma.npy', sigma[:ncon])
+eigim = numpy.reshape(vt, (ncon, ny, nx))    
+numpy.save('eigim.npy', eigim)
+numpy.save('coord.npy', coord)
+numpy.save('sigma.npy', sigma[:ncon])
 ##numpy.save('u.npy', u)
 ##numpy.save('v.npy', v)
 #print('done')

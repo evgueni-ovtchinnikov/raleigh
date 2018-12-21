@@ -32,12 +32,11 @@ class PSVDErrorCalculator:
         self.dt = a.dtype.type
         self.ncon = 0
         self.norms = nla.norm(a, axis = 1)
-        self.err = nla.norm(a, axis = 1) #self.norms
+#        self.err = self.norms.copy()
     def set_up(self, op, solver, eigenvectors, shift = False):
         self.op = op
         self.solver = solver
         self.eigenvectors = eigenvectors
-        #print(self.norms[:10])
         if shift:
             self.ones = eigenvectors.new_vectors(1, self.n)
             ones = numpy.ones((1, self.n), dtype = eigenvectors.data_type())
@@ -46,21 +45,14 @@ class PSVDErrorCalculator:
             self.op.apply(self.ones, self.aves)
             aves = numpy.zeros((self.m,), dtype = eigenvectors.data_type())
             aves[:] = self.aves.data()
-            #print(self.norms.shape)
-            #print(aves.shape)
             s = self.norms*self.norms - aves*aves/self.n
-            #print(s.shape)
             self.norms = numpy.sqrt(abs(s))
-            #print(self.norms.shape)
-            print(self.norms[:10])
             self.aves.scale(self.n*ones[0,:1])
-            self.err = self.norms.copy()
+        self.err = self.norms.copy()
     def update_errors(self):
-        # TODO: update error
         ncon = self.eigenvectors.nvec()
         new = ncon - self.ncon
         if new > 0:
-#            print('%d singular pairs converged' % new)
             x = self.eigenvectors
             sel = x.selected()
             x.select(new, self.ncon)
@@ -147,18 +139,11 @@ def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu', shift = False):
                     self.w = Vectors(n, k, x.data_type())
                 z = self.w
                 z.select(k)
-#                self.op.apply(x, z, transp = True)
-#                self.op.apply(z, y)
+                self.op.apply(x, z, transp = True)
+                self.op.apply(z, y)
                 if self.shift:
-                    self.op.apply(x, z, transp = True)
-                    self.op.apply(z, y)
                     s = x.dot(self.aves)*n
                     y.add(self.aves, -1, s)
-#                    self.ops.apply(x, z, transp = True)
-#                    self.ops.apply(z, y)
-                else:
-                    self.op.apply(x, z, transp = True)
-                    self.op.apply(z, y)
             else:
                 if self.w.nvec() < k:
                     self.w = Vectors(m, k, x.data_type())
@@ -226,8 +211,12 @@ def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu', shift = False):
             w = Vectors(m, 1, data_type = dt)
             op.apply(e, w)
             w.scale(n*ones[0,:1])
-            s = v.dot(w)
-            u.add(e, -1, s)
+            if transp:
+                s = v.dot(w)
+                u.add(e, -1, s)
+            else:
+                s = v.dot(e)
+                u.add(w, -1, s)
 
         vv = v.dot(v)
         uu = -u.dot(u)

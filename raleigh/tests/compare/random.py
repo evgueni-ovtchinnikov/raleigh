@@ -21,6 +21,7 @@ Options:
   -f, --full    compute full SVD too (using scipy.linalg.svd)
   -o, --linop   for svds use LinearOperator instead of ndarray
   -p, --ptb     add random perturbation to make the matrix full rank
+  -z, --shift   shift to zero average
 
 @author: Evgueni Ovtchinnikov, UKRI
 """
@@ -43,8 +44,10 @@ dble = args['--double']
 full = args['--full']
 use_op = args['--linop']
 ptb = args['--ptb']
+shift = args['--shift']
 
 import numpy
+import numpy.linalg as nla
 import scipy.linalg as sla
 import sys
 import time
@@ -122,24 +125,36 @@ else:
 
 start = time.time()
 if th > 0:
-    sigma, u, vt = partial_svd(A, opt, arch = arch)
+    sigma_r, u, vt = partial_svd(A, opt, arch = arch, shift = shift)
 else:
-    sigma, u, vt = partial_svd(A, opt, nsv = block_size, arch = arch)
+    sigma_r, u, vt = partial_svd(A, opt, nsv = block_size, arch = arch, \
+                                 shift = shift)
 stop = time.time()
 time_r = stop - start
 iter_r = opt.stopping_criteria.iteration
 print('raleigh time: %.1e' % time_r)
 
-n_r = sigma.shape[0]
-print('\n%d singular vectors computed' % sigma.shape[0])
+n_r = sigma_r.shape[0]
+print('\n%d singular vectors computed' % n_r)
 if not ptb and n_r > 0:
-    n_r = min(sigma.shape[0], sigma0.shape[0])
+    n_r = min(n_r, sigma0.shape[0])
     err_vec = vec_err(v0[:,:n_r], vt.transpose()[:,:n_r])
-    err_val = abs(sigma[:n_r] - sigma0[:n_r])
+    err_val = abs(sigma_r[:n_r] - sigma0[:n_r])
     print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
     print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
 else:
-    print(sigma)
+    #print(sigma)
+    print(sigma_r[0], sigma_r[-1])
+
+if shift:
+    dt = A.dtype.type
+    e = numpy.ones((n, 1), dtype = dt)
+    s = numpy.dot(A, e)/n
+    A -= numpy.dot(s, e.T)
+
+D = A - numpy.dot(sigma_r*u, vt)
+err = nla.norm(D, axis = 1)/nla.norm(A, axis = 1)
+print('svd error %e' % numpy.amax(err))
 
 if full:
     print('\n--- solving with scipy.linalg.svd...')
@@ -148,7 +163,7 @@ if full:
     stop = time.time()
     time_f = stop - start
     err_vec = vec_err(vt0.transpose()[:,:n_r], vt.transpose()[:,:n_r])
-    err_val = abs(sigma[:n_r] - sigma0[:n_r])
+    err_val = abs(sigma_r[:n_r] - sigma0[:n_r])
     print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
     print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
     print('\n full SVD time: %.1e' % time_f)
@@ -158,7 +173,7 @@ if th > 0:
 else:
     print('\n--- solving with scipy.sparse.linalg.svds...')
 
-sigma = numpy.ndarray((0,), dtype = dtype)
+sigma_s = numpy.ndarray((0,), dtype = dtype)
 vt = numpy.ndarray((0, n), dtype = dtype)
 
 if use_op:
@@ -174,7 +189,7 @@ while True:
         u, s, vti = svds(opA, k = block_size, tol = tol)
     else:
         u, s, vti = svds(A, k = block_size, tol = tol)
-    sigma = numpy.concatenate((sigma, s[::-1]))
+    sigma_s = numpy.concatenate((sigma_s, s[::-1]))
     vt = numpy.concatenate((vt, vti[::-1, :]))
     print('last singular value computed: %e' % s[0])
     if th == 0:
@@ -188,15 +203,19 @@ while True:
 stop = time.time()
 time_s = stop - start
 
-print('\n%d singular vectors computed' % sigma.shape[0])
-n_s = min(sigma.shape[0], sigma0.shape[0])
+print('\n%d singular vectors computed' % sigma_s.shape[0])
+n_s = min(sigma_s.shape[0], sigma0.shape[0])
 if not ptb and n_s > 0:
     err_vec = vec_err(v0[:,:n_s], vt.transpose()[:,:n_s])
-    err_val = abs(sigma[:n_s] - sigma0[:n_s])
+    err_val = abs(sigma_s[:n_s] - sigma0[:n_s])
     print('\nmax singular vector error (svds): %.1e' % numpy.amax(err_vec))
     print('\nmax singular value error (svds): %.1e' % numpy.amax(err_val))
 else:
-    print(sigma)
+    l = min(n_s, n_r)
+    diff = sigma_r[:l] - sigma_s[:l]
+    print('sigma diff %e' % numpy.amax(diff))
+    #print(sigma[:l])
+    print(sigma_s[0], sigma_s[l - 1])
 
 print('\n time: raleigh %.1e, svds %.1e' % (time_r, time_s))
 if full:
