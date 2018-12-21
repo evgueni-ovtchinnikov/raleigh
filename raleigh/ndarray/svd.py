@@ -83,7 +83,8 @@ def conj(a):
     else:
         return a
 
-def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu', shift = False):
+def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
+                arch = 'cpu'):
 
     if arch[:3] == 'gpu':
         try:
@@ -102,17 +103,9 @@ def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu', shift = False):
 #        from raleigh.ndarray.numpy_algebra import Vectors, Matrix
         op = Matrix(a)
 
-    m, n = a.shape
-    dt = a.dtype.type
-    e = numpy.ones((n, 1), dtype = dt)
-    s = numpy.dot(a, e)/n
-    b = a - numpy.dot(s, e.T)
-    ops = Matrix(b)
-
     class OperatorSVD:
         def __init__(self, op, gpu, transp = False, shift = False):
             self.op = op
-            self.ops = ops
             self.gpu = gpu
             self.transp = transp
             self.shift = shift
@@ -165,20 +158,22 @@ def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu', shift = False):
     m, n = a.shape
     dt = a.dtype.type
 
-    if isv is not None:
-        k, l = isv.shape
-        if k != n:
-            msg = 'initial singular vectors must have dimension %d, not %d'
-            raise ValueError(msg % (n, k))
-        isv = Vectors(isv.T)
+    for i in range(2):
+        if isv[i] is not None:
+            k, l = isv[i].shape
+            if k != n:
+                msg = 'initial singular vectors must have dimension %d, not %d'
+                raise ValueError(msg % (n, k))
+            isv[i] = Vectors(isv[i].T)
 
     transp = m < n
     if transp:
         n, m = m, n
-        if isv is not None:
-            tmp = Vectors(n, l, data_type = dt)
-            op.apply(isv, tmp)
-            isv = tmp
+        for i in range(2):
+            if isv[i] is not None:
+                tmp = Vectors(n, l, data_type = dt)
+                op.apply(isv[i], tmp)
+                isv[i] = tmp
 
     opSVD = OperatorSVD(op, gpu, transp, shift)
     v = Vectors(n, data_type = dt)
@@ -194,7 +189,8 @@ def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu', shift = False):
             print('partial SVD error calculation not requested')
         pass
 
-    solver.solve(v, opt, which = (0, nsv), init = (None, isv))
+    #solver.solve(v, opt, which = (0, nsv), init = (None, isv))
+    solver.solve(v, opt, which = nsv, init = isv)
     if opt.verbosity > 0:
         print('operator application time: %.2e' % opSVD.time)
 
@@ -235,3 +231,6 @@ def partial_svd(a, opt, nsv = -1, isv = None, arch = 'cpu', shift = False):
         return sigma, v.data().T, conj(u.data())
     else:
         return sigma, u.data().T, conj(v.data())
+
+def truncated_svd(a, opt, nsv = -1, isv = None, shift = False, arch = 'cpu'):
+    return partial_svd(a, opt, (0, nsv), (None, isv), shift, arch)

@@ -48,7 +48,7 @@ if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 from raleigh.solver import Options
-from raleigh.ndarray.svd import partial_svd, PSVDErrorCalculator
+from raleigh.ndarray.svd import truncated_svd, PSVDErrorCalculator
 
 class MyStoppingCriteria:
     def __init__(self, a, err_tol = 0):
@@ -86,7 +86,7 @@ class MyStoppingCriteria:
         err_abs = numpy.amax(self.err)
         err_rel = numpy.amax(self.err/self.norms)
         err_ave = (numpy.sum(self.err/self.norms)/len(self.err))
-        print('partial svd error: abs %.3e, rel %.3e, average %.3e' % \
+        print('truncated svd error: abs %.3e, rel %.3e, average %.3e' % \
             (err_abs, err_rel, err_ave))
         self.ncon = solver.rcon
         if self.err_tol > 0:
@@ -144,7 +144,7 @@ opt.convergence_criteria.set_error_tolerance \
     ('kinematic eigenvector error', svec_tol)
 opt.stopping_criteria = MyStoppingCriteria(images, err_tol)
 
-sigma, u, vt = partial_svd(images, opt, arch = arch, shift = True)
+sigma, u, vt = truncated_svd(images, opt, arch = arch, shift = True)
 
 ncon = sigma.shape[0]
 iterations = opt.stopping_criteria.iteration
@@ -162,7 +162,7 @@ if mi > 0:
         ('residual eigenvector error', svec_tol)
     opt.stopping_criteria = MyStoppingCriteria(images, err_tol)
     opt.block_size = ncon
-    sigma, u, vt = partial_svd \
+    sigma, u, vt = truncated_svd \
         (images, opt, nsv = ncon + mi, isv = vt.T, arch = arch)
 
     ncon = sigma.shape[0]
