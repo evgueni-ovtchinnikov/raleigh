@@ -48,54 +48,7 @@ if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 from raleigh.solver import Options
-from raleigh.ndarray.svd import truncated_svd, PSVDErrorCalculator
-
-class MyStoppingCriteria:
-    def __init__(self, a, err_tol = 0):
-        self.ncon = 0
-        self.sigma = 1
-        self.iteration = 0
-        self.start_time = time.time()
-        self.elapsed_time = 0
-        self.err_calc = PSVDErrorCalculator(a)
-        self.norms = self.err_calc.norms
-        self.err = self.norms
-        print('max data norm: %e' % numpy.amax(self.err))
-        self.err_tol = err_tol
-    def satisfied(self, solver):
-        self.norms = self.err_calc.norms
-#        iterations = solver.iteration - self.iteration
-        if solver.rcon <= self.ncon:
-            return False
-        now = time.time()
-        elapsed_time = now - self.start_time
-        self.elapsed_time += elapsed_time
-        print('iterations: %d, eigenimages computed: %d, elapsed time %.2e' % \
-            (solver.iteration, solver.rcon, self.elapsed_time))
-#        print('elapsed time: +%.1e = %.2e, iterations: +%d = %d' % \
-#            (elapsed_time, self.elapsed_time, iterations, solver.iteration))
-        if self.err_tol <= 0:
-            lmd = solver.eigenvalues[self.ncon : solver.rcon]
-            sigma = -numpy.sort(-numpy.sqrt(lmd))
-            if self.ncon == 0:
-                self.sigma = sigma[0]
-            for i in range(solver.rcon - self.ncon):
-                print('sigma[%4d] = %14f = %10f*sigma[0]' % \
-                (self.ncon + i, sigma[i], sigma[i]/self.sigma))
-        self.err = self.err_calc.update_errors()
-        err_abs = numpy.amax(self.err)
-        err_rel = numpy.amax(self.err/self.norms)
-        err_ave = (numpy.sum(self.err/self.norms)/len(self.err))
-        print('truncated svd error: abs %.3e, rel %.3e, average %.3e' % \
-            (err_abs, err_rel, err_ave))
-        self.ncon = solver.rcon
-        if self.err_tol > 0:
-            done = err_rel <= self.err_tol
-        else:
-            done = (input('more? ') == 'n')
-        self.iteration = solver.iteration
-        self.start_time = time.time()
-        return done
+from raleigh.ndarray.svd import truncated_svd #, PSVDErrorCalculator
 
 numpy.random.seed(1) # make results reproducible
 
@@ -142,9 +95,8 @@ opt.max_iter = 500
 opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
     ('kinematic eigenvector error', svec_tol)
-opt.stopping_criteria = MyStoppingCriteria(images, err_tol)
 
-sigma, u, vt = truncated_svd(images, opt, arch = arch, shift = True)
+sigma, u, vt = truncated_svd(images, opt, tol = err_tol, arch = arch, shift = True)
 
 ncon = sigma.shape[0]
 iterations = opt.stopping_criteria.iteration
@@ -158,19 +110,22 @@ if mi > 0:
     m = ni + mi
     images = all_images[:m,:,:]
     images = numpy.reshape(images, (m, n))
+    opt = Options()
+    opt.max_iter = 500
+    opt.verbosity = -1
     opt.convergence_criteria.set_error_tolerance \
         ('residual eigenvector error', svec_tol)
-    opt.stopping_criteria = MyStoppingCriteria(images, err_tol)
     opt.block_size = ncon
     sigma, u, vt = truncated_svd \
-        (images, opt, nsv = ncon + mi, isv = vt.T, arch = arch)
+        (images, opt, nsv = ncon + mi, isv = vt.T, shift = True, arch = arch)
 
     ncon = sigma.shape[0]
-    iterations = opt.stopping_criteria.iteration
-    elapsed_time = opt.stopping_criteria.elapsed_time + \
-        time.time() - opt.stopping_criteria.start_time
-    print('%d eigenimages computed in %d iterations, elapsed time: %.2e' % \
-        (ncon, iterations, elapsed_time))
+    print('%d eigenimages computed' % ncon)
+#    iterations = opt.stopping_criteria.iteration
+#    elapsed_time = opt.stopping_criteria.elapsed_time + \
+#        time.time() - opt.stopping_criteria.start_time
+#    print('%d eigenimages computed in %d iterations, elapsed time: %.2e' % \
+#        (ncon, iterations, elapsed_time))
 #
 ##v = numpy.reshape(u.T, (ncon, m))
 ##u = numpy.reshape(vt, (ncon, ny, nx))    

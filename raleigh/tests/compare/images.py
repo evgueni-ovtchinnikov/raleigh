@@ -48,28 +48,28 @@ if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 from raleigh.solver import Options
-from raleigh.ndarray.svd import truncated_svd, PSVDErrorCalculator
+from raleigh.ndarray.svd import truncated_svd #, PSVDErrorCalculator
 
-class MyStoppingCriteria:
-    def __init__(self, a, err_tol = 0):
-        self.ncon = 0
-        self.err_calc = PSVDErrorCalculator(a)
-        self.norms = self.err_calc.norms
-        self.err = self.norms
-        print('max data norm: %e' % numpy.amax(self.err))
-        self.err_tol = err_tol
-    def satisfied(self, solver):
-        if solver.rcon <= self.ncon:
-            return False
-        self.err = self.err_calc.update_errors()
-        err_abs = numpy.amax(self.err)
-        err_rel = numpy.amax(self.err/self.norms)
-        err_ave = (numpy.sum(self.err)/len(self.err))
-        print('truncated svd error: abs %.3e, rel %.3e, average %.3e' % \
-            (err_abs, err_rel, err_ave))
-        self.ncon = solver.rcon
-        done = err_rel <= self.err_tol
-        return done
+#class MyStoppingCriteria:
+#    def __init__(self, a, err_tol = 0):
+#        self.ncon = 0
+#        self.err_calc = PSVDErrorCalculator(a)
+#        self.norms = self.err_calc.norms
+#        self.err = self.norms
+#        print('max data norm: %e' % numpy.amax(self.err))
+#        self.err_tol = err_tol
+#    def satisfied(self, solver):
+#        if solver.rcon <= self.ncon:
+#            return False
+#        self.err = self.err_calc.update_errors()
+#        err_abs = numpy.amax(self.err)
+#        err_rel = numpy.amax(self.err/self.norms)
+#        err_ave = (numpy.sum(self.err)/len(self.err))
+#        print('truncated svd error: abs %.3e, rel %.3e, average %.3e' % \
+#            (err_abs, err_rel, err_ave))
+#        self.ncon = solver.rcon
+#        done = err_rel <= self.err_tol
+#        return done
 
 numpy.random.seed(1) # make results reproducible
 
@@ -103,20 +103,16 @@ if block_size < 1:
     print('using block size %d' % block_size)
 
 print('\n--- solving with raleigh.ndarray.truncated_svd...')
-
 opt = Options()
 opt.block_size = block_size
 opt.max_iter = 300
 opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
     ('relative residual tolerance', tol)
-#    ('kinematic eigenvector error', svec_tol)
-opt.stopping_criteria = MyStoppingCriteria(images, err_tol)
-
-start = time.time()
-sigma, u, vt = truncated_svd(images, opt, arch = arch)
+sigma, u, vt = truncated_svd(images, opt, tol = err_tol, arch = arch)
 stop = time.time()
-time_r = stop - start
+time_r = opt.stopping_criteria.elapsed_time + \
+    time.time() - opt.stopping_criteria.start_time
 ncon = sigma.shape[0]
 print('\n%d singular vectors computed' % ncon)
 
@@ -142,7 +138,6 @@ norms = numpy.amax(nla.norm(images, axis = 1))
 start = time.time()
 
 while True:
-#    u, s, vti = svds(images, k = block_size, tol = svec_tol)
     u, s, vti = svds(images, k = block_size, tol = tol)
     sigma = numpy.concatenate((sigma, s[::-1]))
     vt = numpy.concatenate((vt, vti[::-1, :]))
@@ -151,7 +146,7 @@ while True:
     images -= numpy.dot(u*s, vti)
     errs = numpy.amax(nla.norm(images, axis = 1))/norms
     print('max SVD error: %.3e' % errs)
-    if errs <= err_tol:
+    if errs <= err_tol or err_tol <= 0:
         break
     print('restarting...')
 

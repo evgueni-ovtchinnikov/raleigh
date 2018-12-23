@@ -77,6 +77,49 @@ class PSVDErrorCalculator:
             self.ncon = ncon
         return self.err
 
+class DefaultStoppingCriteria:
+    def __init__(self, a, err_tol = 0):
+        self.ncon = 0
+        self.sigma = 1
+        self.iteration = 0
+        self.start_time = time.time()
+        self.elapsed_time = 0
+        self.err_calc = PSVDErrorCalculator(a)
+        self.norms = self.err_calc.norms
+        self.err = self.norms
+        print('max data norm: %e' % numpy.amax(self.err))
+        self.err_tol = err_tol
+    def satisfied(self, solver):
+        self.norms = self.err_calc.norms
+        if solver.rcon <= self.ncon:
+            return False
+        now = time.time()
+        new = solver.rcon - self.ncon
+        elapsed_time = now - self.start_time
+        self.elapsed_time += elapsed_time
+        self.err = self.err_calc.update_errors()
+        err_rel = numpy.amax(self.err/self.norms)
+        lmd = solver.eigenvalues[self.ncon : solver.rcon]
+        sigma = -numpy.sort(-numpy.sqrt(lmd))
+        i = new - 1
+        if self.err_tol <= 0:
+            if self.ncon == 0:
+                self.sigma = sigma[0]
+            msg = '%.2f sec: sigma[%d] = %e = %.2e*sigma[0], err = %.2e' % \
+            (self.elapsed_time, self.ncon + i, sigma[i], sigma[i]/self.sigma, \
+             err_rel)
+        else:
+            print('%.2f sec: sigma[%d] = %e, truncated svd error = %.2e' % \
+                  (self.elapsed_time, self.ncon + i, sigma[i], err_rel))
+        self.ncon = solver.rcon
+        if self.err_tol > 0:
+            done = err_rel <= self.err_tol
+        else:
+            done = (input(msg + ', more? ') == 'n')
+        self.iteration = solver.iteration
+        self.start_time = time.time()
+        return done
+
 def conj(a):
     if a.dtype.kind == 'c':
         return a.conj()
@@ -158,22 +201,30 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
     m, n = a.shape
     dt = a.dtype.type
 
+    isvec = ()
     for i in range(2):
         if isv[i] is not None:
             k, l = isv[i].shape
             if k != n:
                 msg = 'initial singular vectors must have dimension %d, not %d'
                 raise ValueError(msg % (n, k))
-            isv[i] = Vectors(isv[i].T)
+            isvec += (Vectors(isv[i].T),)
+        else:
+            isvec += (None,)
+    isv = isvec
 
     transp = m < n
     if transp:
         n, m = m, n
+        isvec = ()
         for i in range(2):
             if isv[i] is not None:
                 tmp = Vectors(n, l, data_type = dt)
                 op.apply(isv[i], tmp)
-                isv[i] = tmp
+                isvec += (tmp,)
+            else:
+                isvec += (None,)
+        isv = isvec
 
     opSVD = OperatorSVD(op, gpu, transp, shift)
     v = Vectors(n, data_type = dt)
@@ -232,5 +283,8 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
     else:
         return sigma, u.data().T, conj(v.data())
 
-def truncated_svd(a, opt, nsv = -1, isv = None, shift = False, arch = 'cpu'):
+def truncated_svd(a, opt, nsv = -1, tol = 0, isv = None, shift = False, \
+                  arch = 'cpu'):
+    if opt.stopping_criteria is None and nsv < 0:
+        opt.stopping_criteria = DefaultStoppingCriteria(a, tol)
     return partial_svd(a, opt, (0, nsv), (None, isv), shift, arch)

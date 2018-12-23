@@ -99,7 +99,7 @@ class Options:
         self.block_size = -1
         self.threads = -1
         self.convergence_criteria = DefaultConvergenceCriteria()
-        self.stopping_criteria = DefaultStoppingCriteria()
+        self.stopping_criteria = None #DefaultStoppingCriteria()
         self.detect_stagnation = True
         self.max_quota = 0.5
         
@@ -867,14 +867,13 @@ class Solver:
 
             self.lcon += lcon
             self.rcon += rcon
-            if options.stopping_criteria.satisfied(self):
-                return 0
-#                break
+            if options.stopping_criteria is not None:
+                if options.stopping_criteria.satisfied(self):
+                    return 0
             left_converged = left >= 0 and self.lcon >= left
             right_converged = right >= 0 and self.rcon >= right
             if left_converged and right_converged:
                 return 0
-#                break
             lim = options.max_quota * eigenvectors.dimension()
             if eigenvectors.nvec() > lim:
                 return 1
