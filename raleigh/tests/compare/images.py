@@ -48,7 +48,7 @@ if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 from raleigh.solver import Options
-from raleigh.ndarray.svd import truncated_svd
+from raleigh.svd import truncated_svd
 
 numpy.random.seed(1) # make results reproducible
 
@@ -81,7 +81,7 @@ if block_size < 1:
         block_size += 32
     print('using block size %d' % block_size)
 
-print('\n--- solving with raleigh.ndarray.truncated_svd...')
+print('\n--- solving with raleigh.svd.truncated_svd...')
 opt = Options()
 opt.block_size = block_size
 opt.max_iter = 300

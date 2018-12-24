@@ -60,7 +60,7 @@ if raleigh_path not in sys.path:
 
 from random_matrix_for_svd import random_matrix_for_svd
 from raleigh.solver import Options
-from raleigh.ndarray.svd import truncated_svd
+from raleigh.svd import truncated_svd
 
 class MyStoppingCriteria:
     def __init__(self, a):
@@ -108,7 +108,7 @@ if block_size < 1:
         block_size += 32
     print('using block size %d' % block_size)
 
-print('\n--- solving with raleigh.ndarray.truncated_svd...')
+print('\n--- solving with raleigh.svd.truncated_svd...')
 
 # set raleigh solver options
 opt = Options()
