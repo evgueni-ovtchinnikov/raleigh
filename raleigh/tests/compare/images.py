@@ -48,28 +48,7 @@ if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 from raleigh.solver import Options
-from raleigh.ndarray.svd import truncated_svd #, PSVDErrorCalculator
-
-#class MyStoppingCriteria:
-#    def __init__(self, a, err_tol = 0):
-#        self.ncon = 0
-#        self.err_calc = PSVDErrorCalculator(a)
-#        self.norms = self.err_calc.norms
-#        self.err = self.norms
-#        print('max data norm: %e' % numpy.amax(self.err))
-#        self.err_tol = err_tol
-#    def satisfied(self, solver):
-#        if solver.rcon <= self.ncon:
-#            return False
-#        self.err = self.err_calc.update_errors()
-#        err_abs = numpy.amax(self.err)
-#        err_rel = numpy.amax(self.err/self.norms)
-#        err_ave = (numpy.sum(self.err)/len(self.err))
-#        print('truncated svd error: abs %.3e, rel %.3e, average %.3e' % \
-#            (err_abs, err_rel, err_ave))
-#        self.ncon = solver.rcon
-#        done = err_rel <= self.err_tol
-#        return done
+from raleigh.ndarray.svd import truncated_svd
 
 numpy.random.seed(1) # make results reproducible
 
@@ -109,10 +88,10 @@ opt.max_iter = 300
 opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
     ('relative residual tolerance', tol)
+start = time.time()
 sigma, u, vt = truncated_svd(images, opt, tol = err_tol, arch = arch)
 stop = time.time()
-time_r = opt.stopping_criteria.elapsed_time + \
-    time.time() - opt.stopping_criteria.start_time
+time_r = stop - start
 ncon = sigma.shape[0]
 print('\n%d singular vectors computed' % ncon)
 
@@ -155,6 +134,7 @@ time_s = stop - start
 
 print('\n%d singular vectors computed' % sigma.shape[0])
 
-print('\n time: raleigh %.1e, svds %.1e' % (time_r, time_s))
+if err_tol > 0: # these timings make sense for non-interactive mode only
+    print('\n time: raleigh %.1e, svds %.1e' % (time_r, time_s))
 
 print('\ndone')

@@ -135,7 +135,7 @@ iter_r = opt.stopping_criteria.iteration
 print('raleigh time: %.1e' % time_r)
 
 n_r = sigma_r.shape[0]
-print('\n%d singular vectors computed' % n_r)
+print('\n%d singular vectors computed in %d iterations' % (n_r, iter_r))
 if not ptb and n_r > 0:
     n_r = min(n_r, sigma0.shape[0])
     err_vec = vec_err(v0[:,:n_r], vt.transpose()[:,:n_r])

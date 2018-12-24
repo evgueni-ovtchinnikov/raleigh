@@ -7,6 +7,7 @@ Created on Wed Mar 21 14:06:26 2018
 @author: Evgueni Ovtchinnikov, UKRI-STFC
 """
 
+import copy
 import numpy
 import numpy.linalg as nla
 import scipy
@@ -285,6 +286,7 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
 
 def truncated_svd(a, opt, nsv = -1, tol = 0, isv = None, shift = False, \
                   arch = 'cpu'):
-    if opt.stopping_criteria is None and nsv < 0:
+    if opt.stopping_criteria is None:
+        opt = copy.deepcopy(opt)
         opt.stopping_criteria = DefaultStoppingCriteria(a, tol)
     return partial_svd(a, opt, (0, nsv), (None, isv), shift, arch)

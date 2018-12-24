@@ -48,7 +48,7 @@ if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 from raleigh.solver import Options
-from raleigh.ndarray.svd import truncated_svd #, PSVDErrorCalculator
+from raleigh.ndarray.svd import truncated_svd
 
 numpy.random.seed(1) # make results reproducible
 
@@ -77,11 +77,6 @@ print('data range: %e to %e' % (vmin, vmax))
 
 images = numpy.reshape(images, (m, n))
 
-#dt = images.dtype.type
-#e = numpy.ones((n, 1), dtype = dt)
-#s = numpy.dot(images, e)/n
-#images -= numpy.dot(s, e.T)
-
 if block_size < 1:
     b = max(1, min(m, n)//100)
     block_size = 32
@@ -96,39 +91,38 @@ opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
     ('kinematic eigenvector error', svec_tol)
 
+start = time.time()
 sigma, u, vt = truncated_svd(images, opt, tol = err_tol, arch = arch, shift = True)
+stop = time.time()
+elapsed_time = stop - start
 
 ncon = sigma.shape[0]
-iterations = opt.stopping_criteria.iteration
-elapsed_time = opt.stopping_criteria.elapsed_time + \
-    time.time() - opt.stopping_criteria.start_time
-print('%d eigenimages computed in %d iterations, elapsed time: %.2e' % \
-    (ncon, iterations, elapsed_time))
+print('%d eigenimages computed' % ncon)
+if err_tol > 0:
+    print('elapsed time: %.2e' % elapsed_time)
 
 if mi > 0:
     print('adding %d images...' % mi)
     m = ni + mi
     images = all_images[:m,:,:]
     images = numpy.reshape(images, (m, n))
-    opt = Options()
+    #opt = Options()
     opt.max_iter = 500
     opt.verbosity = -1
     opt.convergence_criteria.set_error_tolerance \
         ('residual eigenvector error', svec_tol)
     opt.block_size = ncon
+    start = time.time()
     sigma, u, vt = truncated_svd \
-        (images, opt, nsv = ncon + mi, isv = vt.T, shift = True, arch = arch)
-
+        (images, opt, nsv = ncon + mi, tol = err_tol, isv = vt.T, shift = True, arch = arch)
+#        (images, opt, tol = err_tol, isv = vt.T, shift = True, arch = arch)
+    stop = time.time()
+    elapsed_time = stop - start
     ncon = sigma.shape[0]
     print('%d eigenimages computed' % ncon)
-#    iterations = opt.stopping_criteria.iteration
-#    elapsed_time = opt.stopping_criteria.elapsed_time + \
-#        time.time() - opt.stopping_criteria.start_time
-#    print('%d eigenimages computed in %d iterations, elapsed time: %.2e' % \
-#        (ncon, iterations, elapsed_time))
-#
-##v = numpy.reshape(u.T, (ncon, m))
-##u = numpy.reshape(vt, (ncon, ny, nx))    
+    if err_tol > 0:
+        print('elapsed time %.2e sec' % elapsed_time)
+
 dt = images.dtype.type
 e = numpy.ones((n, 1), dtype = dt)
 s = numpy.dot(images, e)/n
@@ -142,6 +136,4 @@ eigim = numpy.reshape(vt, (ncon, ny, nx))
 numpy.save('eigim.npy', eigim)
 numpy.save('coord.npy', coord)
 numpy.save('sigma.npy', sigma[:ncon])
-##numpy.save('u.npy', u)
-##numpy.save('v.npy', v)
-#print('done')
+print('done')
