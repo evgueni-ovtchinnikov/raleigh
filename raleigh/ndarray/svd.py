@@ -290,3 +290,6 @@ def truncated_svd(a, opt, nsv = -1, tol = 0, isv = None, shift = False, \
         opt = copy.deepcopy(opt)
         opt.stopping_criteria = DefaultStoppingCriteria(a, tol)
     return partial_svd(a, opt, (0, nsv), (None, isv), shift, arch)
+
+def pca(a, opt, npc = -1, tol = 0, ipc = None, arch = 'cpu'):
+    return truncated_svd(a, opt, npc, tol, ipc, True, arch)

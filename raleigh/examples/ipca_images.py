@@ -11,12 +11,11 @@ Arguments:
   data  .npy file containing images as ndarray of dimensions (ni, ny, nx)
 
 Options:
-  -n <nim> , --nimgs=<nim>   number of images to use (negative: all) 
-                             [default: -1]
+  -n <nim> , --nimgs=<nim>   number of images to use (< 0: all) [default: -1]
   -m <mim> , --mimgs=<mim>   number of images to add for update [default: 0]
-  -e <err> , --imerr=<err>   image approximation error tolerance (non-positive:
-                             not used) [default: 0]
-  -b <blk> , --bsize=<blk>   CG block size [default: -1]
+  -e <err> , --imerr=<err>   image approximation error tolerance (<= 0: not set,
+                             run in interactive mode) [default: 0]
+  -b <blk> , --bsize=<blk>   CG block size (< 0: auto) [default: -1]
   -t <tol> , --svtol=<tol>   singular vector error tolerance [default: 1e-2]
   -a <arch>, --arch=<arch>   architecture [default: cpu]
 
@@ -48,7 +47,7 @@ if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 from raleigh.solver import Options
-from raleigh.ndarray.svd import truncated_svd
+from raleigh.ndarray.svd import pca
 
 numpy.random.seed(1) # make results reproducible
 
@@ -92,7 +91,8 @@ opt.convergence_criteria.set_error_tolerance \
     ('kinematic eigenvector error', svec_tol)
 
 start = time.time()
-sigma, u, vt = truncated_svd(images, opt, tol = err_tol, arch = arch, shift = True)
+sigma, u, vt = pca(images, opt, tol = err_tol, arch = arch)
+#sigma, u, vt = truncated_svd(images, opt, tol = err_tol, arch = arch, shift = True)
 stop = time.time()
 elapsed_time = stop - start
 
@@ -113,9 +113,11 @@ if mi > 0:
         ('residual eigenvector error', svec_tol)
     opt.block_size = ncon
     start = time.time()
-    sigma, u, vt = truncated_svd \
-        (images, opt, nsv = ncon + mi, tol = err_tol, isv = vt.T, shift = True, arch = arch)
-#        (images, opt, tol = err_tol, isv = vt.T, shift = True, arch = arch)
+    sigma, u, vt = pca \
+        (images, opt, npc = ncon + mi, tol = err_tol, ipc = vt.T, arch = arch)
+#    sigma, u, vt = truncated_svd \
+#        (images, opt, nsv = ncon + mi, tol = err_tol, isv = vt.T, shift = True, arch = arch)
+##        (images, opt, tol = err_tol, isv = vt.T, shift = True, arch = arch)
     stop = time.time()
     elapsed_time = stop - start
     ncon = sigma.shape[0]
