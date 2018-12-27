@@ -5,14 +5,12 @@ Usage:
   lfw_npy [--help | -h | options] <datapath>
 
 Arguments:
-  datapath           lfw images folder or .npy file
+  datapath           lfw images folder
 
 Options:
   -m, --how-many=<m>   number of images to process (<0: all) [default: -1]
   -o, --output=<file>  output file name [default: images.npy]
-  -n, --normalize      l2-normalize the images
-  -s, --shift          shift to zero-average
-  -f, --focus          zero outside face area
+  -d, --double         double the number of images by adding mirror images
   -v, --view           view processed images
 
 Created on Tue Aug 21 14:34:18 2018
@@ -27,9 +25,7 @@ args = docopt(__doc__, version=__version__)
 datapath = args['<datapath>']
 m = int(args['--how-many'])
 output = args['--output']
-normalize = args['--normalize']
-shift = args['--shift']
-focus = args['--focus']
+dble = args['--double']
 view = args['--view']
 
 import numpy
@@ -50,91 +46,79 @@ def trim_mask(nx, ny):
                 mask[y, x] = 1
     return mask
 
-if datapath.endswith('.npy'):
-
-    print('loading images from %s...' % datapath)
-    images = numpy.load(datapath)
-    nimg, ny, nx = images.shape
-    if m > 0 and m < nimg:
-        nimg = m
-        images = images[:m, :, :]
-
-else:
-
-    print('loading images from %s...' % datapath)
-    image_dir = datapath
-    for subdir in os.listdir(image_dir):
-        if subdir.endswith('.txt'):
+print('loading images from %s...' % datapath)
+image_dir = datapath
+for subdir in os.listdir(image_dir):
+    if subdir.endswith('.txt'):
+        continue
+    fulldir = image_dir + '/' + subdir
+    for filename in os.listdir(fulldir):
+        if not filename.endswith('.jpg'):
             continue
-        fulldir = image_dir + '/' + subdir
-        for filename in os.listdir(fulldir):
-            if not filename.endswith('.jpg'):
-                continue
-            fullname = fulldir + '/' + filename
-            image = ndimage.imread(fullname, mode = 'L').astype(numpy.float32)
-            break
+        fullname = fulldir + '/' + filename
+        image = ndimage.imread(fullname, mode = 'L').astype(numpy.float32)
         break
-    
-    ny, nx = image.shape
-    
-    print('counting images...')
-    ndir = 0
-    nimg = 0
-    for subdir in os.listdir(image_dir):
-        if subdir.endswith('.txt'):
+    break
+
+ny, nx = image.shape
+
+print('counting images...')
+ndir = 0
+nimg = 0
+for subdir in os.listdir(image_dir):
+    if subdir.endswith('.txt'):
+        continue
+    fulldir = image_dir + '/' + subdir
+    for filename in os.listdir(fulldir):
+        if not filename.endswith('.jpg'):
             continue
-        fulldir = image_dir + '/' + subdir
-        for filename in os.listdir(fulldir):
-            if not filename.endswith('.jpg'):
-                continue
-            fullname = fulldir + '/' + filename
-            nimg += 1
-            if m > 0 and nimg >= m:
-                break
-        ndir += 1
+        fullname = fulldir + '/' + filename
+        nimg += 1
         if m > 0 and nimg >= m:
             break
-    
+    ndir += 1
+    if m > 0 and nimg >= m:
+        break
+
+if dble:
+    images = numpy.zeros((2*nimg, ny, nx), dtype = numpy.float32)
+else:
     images = numpy.zeros((nimg, ny, nx), dtype = numpy.float32)
-    print('collecting %d images from %d folders...' % (nimg, ndir))
-    nimg = 0
-    for subdir in os.listdir(image_dir):
-        if subdir.endswith('.txt'):
+print('collecting %d images from %d folders...' % (nimg, ndir))
+nimg = 0
+for subdir in os.listdir(image_dir):
+    if subdir.endswith('.txt'):
+        continue
+    fulldir = image_dir + '/' + subdir
+    for filename in os.listdir(fulldir):
+        if not filename.endswith('.jpg'):
             continue
-        fulldir = image_dir + '/' + subdir
-        for filename in os.listdir(fulldir):
-            if not filename.endswith('.jpg'):
-                continue
-            fullname = fulldir + '/' + filename
-            images[nimg,:,:] = ndimage.imread(fullname, mode = 'L')
-            nimg += 1
-            if m > 0 and nimg >= m:
-                break
+        fullname = fulldir + '/' + filename
+        images[nimg,:,:] = ndimage.imread(fullname, mode = 'L')
+        nimg += 1
         if m > 0 and nimg >= m:
             break
+    if m > 0 and nimg >= m:
+        break
 
-if normalize or shift or focus:
-    print('preprocessing images...')
-    n = nx*ny
-    mask = trim_mask(nx, ny)
-    for i in range(nimg):
-        image = images[i,:,:]
-        if shift:
-            s = numpy.sum(image)/n
-            image -= s
-        if focus:
-            image[mask > 0] = 0
-        if normalize:
-            s = nla.norm(numpy.reshape(image, (n, 1)))
-            image = image/s
-        images[i,:,:] = image
+vmax = numpy.amax(images)
+vmin = numpy.amin(images)
+print('pixel values range: %f to %f' % (vmin, vmax))
+mask = trim_mask(nx, ny)
+v = (vmax - vmin)/2
+for i in range(nimg):
+    image = images[i,:,:]
+    image[mask > 0] = v
+    images[i,:,:] = image
+    if dble:
+        images[i + nimg,:,:] = image[:,::-1]
 
-print('saving to %s...' % output)
+print('saving %d images to %s...' % (images.shape[0], output))
 numpy.save(output, images)
 
 while view:
     i = int(input('image: '))
-    if i < 0 or i >= nimg:
+    if i < 0 or i >= images.shape[0]:
         break
     image = images[i,:,:]
     pylab.imshow(image, cmap = 'gray')
