@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-'''Computes PCs for a set of 2D images using truncated_svd and svds
-until the error of PCA approximation falls below the tolerance for each image.
+'''Computes PCs for a set of 2D images using raleigh.pca and scipy svd solvers.
 
 Usage:
   images [--help | -h | options] <data>
@@ -13,6 +12,8 @@ Options:
   -b <blk> , --bsize=<blk>   CG block size [default: -1]
   -e <err> , --imerr=<err>   image approximation error tolerance [default: 0.3]
   -n <nim> , --nimgs=<nim>   number of images to use (negative: all) 
+                             [default: -1]
+  -c <npc> , --npcs=<npc>    number of PCs to compute (negative: unknown)
                              [default: -1]
   -t <tol> , --restol=<tol>  residual tolerance [default: 1e-3]
   -f, --full  compute full SVD too (using scipy.linalg.svd)
@@ -29,6 +30,7 @@ args = docopt(__doc__, version=__version__)
 #path = args['--path']
 file = args['<data>']
 ni = int(args['--nimgs'])
+npc = int(args['--npcs'])
 err_tol = float(args['--imerr'])
 block_size = int(args['--bsize'])
 #svec_tol = float(args['--svtol'])
@@ -48,7 +50,14 @@ if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 from raleigh.solver import Options
-from raleigh.svd import truncated_svd
+from raleigh.svd import pca #truncated_svd
+
+def vec_err(u, v):
+    w = v.copy()
+    q = numpy.dot(u.T, v)
+    w = numpy.dot(u, q) - v
+    s = numpy.linalg.norm(w, axis = 0)
+    return s
 
 numpy.random.seed(1) # make results reproducible
 
@@ -74,6 +83,9 @@ print('data range: %e to %e' % (vmin, vmax))
 
 images = numpy.reshape(images, (m, n))
 
+if npc > 0:
+    block_size = npc
+
 if block_size < 1:
     b = max(1, min(m, n)//100)
     block_size = 32
@@ -81,7 +93,7 @@ if block_size < 1:
         block_size += 32
     print('using block size %d' % block_size)
 
-print('\n--- solving with raleigh.svd.truncated_svd...')
+print('\n--- solving with raleigh.svd.pca...')
 opt = Options()
 opt.block_size = block_size
 opt.max_iter = 300
@@ -89,30 +101,46 @@ opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
     ('relative residual tolerance', tol)
 start = time.time()
-sigma, u, vt = truncated_svd(images, opt, tol = err_tol, arch = arch)
+sigma, u, vt = pca(images, opt, npc = npc, tol = err_tol, arch = arch)
+#sigma, u, vt = truncated_svd(images, opt, nsv = npc, tol = err_tol, arch = arch)
 stop = time.time()
 time_r = stop - start
 ncon = sigma.shape[0]
 print('\n%d singular vectors computed' % ncon)
 
-dtype = numpy.float32
+dtype = images.dtype.type
+e = numpy.ones((n, 1), dtype = dtype)
+s = numpy.dot(images, e)/n
+images -= numpy.dot(s, e.T)
 
 if full:
     print('\n--- solving with scipy.linalg.svd...')
     start = time.time()
 #    s = sla.svd(images, full_matrices = False, compute_uv = False)
-    u, s, vt = sla.svd(images, full_matrices = False)
+    u0, sigma0, vt0 = sla.svd(images, full_matrices = False)
     stop = time.time()
     time_f = stop - start
 #    print(sigma[0], sigma[-1])
 #    print(s[0], s[ncon - 1])
     print('\n full SVD time: %.1e' % time_f)
+    n_r = min(ncon, sigma0.shape[0])
+    err_vec = vec_err(vt0.T[:,:n_r], vt.T[:,:n_r])
+    err_val = abs(sigma[:n_r] - sigma0[:n_r])/sigma0[0]
+#    print(sigma0[:n_r])
+#    print(sigma[:n_r])
+    print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
+    print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
 
-print('\n--- solving with restarted scipy.sparse.linalg.svds...')
+#dtype = numpy.float32
+
+if err_tol > 0:
+    print('\n--- solving with restarted scipy.sparse.linalg.svds...')
+else:
+    print('\n--- solving with scipy.sparse.linalg.svds...')
 
 sigma = numpy.ndarray((0,), dtype = dtype)
 vt = numpy.ndarray((0, n), dtype = dtype)
-norms = numpy.amax(nla.norm(images, axis = 1))
+norms = nla.norm(images, axis = 1)
 
 start = time.time()
 
@@ -121,20 +149,29 @@ while True:
     sigma = numpy.concatenate((sigma, s[::-1]))
     vt = numpy.concatenate((vt, vti[::-1, :]))
     print('last singular value computed: %e' % s[0])
+    if err_tol <= 0:
+        break
     print('deflating...')
     images -= numpy.dot(u*s, vti)
-    errs = numpy.amax(nla.norm(images, axis = 1))/norms
+    errs = numpy.amax(nla.norm(images, axis = 1)/norms)
     print('max SVD error: %.3e' % errs)
-    if errs <= err_tol or err_tol <= 0:
+    if errs <= err_tol:
         break
     print('restarting...')
 
 stop = time.time()
 time_s = stop - start
+ncon = sigma.shape[0]
+print('\n%d singular vectors computed' % ncon)
+if full:
+    n_s = min(ncon, sigma0.shape[0])
+    err_vec = vec_err(vt0.T[:,:n_r], vt.T[:,:n_r])
+    err_val = abs(sigma[:n_s] - sigma0[:n_s])/sigma0[0]
+    print('\nmax singular vector error (svds): %.1e' % numpy.amax(err_vec))
+    print('\nmax singular value error (svds): %.1e' % numpy.amax(err_val))
 
-print('\n%d singular vectors computed' % sigma.shape[0])
-
-if err_tol > 0: # these timings make sense for non-interactive mode only
+if err_tol > 0 or npc > 0: 
+    # these timings make sense for non-interactive mode only
     print('\n time: raleigh %.1e, svds %.1e' % (time_r, time_s))
 
 print('\ndone')
