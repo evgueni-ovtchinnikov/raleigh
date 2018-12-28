@@ -177,10 +177,13 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
                 z = self.w
                 z.select(k)
                 self.op.apply(x, z, transp = True)
-                self.op.apply(z, y)
                 if self.shift:
-                    s = x.dot(self.aves)*n
-                    y.add(self.aves, -1, s)
+                    s = x.dot(self.aves)
+                    z.add(self.ones, -1, s)
+                self.op.apply(z, y)
+#                if self.shift:
+#                    s = x.dot(self.aves)*n
+#                    y.add(self.aves, -1, s)
             else:
                 if self.w.nvec() < k:
                     self.w = Vectors(m, k, x.data_type())
