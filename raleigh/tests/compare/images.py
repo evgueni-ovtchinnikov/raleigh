@@ -114,6 +114,9 @@ else:
 sigma_s = numpy.ndarray((0,), dtype = dtype)
 vt_s = numpy.ndarray((0, n), dtype = dtype)
 norms = nla.norm(images, axis = 1)
+vmin = numpy.amin(norms)
+vmax = numpy.amax(norms)
+print(vmin,vmax)
 
 start = time.time()
 
@@ -122,6 +125,10 @@ if full:
 e = numpy.ones((n, 1), dtype = dtype)
 s = numpy.dot(images, e)/n
 images -= numpy.dot(s, e.T)
+norms = nla.norm(images, axis = 1)
+vmin = numpy.amin(norms)
+vmax = numpy.amax(norms)
+print(vmin,vmax)
 
 while True:
     u, s, vti = svds(images, k = block_size, tol = tol)
@@ -143,9 +150,8 @@ time_s = stop - start
 ncon = sigma_s.shape[0]
 print('\n%d singular vectors computed' % ncon)
 
-images = images0
-
 if full:
+    images = images0
     print('\n--- solving with scipy.linalg.svd...')
     start = time.time()
     e = numpy.ones((n, 1), dtype = dtype)
@@ -156,15 +162,18 @@ if full:
     time_f = stop - start
     print('\n full SVD time: %.1e' % time_f)
     n_r = min(sigma_r.shape[0], sigma0.shape[0])
-    err_vec = vec_err(vt0.T[:,:n_r], vt_r.T[:,:n_r])
-    err_val = abs(sigma_r[:n_r] - sigma0[:n_r])/sigma0[0]
-    print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
-    print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
+    if n_r > 0:
+        err_vec = vec_err(vt0.T[:,:n_r], vt_r.T[:,:n_r])
+        err_val = abs(sigma_r[:n_r] - sigma0[:n_r])/sigma0[0]
+        print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
+        print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
     n_s = min(sigma_s.shape[0], sigma0.shape[0])
-    err_vec = vec_err(vt0.T[:,:n_r], vt_s.T[:,:n_r])
-    err_val = abs(sigma_s[:n_s] - sigma0[:n_s])/sigma0[0]
-    print('\nmax singular vector error (svds): %.1e' % numpy.amax(err_vec))
-    print('\nmax singular value error (svds): %.1e' % numpy.amax(err_val))
+    if n_s > 0:
+        err_vec = vec_err(vt0.T[:,:n_s], vt_s.T[:,:n_s])
+        err_val = abs(sigma_s[:n_s] - sigma0[:n_s])/sigma0[0]
+        print('\nmax singular vector error (svds): %.1e' % numpy.amax(err_vec))
+        print('\nmax singular value error (svds): %.1e' % numpy.amax(err_val))
+    #print(sigma0[:1000])
 
 if err_tol > 0 or npc > 0: 
     # these timings make sense for non-interactive mode only
