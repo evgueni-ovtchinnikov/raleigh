@@ -27,13 +27,11 @@ __version__ = '0.1.0'
 from docopt import docopt
 args = docopt(__doc__, version=__version__)
 
-#path = args['--path']
 file = args['<data>']
 ni = int(args['--nimgs'])
 npc = int(args['--npcs'])
 err_tol = float(args['--imerr'])
 block_size = int(args['--bsize'])
-#svec_tol = float(args['--svtol'])
 tol = float(args['--restol'])
 arch = args['--arch']
 full = args['--full']
@@ -50,7 +48,7 @@ if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 from raleigh.solver import Options
-from raleigh.svd import pca #truncated_svd
+from raleigh.svd import pca
 
 def vec_err(u, v):
     w = v.copy()
@@ -82,6 +80,7 @@ vmax = numpy.amax(images)
 print('data range: %e to %e' % (vmin, vmax))
 
 images = numpy.reshape(images, (m, n))
+dtype = images.dtype.type
 
 if npc > 0:
     block_size = npc
@@ -101,53 +100,33 @@ opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
     ('relative residual tolerance', tol)
 start = time.time()
-sigma, u, vt = pca(images, opt, npc = npc, tol = err_tol, arch = arch)
-#sigma, u, vt = truncated_svd(images, opt, nsv = npc, tol = err_tol, arch = arch)
+sigma_r, u_r, vt_r = pca(images, opt, npc = npc, tol = err_tol, arch = arch)
 stop = time.time()
 time_r = stop - start
-ncon = sigma.shape[0]
+ncon = sigma_r.shape[0]
 print('\n%d singular vectors computed' % ncon)
-
-dtype = images.dtype.type
-e = numpy.ones((n, 1), dtype = dtype)
-s = numpy.dot(images, e)/n
-images -= numpy.dot(s, e.T)
-
-if full:
-    print('\n--- solving with scipy.linalg.svd...')
-    start = time.time()
-#    s = sla.svd(images, full_matrices = False, compute_uv = False)
-    u0, sigma0, vt0 = sla.svd(images, full_matrices = False)
-    stop = time.time()
-    time_f = stop - start
-#    print(sigma[0], sigma[-1])
-#    print(s[0], s[ncon - 1])
-    print('\n full SVD time: %.1e' % time_f)
-    n_r = min(ncon, sigma0.shape[0])
-    err_vec = vec_err(vt0.T[:,:n_r], vt.T[:,:n_r])
-    err_val = abs(sigma[:n_r] - sigma0[:n_r])/sigma0[0]
-#    print(sigma0[:n_r])
-#    print(sigma[:n_r])
-    print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
-    print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
-
-#dtype = numpy.float32
 
 if err_tol > 0:
     print('\n--- solving with restarted scipy.sparse.linalg.svds...')
 else:
     print('\n--- solving with scipy.sparse.linalg.svds...')
 
-sigma = numpy.ndarray((0,), dtype = dtype)
-vt = numpy.ndarray((0, n), dtype = dtype)
+sigma_s = numpy.ndarray((0,), dtype = dtype)
+vt_s = numpy.ndarray((0, n), dtype = dtype)
 norms = nla.norm(images, axis = 1)
 
 start = time.time()
 
+if full:
+    images0 = images.copy()
+e = numpy.ones((n, 1), dtype = dtype)
+s = numpy.dot(images, e)/n
+images -= numpy.dot(s, e.T)
+
 while True:
     u, s, vti = svds(images, k = block_size, tol = tol)
-    sigma = numpy.concatenate((sigma, s[::-1]))
-    vt = numpy.concatenate((vt, vti[::-1, :]))
+    sigma_s = numpy.concatenate((sigma_s, s[::-1]))
+    vt_s = numpy.concatenate((vt_s, vti[::-1, :]))
     print('last singular value computed: %e' % s[0])
     if err_tol <= 0:
         break
@@ -161,12 +140,29 @@ while True:
 
 stop = time.time()
 time_s = stop - start
-ncon = sigma.shape[0]
+ncon = sigma_s.shape[0]
 print('\n%d singular vectors computed' % ncon)
+
+images = images0
+
 if full:
-    n_s = min(ncon, sigma0.shape[0])
-    err_vec = vec_err(vt0.T[:,:n_r], vt.T[:,:n_r])
-    err_val = abs(sigma[:n_s] - sigma0[:n_s])/sigma0[0]
+    print('\n--- solving with scipy.linalg.svd...')
+    start = time.time()
+    e = numpy.ones((n, 1), dtype = dtype)
+    s = numpy.dot(images, e)/n
+    images -= numpy.dot(s, e.T)
+    u0, sigma0, vt0 = sla.svd(images, full_matrices = False)
+    stop = time.time()
+    time_f = stop - start
+    print('\n full SVD time: %.1e' % time_f)
+    n_r = min(sigma_r.shape[0], sigma0.shape[0])
+    err_vec = vec_err(vt0.T[:,:n_r], vt_r.T[:,:n_r])
+    err_val = abs(sigma_r[:n_r] - sigma0[:n_r])/sigma0[0]
+    print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
+    print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
+    n_s = min(sigma_s.shape[0], sigma0.shape[0])
+    err_vec = vec_err(vt0.T[:,:n_r], vt_s.T[:,:n_r])
+    err_val = abs(sigma_s[:n_s] - sigma0[:n_s])/sigma0[0]
     print('\nmax singular vector error (svds): %.1e' % numpy.amax(err_vec))
     print('\nmax singular value error (svds): %.1e' % numpy.amax(err_val))
 
