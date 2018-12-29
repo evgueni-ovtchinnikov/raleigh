@@ -178,8 +178,9 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
                 z.select(k)
                 self.op.apply(x, z, transp = True)
                 if self.shift:
-                    s = x.dot(self.aves)
-                    z.add(self.ones, -1, s)
+#                    s = x.dot(self.aves)
+                    s = z.dot(self.ones)
+                    z.add(self.ones, -1.0/n, s)
                 self.op.apply(z, y)
 #                if self.shift:
 #                    s = x.dot(self.aves)*n

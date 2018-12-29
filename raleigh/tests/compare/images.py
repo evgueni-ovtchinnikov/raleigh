@@ -95,7 +95,7 @@ if block_size < 1:
 print('\n--- solving with raleigh.svd.pca...')
 opt = Options()
 opt.block_size = block_size
-opt.max_iter = 300
+opt.max_iter = 700 #300
 opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
     ('relative residual tolerance', tol)
