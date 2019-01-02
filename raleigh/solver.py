@@ -367,6 +367,7 @@ class Solver:
         have_prev = numpy.zeros((m,), dtype = numpy.int32)
         dlmd = numpy.zeros((m, RECORDS), dtype = numpy.float32)
         dX = numpy.ones((m,), dtype = numpy.float32)
+        dXp = numpy.ones((m,), dtype = numpy.float32)
         acf = numpy.ones((2, m,), dtype = numpy.float32)
 
         # workspace
@@ -714,8 +715,8 @@ class Solver:
                           abs(err_X[0, i]), abs(err_X[1, i]), \
                           acf[0, i], self.cnv[i]))
 
+#            last = 0
             lcon = 0
-            last = 0
             for i in range(leftX - 1):
                 j = self.lcon + i
                 k = ix + i
@@ -729,7 +730,8 @@ class Solver:
                     self.cnv[k] = self.iteration + 1
 #                elif detect_stagn and res[k] >= 0 and res[k] < delta_R[i] and \
                 elif detect_stagn and res[k] >= 0 and res[k] < res_err and \
-                            acf[0, k] >= acf[1, k]:
+                    (acf[0, k] > acf[1, k] or dX[k] > dXp[k]):
+#                            acf[0, k] >= acf[1, k]:
                     if verb > -1:
                         msg = 'left eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
@@ -738,7 +740,7 @@ class Solver:
                     self.cnv[k] = -self.iteration - 1
                 else:
                     break
-                last = i
+#                last = i
 #            for i in range(last, 0, -1):
 #                j = self.lcon + i
 #                k = ix + i
@@ -751,8 +753,8 @@ class Solver:
 #                    self.cnv[k] = 0
 #                else:
 #                    break
+#            last = 0
             rcon = 0
-            last = 0
             for i in range(rightX - 1):
                 j = self.rcon + i
                 k = ix + nx - i - 1
@@ -768,7 +770,10 @@ class Solver:
 #                        res[k] < delta_R[nx - i - 1] and \
 #                        acf[0, k] > acf[1, k]:
                 elif detect_stagn and res[k] >= 0 and res[k] < res_err and \
-                        acf[0, k] >= acf[1, k]:
+                    (acf[0, k] > acf[1, k] or dX[k] > dXp[k]):
+#                        acf[0, k] >= 0.99*acf[1, k]:
+#                        dX[k] > dXp[k]:
+#                    print(res[k], res_err, dX[k], dXp[k], acf[:,k])
                     if verb > -1:
                         msg = 'right eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
@@ -777,7 +782,7 @@ class Solver:
                     self.cnv[k] = -self.iteration - 1
                 else:
                     break
-                last = i
+#                last = i
 #            for i in range(last, 0, -1):
 #                j = self.rcon + i
 #                k = ix + nx - i - 1
@@ -1047,6 +1052,7 @@ class Solver:
             lmdxy, Q = sla.eigh(G)
             
             # estimate changes in eigenvalues and eigenvectors
+            dXp[:] = dX
             lmdx = numpy.concatenate \
                 ((lmdxy[:leftX], lmdxy[nxy - rightX:]))
             lmdy = lmdxy[leftX : nxy - rightX]
@@ -1129,6 +1135,7 @@ class Solver:
                     dlmd[i, :] = dlmd[i + shift_left, :]
                     err_X[:, i] = err_X[:, i + shift_left]
                     dX[i] = dX[i + shift_left]
+                    dXp[i] = dXp[i + shift_left]
                     have_prev[i] = have_prev[i + shift_left]
             if shift_left >= 0:
                 for i in range(l - shift_left, nl):
@@ -1138,7 +1145,8 @@ class Solver:
                     err_lmd[:, i] = -1.0
                     dlmd[i, :] = 0
                     err_X[:, i] = -1.0
-                    dX[i] = 0
+                    dX[i] = 1.0
+                    dXp[i] = 1.0
                     have_prev[i] = 0
             else:
                 for i in range(l):
@@ -1148,7 +1156,8 @@ class Solver:
                     err_lmd[:, i] = -1.0
                     dlmd[i, :] = 0
                     err_X[:, i] = -1.0
-                    dX[i] = 0
+                    dX[i] = 1.0
+                    dXp[i] = 1.0
                     have_prev[i] = 0
             if shift_right > 0:
                 for i in range(m - 1, l + shift_right - 1, -1):
@@ -1160,6 +1169,7 @@ class Solver:
                     dlmd[i, :] = dlmd[i - shift_right, :]
                     err_X[:, i] = err_X[:, i - shift_right]
                     dX[i] = dX[i - shift_right]
+                    dXp[i] = dXp[i - shift_right]
                     have_prev[i] = have_prev[i - shift_right]
             if shift_right >= 0:
                 for i in range(l + shift_right - 1, nl - 1, -1):
@@ -1169,7 +1179,8 @@ class Solver:
                     err_lmd[:, i] = -1.0
                     dlmd[i, :] = 0
                     err_X[:, i] = -1.0
-                    dX[i] = 0
+                    dX[i] = 1.0
+                    dXp[i] = 1.0
                     have_prev[i] = 0
             else:
                 for i in range(l, block_size):
@@ -1179,7 +1190,8 @@ class Solver:
                     err_lmd[:, i] = -1.0
                     dlmd[i, :] = 0
                     err_X[:, i] = -1.0
-                    dX[i] = 0
+                    dX[i] = 1.0
+                    dXp[i] = 1.0
                     have_prev[i] = 0
 
             # compute RR coefficients for X and 'old search directions' Z

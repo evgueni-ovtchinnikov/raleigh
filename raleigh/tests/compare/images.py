@@ -95,7 +95,7 @@ if block_size < 1:
 print('\n--- solving with raleigh.svd.pca...')
 opt = Options()
 opt.block_size = block_size
-opt.max_iter = 700 #300
+opt.max_iter = 1000
 opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
     ('relative residual tolerance', tol)
@@ -130,12 +130,18 @@ vmin = numpy.amin(norms)
 vmax = numpy.amax(norms)
 print(vmin,vmax)
 
+#coord = numpy.reshape(sigma_r * u_r, (m, ncon))
+#nrm = nla.norm(images, axis = 1)
+#diff = images - numpy.dot(coord, vt_r)
+#err = nla.norm(diff, axis = 1)/nrm
+#print('pca error (raleigh): %.1e' % numpy.amax(err))
+
 while True:
     u, s, vti = svds(images, k = block_size, tol = tol)
     sigma_s = numpy.concatenate((sigma_s, s[::-1]))
     vt_s = numpy.concatenate((vt_s, vti[::-1, :]))
     print('last singular value computed: %e' % s[0])
-    if err_tol <= 0:
+    if err_tol <= 0: # or True:
         break
     print('deflating...')
     images -= numpy.dot(u*s, vti)
