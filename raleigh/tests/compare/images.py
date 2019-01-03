@@ -141,7 +141,7 @@ while True:
     sigma_s = numpy.concatenate((sigma_s, s[::-1]))
     vt_s = numpy.concatenate((vt_s, vti[::-1, :]))
     print('last singular value computed: %e' % s[0])
-    if err_tol <= 0 or True:
+    if err_tol <= 0: # or True:
         break
     print('deflating...')
     images -= numpy.dot(u*s, vti)
