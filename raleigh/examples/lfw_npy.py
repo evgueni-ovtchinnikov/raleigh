@@ -94,7 +94,11 @@ for subdir in os.listdir(image_dir):
         if not filename.endswith('.jpg'):
             continue
         fullname = fulldir + '/' + filename
-        images[nimg,:,:] = ndimage.imread(fullname, mode = 'L')
+        image = ndimage.imread(fullname, mode = 'L')
+        if dble:
+            images[2*nimg, :, :] = image
+        else:
+            images[nimg, :, :] = image
         nimg += 1
         if m > 0 and nimg >= m:
             break
@@ -106,12 +110,15 @@ vmin = numpy.amin(images)
 print('pixel values range: %f to %f' % (vmin, vmax))
 mask = trim_mask(nx, ny)
 v = (vmax - vmin)/2
+n = nx*ny
 for i in range(nimg):
-    image = images[i,:,:]
+    image = images[2*i,:,:]
+    image[mask > 0] = 0
+    v = numpy.sum(image)/(n - numpy.sum(mask))
     image[mask > 0] = v
-    images[i,:,:] = image
+    images[2*i,:,:] = image
     if dble:
-        images[i + nimg,:,:] = image[:,::-1]
+        images[2*i + 1, :, :] = image[:, ::-1]
 
 print('saving %d images to %s...' % (images.shape[0], output))
 numpy.save(output, images)
@@ -121,6 +128,7 @@ while view:
     if i < 0 or i >= images.shape[0]:
         break
     image = images[i,:,:]
+#    print(numpy.mean(image))
     pylab.imshow(image, cmap = 'gray')
     pylab.show()
 
