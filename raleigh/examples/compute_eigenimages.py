@@ -5,7 +5,7 @@ in small portions until stopped by user's entering 'n' in answer to 'more?'
 or the error of PCA approximation falls below the tolerance for each image
 
 Usage:
-  ipca_images [--help | -h | options] <data>
+  compute_eigenimages [--help | -h | options] <data>
 
 Arguments:
   data  .npy file containing images as ndarray of dimensions (ni, ny, nx)

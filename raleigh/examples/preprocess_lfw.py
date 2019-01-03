@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Reads images from lfw folder or .npy file, processes and saves in .npy file.
+"""Reads images from lfw folder or .npy file, erases background and saves in
+.npy file.
 
 Usage:
-  lfw_npy [--help | -h | options] <datapath>
+  preprocess_lfw [--help | -h | options] <datapath>
 
 Arguments:
   datapath           lfw images folder
