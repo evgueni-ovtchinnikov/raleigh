@@ -31,6 +31,7 @@ class PSVDErrorCalculator:
         self.m = m
         self.n = n
         self.dt = a.dtype.type
+        self.shift = False
         self.ncon = 0
         self.norms = nla.norm(a, axis = 1)
 #        self.err = self.norms.copy()
@@ -181,6 +182,7 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
 #                    s = x.dot(self.aves)
                     s = z.dot(self.ones)
                     z.add(self.ones, -1.0/n, s)
+                    # accurate orthogonalization needed!
                     s = z.dot(self.ones)
                     z.add(self.ones, -1.0/n, s)
                 self.op.apply(z, y)
