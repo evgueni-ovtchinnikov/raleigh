@@ -59,9 +59,9 @@ def vec_err(u, v):
 
 numpy.random.seed(1) # make results reproducible
 
-all_images = numpy.load(file)
+images = numpy.load(file)
 
-m_all, ny, nx = all_images.shape
+m_all, ny, nx = images.shape
 n = nx*ny
 
 if ni < 0 or ni > m_all:
@@ -70,10 +70,10 @@ if ni < 0 or ni > m_all:
 if ni < m_all:
     print('using first %d images only...' % ni)
     m = ni
-    images = all_images[:m,:,:]
+    images = images[:m,:,:]
 else:
     m = m_all
-    images = all_images
+#    images = all_images
 
 vmin = numpy.amin(images)
 vmax = numpy.amax(images)
@@ -141,7 +141,7 @@ while True:
     sigma_s = numpy.concatenate((sigma_s, s[::-1]))
     vt_s = numpy.concatenate((vt_s, vti[::-1, :]))
     print('last singular value computed: %e' % s[0])
-    if err_tol <= 0: # or True:
+    if err_tol <= 0 or True:
         break
     print('deflating...')
     images -= numpy.dot(u*s, vti)
@@ -163,7 +163,7 @@ if full:
     e = numpy.ones((n, 1), dtype = dtype)
     s = numpy.dot(images, e)/n
     images -= numpy.dot(s, e.T)
-    u0, sigma0, vt0 = sla.svd(images, full_matrices = False)
+    u0, sigma0, vt0 = sla.svd(images, full_matrices = False, overwrite_a = True)
     stop = time.time()
     time_f = stop - start
     print('\n full SVD time: %.1e' % time_f)
