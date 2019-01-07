@@ -143,7 +143,10 @@ while True:
     vt_s = numpy.concatenate((vt_s, vti[::-1, :]))
     stop = time.time()
     time_s = stop - start
-    print('%.2f sec: last singular value computed: %e' % (time_s, s[0]))
+    sl = s[0]
+    sl_rel = sl/sigma_s[0]
+    print('%.2f sec: last singular value computed: %e = %.2e*sigma[0]' % \
+        (time_s, sl, sl_rel))
     if err_tol <= 0: # or True:
         break
     print('deflating...')

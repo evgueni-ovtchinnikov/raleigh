@@ -103,16 +103,17 @@ class DefaultStoppingCriteria:
         err_rel = numpy.amax(self.err/self.norms)
         lmd = solver.eigenvalues[self.ncon : solver.rcon]
         sigma = -numpy.sort(-numpy.sqrt(lmd))
+        if self.ncon == 0:
+            self.sigma = sigma[0]
         i = new - 1
+        si = sigma[i]
+        si_rel = si/self.sigma
         if self.err_tol <= 0:
-            if self.ncon == 0:
-                self.sigma = sigma[0]
             msg = '%.2f sec: sigma[%d] = %e = %.2e*sigma[0], err = %.2e' % \
-            (self.elapsed_time, self.ncon + i, sigma[i], sigma[i]/self.sigma, \
-             err_rel)
+                (self.elapsed_time, self.ncon + i, si, si_rel, err_rel)
         else:
-            print('%.2f sec: sigma[%d] = %e, truncated svd error = %.2e' % \
-                  (self.elapsed_time, self.ncon + i, sigma[i], err_rel))
+            print('%.2f sec: sigma[%d] = %e = %.2e*sigma[0], truncation error = %.2e' % \
+                  (self.elapsed_time, self.ncon + i, si, si_rel, err_rel))
         self.ncon = solver.rcon
         if self.err_tol > 0:
             done = err_rel <= self.err_tol
