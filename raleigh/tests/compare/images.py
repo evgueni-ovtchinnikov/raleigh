@@ -104,7 +104,7 @@ sigma_r, u_r, vt_r = pca(images, opt, npc = npc, tol = err_tol, arch = arch)
 stop = time.time()
 time_r = stop - start
 ncon = sigma_r.shape[0]
-print('\n%d singular vectors computed' % ncon)
+print('\n%d singular vectors computed in %.1e sec' % (ncon, time_r))
 
 if err_tol > 0:
     print('\n--- solving with restarted scipy.sparse.linalg.svds...')
@@ -118,10 +118,11 @@ vmin = numpy.amin(norms)
 vmax = numpy.amax(norms)
 print(vmin,vmax)
 
-start = time.time()
-
 if full:
     images0 = images.copy()
+
+start = time.time()
+
 e = numpy.ones((n, 1), dtype = dtype)
 s = numpy.dot(images, e)/n
 images -= numpy.dot(s, e.T)
@@ -154,7 +155,7 @@ while True:
 stop = time.time()
 time_s = stop - start
 ncon = sigma_s.shape[0]
-print('\n%d singular vectors computed' % ncon)
+print('\n%d singular vectors computed in %.1e sec' % (ncon, time_s))
 
 if full:
     images = images0
