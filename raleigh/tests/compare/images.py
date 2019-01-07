@@ -148,7 +148,7 @@ while True:
     sl_rel = sl/sigma_s[0]
     print('%.2f sec: last singular value computed: %e = %.2e*sigma[0]' % \
         (time_s, sl, sl_rel))
-    if err_tol <= 0: # or True:
+    if err_tol <= 0 or npc > 0:
         break
     print('deflating...')
     images -= numpy.dot(u*s, vti)
