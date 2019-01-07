@@ -80,7 +80,7 @@ class PSVDErrorCalculator:
         return self.err
 
 class DefaultStoppingCriteria:
-    def __init__(self, a, err_tol = 0):
+    def __init__(self, a, err_tol = 0, sigma_th = 0, max_nsv = 0):
         self.ncon = 0
         self.sigma = 1
         self.iteration = 0
@@ -89,8 +89,10 @@ class DefaultStoppingCriteria:
         self.err_calc = PSVDErrorCalculator(a)
         self.norms = self.err_calc.norms
         self.err = self.norms
-        print('max data norm: %e' % numpy.amax(self.err))
+        #print('max data norm: %e' % numpy.amax(self.err))
         self.err_tol = err_tol
+        self.sigma_th = sigma_th
+        self.max_nsv = max_nsv
     def satisfied(self, solver):
         self.norms = self.err_calc.norms
         if solver.rcon <= self.ncon:
@@ -102,7 +104,7 @@ class DefaultStoppingCriteria:
         self.err = self.err_calc.update_errors()
         err_rel = numpy.amax(self.err/self.norms)
         lmd = solver.eigenvalues[self.ncon : solver.rcon]
-        sigma = -numpy.sort(-numpy.sqrt(lmd))
+        sigma = -numpy.sort(-numpy.sqrt(abs(lmd)))
         if self.ncon == 0:
             self.sigma = sigma[0]
         i = new - 1
@@ -115,12 +117,13 @@ class DefaultStoppingCriteria:
             print('%.2f sec: sigma[%d] = %e = %.2e*sigma[0], truncation error = %.2e' % \
                   (self.elapsed_time, self.ncon + i, si, si_rel, err_rel))
         self.ncon = solver.rcon
-        if self.err_tol > 0:
-            done = err_rel <= self.err_tol
+        if self.err_tol > 0 or self.sigma_th > 0:
+            done = err_rel <= self.err_tol or si_rel <= self.sigma_th
         else:
             done = (input(msg + ', more? ') == 'n')
         self.iteration = solver.iteration
         self.start_time = time.time()
+        done = done or self.max_nsv > 0 and self.ncon >= self.max_nsv
         return done
 
 def conj(a):
@@ -293,12 +296,13 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
     else:
         return sigma, u.data().T, conj(v.data())
 
-def truncated_svd(a, opt, nsv = -1, tol = 0, isv = None, shift = False, \
+def truncated_svd(a, opt, nsv = -1, tol = 0, th = 0, msv = 0, \
+                  isv = None, shift = False, \
                   arch = 'cpu'):
     if opt.stopping_criteria is None and nsv < 0:
         opt = copy.deepcopy(opt)
-        opt.stopping_criteria = DefaultStoppingCriteria(a, tol)
+        opt.stopping_criteria = DefaultStoppingCriteria(a, tol, th, msv)
     return partial_svd(a, opt, (0, nsv), (None, isv), shift, arch)
 
-def pca(a, opt, npc = -1, tol = 0, ipc = None, arch = 'cpu'):
-    return truncated_svd(a, opt, npc, tol, ipc, True, arch)
+def pca(a, opt, npc = -1, tol = 0, th = 0, msv = 0, ipc = None, arch = 'cpu'):
+    return truncated_svd(a, opt, npc, tol, th, msv, ipc, True, arch)

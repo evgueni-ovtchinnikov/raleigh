@@ -104,7 +104,8 @@ sigma_r, u_r, vt_r = pca(images, opt, npc = npc, tol = err_tol, arch = arch)
 stop = time.time()
 time_r = stop - start
 ncon = sigma_r.shape[0]
-print('\n%d singular vectors computed in %.1e sec' % (ncon, time_r))
+if err_tol > 0 or npc > 0: 
+    print('\n%d singular vectors computed in %.1e sec' % (ncon, time_r))
 
 if err_tol > 0:
     print('\n--- solving with restarted scipy.sparse.linalg.svds...')
