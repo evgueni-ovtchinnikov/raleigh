@@ -735,7 +735,7 @@ class Solver:
                 elif detect_stagn and res[k] >= 0 and res[k] < res_err and \
                     (acf[0, k] > acf[1, k] or dX[k] > dXp[k]):
 #                            acf[0, k] >= acf[1, k]:
-                    if verb > -1:
+                    if verb > 0:
                         msg = 'left eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
@@ -777,7 +777,7 @@ class Solver:
 #                        acf[0, k] >= 0.99*acf[1, k]:
 #                        dX[k] > dXp[k]:
 #                    print(res[k], res_err, dX[k], dXp[k], acf[:,k])
-                    if verb > -1:
+                    if verb > 0:
                         msg = 'right eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
@@ -996,7 +996,7 @@ class Solver:
                 eps = 1e-8
             ind, dropped, last_piv = piv_chol(U, nx, eps)
             if dropped > 0:
-                if verb > -1:
+                if verb > 0:
                     print('dropped %d search directions out of %d' \
                           % (dropped, ny))
             
