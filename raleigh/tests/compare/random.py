@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Comparisons with svds.
+"""Comparisons with scipy svds and svd.
 
 Usage:
-  svds [--help | -h | options] <m> <n> <k>
+  random [--help | -h | options] <m> <n> <k>
 
 Arguments:
   m  number of rows
