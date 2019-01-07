@@ -18,7 +18,7 @@ raleigh_path = '../..'
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
-from raleigh.solver import Problem, Solver
+from raleigh.solver import Options, Problem, Solver
 
 class PSVDErrorCalculator:
     def __init__(self, a):
@@ -114,8 +114,8 @@ class DefaultStoppingCriteria:
             msg = '%.2f sec: sigma[%d] = %e = %.2e*sigma[0], err = %.2e' % \
                 (self.elapsed_time, self.ncon + i, si, si_rel, err_rel)
         else:
-            print('%.2f sec: sigma[%d] = %e = %.2e*sigma[0], truncation error = %.2e' % \
-                  (self.elapsed_time, self.ncon + i, si, si_rel, err_rel))
+            print('%.2f sec: sigma[%d] = %.2e*sigma[0], truncation error = %.2e' % \
+                  (self.elapsed_time, self.ncon + i, si_rel, err_rel))
         self.ncon = solver.rcon
         if self.err_tol > 0 or self.sigma_th > 0:
             done = err_rel <= self.err_tol or si_rel <= self.sigma_th
@@ -304,5 +304,20 @@ def truncated_svd(a, opt, nsv = -1, tol = 0, th = 0, msv = 0, \
         opt.stopping_criteria = DefaultStoppingCriteria(a, tol, th, msv)
     return partial_svd(a, opt, (0, nsv), (None, isv), shift, arch)
 
-def pca(a, opt, npc = -1, tol = 0, th = 0, msv = 0, ipc = None, arch = 'cpu'):
+def pca(a, opt = Options(), npc = -1, tol = 0, th = 0, msv = 0, ipc = None, \
+        arch = 'cpu'):
+    m, n = a.shape
+    opt = copy.deepcopy(opt)
+    block_size = opt.block_size
+    if block_size < 1:
+        b = max(1, min(m, n)//100)
+        block_size = 32
+        while block_size <= b - 16:
+            block_size += 32
+        #print('using block size %d' % block_size)
+        opt.block_size = block_size
+    max_iter = opt.max_iter
+    if max_iter < 0:
+        opt.max_iter = max(100, min(m, n))
+        #print('max_iter = %d' % opt.max_iter)
     return truncated_svd(a, opt, npc, tol, th, msv, ipc, True, arch)
