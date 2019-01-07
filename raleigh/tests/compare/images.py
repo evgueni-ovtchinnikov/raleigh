@@ -141,7 +141,9 @@ while True:
     u, s, vti = svds(images, k = block_size, tol = tol)
     sigma_s = numpy.concatenate((sigma_s, s[::-1]))
     vt_s = numpy.concatenate((vt_s, vti[::-1, :]))
-    print('last singular value computed: %e' % s[0])
+    stop = time.time()
+    time_s = stop - start
+    print('%.2f sec: last singular value computed: %e' % (time_s, s[0]))
     if err_tol <= 0: # or True:
         break
     print('deflating...')
