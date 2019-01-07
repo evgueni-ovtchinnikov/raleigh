@@ -95,7 +95,7 @@ class DefaultStoppingCriteria:
 class Options:
     def __init__(self):
         self.verbosity = 0
-        self.max_iter = 100
+        self.max_iter = -1 #00
         self.block_size = -1
         self.threads = -1
         self.convergence_criteria = DefaultConvergenceCriteria()
@@ -522,8 +522,11 @@ class Solver:
 
         lmd_min = lmdx[0]
         lmd_max = lmdx[nx - 1]
+        max_iter = options.max_iter
+        if max_iter < 0:
+            max_iter = 100
         # main CG loop
-        for self.iteration in range(options.max_iter):
+        for self.iteration in range(max_iter):
 
             if verb > 0:
                 print('------------- iteration %d' % self.iteration)
