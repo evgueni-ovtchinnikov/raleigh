@@ -309,7 +309,7 @@ def pca(a, opt = Options(), npc = -1, tol = 0, th = 0, msv = 0, ipc = None, \
     m, n = a.shape
     opt = copy.deepcopy(opt)
     block_size = opt.block_size
-    if block_size < 1:
+    if block_size < 1 and npc < 0:
         b = max(1, min(m, n)//100)
         block_size = 32
         while block_size <= b - 16:

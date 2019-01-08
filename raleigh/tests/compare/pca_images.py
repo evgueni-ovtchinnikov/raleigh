@@ -84,16 +84,16 @@ print('data range: %e to %e' % (vmin, vmax))
 images = numpy.reshape(images, (m, n))
 dtype = images.dtype.type
 
-if block_size < 1:
-    b = max(1, min(m, n)//100)
-    block_size = 32
-    while block_size <= b - 16:
-        block_size += 32
-    print('using block size %d' % block_size)
+##if block_size < 1:
+##    b = max(1, min(m, n)//100)
+##    block_size = 32
+##    while block_size <= b - 16:
+##        block_size += 32
+##    print('using block size %d' % block_size)
 
 print('\n--- solving with raleigh.svd.pca...')
 opt = Options()
-opt.block_size = block_size
+#opt.block_size = block_size
 #opt.max_iter = 1000
 opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
@@ -122,6 +122,13 @@ if run_svd:
     images0 = images.copy()
 
 if npc <= 0:
+    if block_size < 1:
+        # use default pca block size
+        b = max(1, min(m, n)//100)
+        block_size = 32
+        while block_size <= b - 16:
+            block_size += 32
+        print('using block size %d' % block_size)
     npc = block_size
 else:
     err_tol = 0
