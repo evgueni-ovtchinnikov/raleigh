@@ -93,7 +93,7 @@ dtype = images.dtype.type
 
 print('\n--- solving with raleigh.svd.pca...')
 opt = Options()
-#opt.block_size = block_size
+opt.block_size = block_size
 #opt.max_iter = 1000
 opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
