@@ -629,7 +629,7 @@ class Solver:
                 s = W.dots(Y)
             else:
                 s = W.dots(W)
-            res[ix : ix + nx] = numpy.sqrt(abs(s)) + 3*delta_R
+            res[ix : ix + nx] = numpy.sqrt(abs(s)) #+ 3*delta_R
 
             # kinematic error estimates
             if rec > 3: # sufficient history available
