@@ -15,6 +15,9 @@ import time
 raleigh_path = '../../..'
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
+matrix_path = '../matrix'
+if matrix_path not in sys.path:
+    sys.path.append(matrix_path)
 
 from random_matrix_for_svd import random_matrix_for_svd
 from raleigh.piv_chol import piv_chol

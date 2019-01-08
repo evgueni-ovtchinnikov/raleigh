@@ -2,7 +2,7 @@
 '''Computes PCs for a set of 2D images using raleigh.pca and scipy svd solvers.
 
 Usage:
-  images [--help | -h | options] <data>
+  pca_images [--help | -h | options] <data>
 
 Arguments:
   data  .npy file containing images as ndarray of dimensions (ni, ny, nx)
@@ -82,9 +82,6 @@ print('data range: %e to %e' % (vmin, vmax))
 images = numpy.reshape(images, (m, n))
 dtype = images.dtype.type
 
-if npc > 0:
-    block_size = npc
-
 if block_size < 1:
     b = max(1, min(m, n)//100)
     block_size = 32
@@ -94,7 +91,7 @@ if block_size < 1:
 
 print('\n--- solving with raleigh.svd.pca...')
 opt = Options()
-#opt.block_size = block_size
+opt.block_size = block_size
 #opt.max_iter = 1000
 opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
@@ -122,6 +119,9 @@ print(vmin,vmax)
 if full:
     images0 = images.copy()
 
+if npc <= 0:
+    npc = block_size
+
 start = time.time()
 
 e = numpy.ones((n, 1), dtype = dtype)
@@ -139,7 +139,7 @@ print(vmin,vmax)
 #print('pca error (raleigh): %.1e' % numpy.amax(err))
 
 while True:
-    u, s, vti = svds(images, k = block_size, tol = tol)
+    u, s, vti = svds(images, k = npc, tol = tol)
     sigma_s = numpy.concatenate((sigma_s, s[::-1]))
     vt_s = numpy.concatenate((vt_s, vti[::-1, :]))
     stop = time.time()
@@ -148,7 +148,7 @@ while True:
     sl_rel = sl/sigma_s[0]
     print('%.2f sec: last singular value computed: %e = %.2e*sigma[0]' % \
         (time_s, sl, sl_rel))
-    if err_tol <= 0 or npc > 0:
+    if err_tol <= 0:
         break
     print('deflating...')
     images -= numpy.dot(u*s, vti)

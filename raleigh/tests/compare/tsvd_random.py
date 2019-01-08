@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Comparisons with scipy svds and svd.
+"""Comparisons of truncated_svd with scipy svds and svd on randomly
+   generated matrix.
 
 Usage:
-  random [--help | -h | options] <m> <n> <k>
+  tsvd_random [--help | -h | options] <m> <n> <k>
 
 Arguments:
   m  number of rows
@@ -57,6 +58,9 @@ from scipy.sparse.linalg import svds, LinearOperator
 raleigh_path = '../../..'
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
+matrix_path = '../matrix'
+if matrix_path not in sys.path:
+    sys.path.append(matrix_path)
 
 from random_matrix_for_svd import random_matrix_for_svd
 from raleigh.solver import Options
@@ -114,7 +118,7 @@ print('\n--- solving with raleigh.svd.truncated_svd...')
 opt = Options()
 if th > 0:
     opt.block_size = block_size
-opt.max_iter = 400
+opt.max_iter = 1000
 opt.verbosity = verb
 opt.convergence_criteria.set_error_tolerance(err, tol)
 opt.stopping_criteria = MyStoppingCriteria(A)
