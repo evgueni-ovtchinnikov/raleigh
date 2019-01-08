@@ -16,7 +16,8 @@ Options:
   -c <npc> , --npcs=<npc>    number of PCs to compute (negative: unknown)
                              [default: -1]
   -t <tol> , --restol=<tol>  residual tolerance [default: 1e-3]
-  -f, --full  compute full SVD too (using scipy.linalg.svd)
+  -f, --full  compute full SVD using scipy.linalg.svd
+  -s, --svds  compute truncated SVD using scipy.sparse.linalg.svds
 
 Created on Wed Sep  5 14:44:23 2018
 
@@ -34,7 +35,8 @@ err_tol = float(args['--imerr'])
 block_size = int(args['--bsize'])
 tol = float(args['--restol'])
 arch = args['--arch']
-full = args['--full']
+run_svd = args['--full']
+run_svds = args['--svds']
 
 import numpy
 import numpy.linalg as nla
@@ -116,11 +118,13 @@ vmin = numpy.amin(norms)
 vmax = numpy.amax(norms)
 print(vmin,vmax)
 
-if full:
+if run_svd:
     images0 = images.copy()
 
 if npc <= 0:
     npc = block_size
+else:
+    err_tol = 0
 
 start = time.time()
 
@@ -138,7 +142,7 @@ print(vmin,vmax)
 #err = nla.norm(diff, axis = 1)/nrm
 #print('pca error (raleigh): %.1e' % numpy.amax(err))
 
-while True:
+while run_svds:
     u, s, vti = svds(images, k = npc, tol = tol)
     sigma_s = numpy.concatenate((sigma_s, s[::-1]))
     vt_s = numpy.concatenate((vt_s, vti[::-1, :]))
@@ -163,7 +167,7 @@ time_s = stop - start
 ncon = sigma_s.shape[0]
 print('\n%d singular vectors computed in %.1e sec' % (ncon, time_s))
 
-if full:
+if run_svd:
     images = images0
     print('\n--- solving with scipy.linalg.svd...')
     start = time.time()
