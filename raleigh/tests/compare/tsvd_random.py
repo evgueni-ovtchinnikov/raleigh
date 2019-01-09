@@ -14,7 +14,7 @@ Options:
   -a <arch>, --arch=<arch>   architecture [default: cpu]
   -b <blk> , --bsize=<blk>   block CG block size [default: -1]
   -e <err> , --error=<err>   error measure [default: kinematic-eigenvector-err]
-  -r <alph>, --alpha=<alph>  singular values decay rate [default: 0.01]
+  -r <alph>, --alpha=<alph>  singular values decay rate [default: 100]
   -s <ths> , --thresh=<ths>  singular values threshold [default: 0.01]
   -t <tol> , --tol=<tol>     error or residual tolerance [default: 1e-3]
   -v <verb>, --verb=<verb>   verbosity level [default: -1]
