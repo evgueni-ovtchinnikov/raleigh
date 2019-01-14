@@ -279,7 +279,10 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
                 u.add(w, -1, s)
 
         vv = v.dot(v)
-        uu = -u.dot(u)
+        if nsv[0] == 0:
+            uu = -u.dot(u)
+        else:
+            uu = u.dot(u)
         lmd, x = scipy.linalg.eigh(uu, vv, turbo = False)
         w = v.new_vectors(nv)
         v.multiply(x, w)
@@ -291,18 +294,31 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
         u.scale(sigma)
     else:
         sigma = numpy.ndarray((0,), dtype = v.data_type())
+    lcon = solver.lcon
+    rcon = solver.rcon
+    if nsv[0] == 0:
+        u.select(rcon)
+        v.select(rcon)
+        sigma = sigma[:rcon]
+    else:
+        u.select(lcon)
+        v.select(lcon)
+        sigma = sigma[:lcon]
     if transp:
         return sigma, v.data().T, conj(u.data())
     else:
         return sigma, u.data().T, conj(v.data())
 
-def truncated_svd(a, opt, nsv = -1, tol = 0, th = 0, msv = 0, \
+def truncated_svd(a, opt, nsv = -1, largest = True, tol = 0, th = 0, msv = 0, \
                   isv = None, shift = False, \
                   arch = 'cpu'):
-    if opt.stopping_criteria is None and nsv < 0:
-        opt = copy.deepcopy(opt)
-        opt.stopping_criteria = DefaultStoppingCriteria(a, tol, th, msv)
-    return partial_svd(a, opt, (0, nsv), (None, isv), shift, arch)
+    if largest:
+        if opt.stopping_criteria is None and nsv < 0:
+            opt = copy.deepcopy(opt)
+            opt.stopping_criteria = DefaultStoppingCriteria(a, tol, th, msv)
+        return partial_svd(a, opt, (0, nsv), (None, isv), shift, arch)
+    else:
+        return partial_svd(a, opt, (nsv, 0), (isv, None), shift, arch)
 
 def pca(a, opt = Options(), npc = -1, tol = 0, th = 0, msv = 0, ipc = None, \
         arch = 'cpu'):
@@ -320,4 +336,5 @@ def pca(a, opt = Options(), npc = -1, tol = 0, th = 0, msv = 0, ipc = None, \
     if max_iter < 0:
         opt.max_iter = max(100, min(m, n))
         #print('max_iter = %d' % opt.max_iter)
-    return truncated_svd(a, opt, npc, tol, th, msv, ipc, True, arch)
+    return truncated_svd(a, opt = opt, nsv = npc, tol = tol, th = th, \
+        msv = msv, ipc = ipc, shift = True, arch = arch)
