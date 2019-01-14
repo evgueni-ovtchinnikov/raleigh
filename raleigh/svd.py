@@ -337,4 +337,4 @@ def pca(a, opt = Options(), npc = -1, tol = 0, th = 0, msv = 0, ipc = None, \
         opt.max_iter = max(100, min(m, n))
         #print('max_iter = %d' % opt.max_iter)
     return truncated_svd(a, opt = opt, nsv = npc, tol = tol, th = th, \
-        msv = msv, ipc = ipc, shift = True, arch = arch)
+        msv = msv, isv = ipc, shift = True, arch = arch)
