@@ -10,7 +10,7 @@ import numpy
 import numpy.linalg as nla
 import scipy.linalg as sla
 
-RECORDS = 20
+RECORDS = 2000 #20
 
 def conjugate(a):
     if a.dtype.kind == 'c':
@@ -301,13 +301,17 @@ class Solver:
         m = self.block_size
         if left == 0:
             r = 0.0
-            l = 1
+            l = 0 #1
         elif right == 0:
             r = 1.0
-            l = m - 1
+            l = m #- 1
         elif left > 0 and right > 0:
             r = left/(left + 1.0*right)
             l = int(round(r*m))
+            if l < 2:
+                l = 2
+            if l > m - 2:
+                l = m - 2
         else:
             r = 0.5
             l = m//2
@@ -342,20 +346,13 @@ class Solver:
         gen = (problem_type == 'g')
         pro = (problem_type == 'p')
         data_type = vector.data_type()
-
-#        #output
-#        self.lcon = 0
-#        self.rcon = 0
-#        self.eigenvalues = numpy.ndarray((0,), dtype = numpy.float64)
-#        self.eigenvalue_errors = EstimatedErrors()
-#        self.eigenvector_errors = EstimatedErrors()
-#        self.residual_norms = numpy.ndarray((0,), dtype = numpy.float32)
-#        self.convergence_status = numpy.ndarray((0,), dtype = numpy.int32)
+        epsilon = numpy.finfo(data_type).eps
 
         # convergence data
         self.cnv = numpy.zeros((m,), dtype = numpy.int32)
         self.lmd = numpy.zeros((m,), dtype = numpy.float64)
         self.res = -numpy.ones((m,), dtype = numpy.float32)
+        self.min_res = -numpy.ones((m,), dtype = numpy.float32)
         self.err_lmd = -numpy.ones((2, m,), dtype = numpy.float32)
         self.err_X = -numpy.ones((2, m,), dtype = numpy.float32)
 
@@ -424,11 +421,12 @@ class Solver:
         detect_stagn = options.detect_stagnation
         lmd = self.lmd
         res = self.res
+        min_res = self.min_res
+        err_lmd = self.err_lmd
+        err_X = self.err_X
         A = self.__problem.A()
         B = self.__problem.B()
         P = self.__P
-        err_lmd = self.err_lmd
-        err_X = self.err_X
 
         # constraints (already available eigenvectors e.g. from previous run)
         Xc = eigenvectors
@@ -450,8 +448,6 @@ class Solver:
         rec = 0
         ix = 0 # first X
         nx = block_size
-#        ix = self.ix
-#        nx = self.nx
         ny = block_size
         nz = 0
 
@@ -509,8 +505,7 @@ class Solver:
         else:
             A(X, AX)
             XAX = AX.dot(X)
-        lmdx, Q = sla.eigh(XAX, XBX, turbo=False) #, overwrite_a = True, overwrite_b = True)
-#        print(lmdx)
+        lmdx, Q = sla.eigh(XAX, XBX, turbo=False)
         W.select(m)
         X.multiply(Q, W)
         W.copy(X)
@@ -520,8 +515,8 @@ class Solver:
             BX.multiply(Q, Z)
             Z.copy(BX)
 
-        lmd_min = lmdx[0]
-        lmd_max = lmdx[nx - 1]
+#        lmd_min = lmdx[0]
+#        lmd_max = lmdx[nx - 1]
         max_iter = options.max_iter
         if max_iter < 0:
             max_iter = 100
@@ -543,48 +538,20 @@ class Solver:
             db = XBX.diagonal()
             new_lmd = real(da/db)
 
-            # estimate error in residual computation due to the error in
-            # computing AX, to be used in detecting convergence stagnation
-            Lmd = numpy.zeros((nx, nx))
-            Lmd[range(nx), range(nx)] = lmdx #new_lmd
-            RX = XAX - numpy.dot(XBX, Lmd)
-            delta_R = nla.norm(RX, axis = 0)
-            if gen:
-                s = numpy.sqrt(abs(X.dots(X)))
-                delta_R /= s #numpy.amax(s)
-            delta_R_abs = numpy.amax(delta_R)
-            s = numpy.sqrt(abs(AX.dots(AX)))
-            delta_R_rel = numpy.amax(delta_R/s)
-#            delta_R *= 10
-            
-            lmd_min = min(lmd_min, new_lmd[0])
-            lmd_max = max(lmd_max, new_lmd[-1])
             rv_err = numpy.amax(abs(new_lmd - lmdx))
-            ntot = nx + self.lcon + self.rcon
-            if leftX > 0:
-                sl = lmdx[leftX - 1] - lmd_min
-            else:
-                sl = 0
-            if leftX < nx:
-                sr = lmd_max - lmdx[leftX]
-            else:
-                sr = 0
-            dlmd_av = (sl + sr)/ntot
             if verb > 0:
-                print('average eigenvalue gap: %.1e' % dlmd_av)
                 print('Ritz values error: %.1e' % rv_err)
                 print('Ritz vectors non-orthonormality: %.1e' % \
                       numpy.amax(abs(XBX - numpy.eye(nx))))
-                msg = 'estimated error in residual computation (abs, rel):' + \
-                ' %.1e %.1e'
-                print(msg % (delta_R_abs, delta_R_rel))
 
             if self.iteration > 0:
                 # compute eigenvalue decrements
                 for i in range(nx):
                     if have_prev[ix + i]:
                         delta = lmd[ix + i] - new_lmd[i]
-                        if abs(delta) > 10*rv_err:
+                        eps = math.sqrt(epsilon)
+                        eps *= max(abs(lmd[ix + i]), abs(new_lmd[i]))
+                        if abs(delta) > eps:
                             dlmd[ix + i, rec - 1] = delta
                 if verb > 3:
                     print('eigenvalues shifts history:')
@@ -629,7 +596,9 @@ class Solver:
                 s = W.dots(Y)
             else:
                 s = W.dots(W)
-            res[ix : ix + nx] = numpy.sqrt(abs(s)) #+ 3*delta_R
+            res[ix : ix + nx] = numpy.sqrt(abs(s))
+            if self.iteration == 0:
+                min_res[:] = res*epsilon
 
             # kinematic error estimates
             if rec > 3: # sufficient history available
@@ -655,6 +624,8 @@ class Solver:
                     qi = qi**(1.0/(k - 1))
                     acf[1, ix + i] = acf[0, ix + i]
                     acf[0, ix + i] = qi # a.c.f. estimate
+                    if qi >= 1.0:
+                        continue
                     # esimate error based on a.c.f.
                     theta = qi/(1 - qi)
                     d = theta*dlmd[ix + i, rec - 1]
@@ -718,12 +689,15 @@ class Solver:
                           abs(err_X[0, i]), abs(err_X[1, i]), \
                           acf[0, i], self.cnv[i]))
 
-#            last = 0
             lcon = 0
             for i in range(leftX - 1):
                 j = self.lcon + i
                 k = ix + i
-                res_err = 10*delta_R[i]
+                l = max(2, int(res[k]/min_res[k]))
+                if l <= rec:
+                    d = abs(dlmd[k, rec - l])
+                else:
+                    d = 0.0
                 if options.convergence_criteria.satisfied(self, k):
                     if verb > 0:
                         msg = 'left eigenpair %d converged,\n' + \
@@ -731,10 +705,8 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     lcon += 1
                     self.cnv[k] = self.iteration + 1
-#                elif detect_stagn and res[k] >= 0 and res[k] < delta_R[i] and \
-                elif detect_stagn and res[k] >= 0 and res[k] < res_err and \
-                    (acf[0, k] > acf[1, k] or dX[k] > dXp[k]):
-#                            acf[0, k] >= acf[1, k]:
+                elif detect_stagn and res[k] >= 0 and \
+                    d != 0.0 and abs(dlmd[k, rec - 1]) > d:
                     if verb > 0:
                         msg = 'left eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
@@ -743,25 +715,16 @@ class Solver:
                     self.cnv[k] = -self.iteration - 1
                 else:
                     break
-#                last = i
-#            for i in range(last, 0, -1):
-#                j = self.lcon + i
-#                k = ix + i
-#                if lmd[k + 1] - lmd[k] < res[k]:
-#                    if verb > 0:
-#                        msg = 'eigenvalue %.16e is too close to %.16e,\n' + \
-#                        ' eigenpair %d not accepted'
-#                        print(msg % (lmd[k], lmd[k + 1], j))
-#                    lcon -= 1
-#                    self.cnv[k] = 0
-#                else:
-#                    break
-#            last = 0
+
             rcon = 0
             for i in range(rightX - 1):
                 j = self.rcon + i
                 k = ix + nx - i - 1
-                res_err = 10*delta_R[nx - i - 1]
+                l = max(2, int(res[k]/min_res[k]))
+                if l <= rec:
+                    d = abs(dlmd[k, rec - l])
+                else:
+                    d = 0.0
                 if options.convergence_criteria.satisfied(self, k):
                     if verb > 0:
                         msg = 'right eigenpair %d converged,\n' + \
@@ -769,14 +732,8 @@ class Solver:
                         print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
                     self.cnv[k] = self.iteration + 1
-#                elif detect_stagn and res[k] >= 0 and \
-#                        res[k] < delta_R[nx - i - 1] and \
-#                        acf[0, k] > acf[1, k]:
-                elif detect_stagn and res[k] >= 0 and res[k] < res_err and \
-                    (acf[0, k] > acf[1, k] or dX[k] > dXp[k]):
-#                        acf[0, k] >= 0.99*acf[1, k]:
-#                        dX[k] > dXp[k]:
-#                    print(res[k], res_err, dX[k], dXp[k], acf[:,k])
+                elif detect_stagn and res[k] >= 0 and \
+                    d != 0.0 and abs(dlmd[k, rec - 1]) > d:
                     if verb > 0:
                         msg = 'right eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
@@ -785,19 +742,6 @@ class Solver:
                     self.cnv[k] = -self.iteration - 1
                 else:
                     break
-#                last = i
-#            for i in range(last, 0, -1):
-#                j = self.rcon + i
-#                k = ix + nx - i - 1
-#                if lmd[k] - lmd[k - 1] < res[k]:
-#                    if verb > 0:
-#                        msg = 'eigenvalue %.16e is too close to %.16e,\n' + \
-#                        ' eigenpair %d not accepted'
-#                        print(msg % (lmd[k], lmd[k - 1], j))
-#                    rcon -= 1
-#                    self.cnv[k] = 0
-#                else:
-#                    break
 
             # move converged X to Xc, update Gram matrix for Xc
             ncon = Xc.nvec()
@@ -1005,7 +949,6 @@ class Solver:
                 if verb > -1:
                     print('no search directions left, terminating')
                 return 3
-#                break
 
             # re-arrange/drop-linear-dependent search directions
             nxy = nx + ny
@@ -1052,7 +995,15 @@ class Solver:
                 G[nx : nxy, :nx] = conjugate(G[:nx, nx : nxy])
             G[nx : nxy, nx : nxy] = numpy.dot(conjugate(Qy), G[nx : nxy, nx : nxy])
             
+            if G.dtype.kind == 'c':
+                G = G.astype(numpy.complex128)
+            else:
+                G = G.astype(numpy.float64)
+                
             lmdxy, Q = sla.eigh(G)
+
+            lmdxy = lmdxy.astype(lmdy.dtype)
+            Q = Q.astype(Qy.dtype)
             
             # estimate changes in eigenvalues and eigenvectors
             dXp[:] = dX
@@ -1100,7 +1051,7 @@ class Solver:
                 l = left_block_size
                 rightX_new = min(nxy, l + rightX + shift_right)
                 left_block_size_new = l + rightX + shift_right - rightX_new
-                shift_left = -leftX
+                shift_left = -leftX - lcon
                 lr_ratio = 0.0
                 ix_new = left_block_size_new
             elif right > 0 and rcon > 0 and self.rcon >= right: # right side converged
@@ -1109,7 +1060,7 @@ class Solver:
                 ix_new = ix - shift_left
                 leftX_new = min(nxy, block_size - ix_new)
                 rightX_new = 0
-                shift_right = -rightX
+                shift_right = -rightX - rcon
                 left_block_size_new = ix + leftX + rightX
                 lr_ratio = 1.0
             else:
