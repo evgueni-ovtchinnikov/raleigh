@@ -538,8 +538,17 @@ class Solver:
             db = XBX.diagonal()
             new_lmd = real(da/db)
 
+            # estimate error in residual computation due to the error in
+            # computing AX, to be used in detecting convergence stagnation
+            Lmd = numpy.zeros((nx, nx))
+            Lmd[range(nx), range(nx)] = lmdx #new_lmd
+            RX = XAX - numpy.dot(XBX, Lmd)
+            delta_R = nla.norm(RX, axis = 0)
+            if gen:
+                s = numpy.sqrt(abs(X.dots(X)))
+                delta_R /= s
             rv_err = numpy.amax(abs(new_lmd - lmdx))
-            if verb > 0:
+            if verb > 2:
                 print('Ritz values error: %.1e' % rv_err)
                 print('Ritz vectors non-orthonormality: %.1e' % \
                       numpy.amax(abs(XBX - numpy.eye(nx))))
@@ -683,21 +692,37 @@ class Solver:
                 '   a.c.f.'
                 print(msg)
                 for i in range(block_size):
+#                for j in range(nx):
+#                    i = ix + j
+#                    res_err = min_res[i] + delta_R[j]
+#                    a = acf[0, i]
+#                    if a < 1.0:
+#                        q = math.log(res_err/res[i])/math.log(a)
+#                        l = max(2, min(rec, int(q))//2)
+#                    else:
+#                        l = 1
                     print('%14e %8.1e  %.1e / %.1e    %.1e / %.1e  %.3e  %d' % \
                           (lmd[i], res[i], \
                           abs(err_lmd[0, i]), abs(err_lmd[1, i]), \
                           abs(err_X[0, i]), abs(err_X[1, i]), \
                           acf[0, i], self.cnv[i]))
+#                          abs(dlmd[i, rec - 1]), l)) #self.cnv[i]))
+#                          abs(res_err), abs(dlmd[i, rec - l]), \
 
             lcon = 0
             for i in range(leftX - 1):
                 j = self.lcon + i
                 k = ix + i
-                l = max(2, int(res[k]/min_res[k]))
-                if l <= rec:
-                    d = abs(dlmd[k, rec - l])
+                res_err = min_res[k] + 10*delta_R[i]
+                a = acf[0, k]
+                if a < 1.0:
+                    q = math.log(res_err/res[k])/math.log(a)
+                    l = max(2, min(rec, int(q))//2)
                 else:
-                    d = 0.0
+                    l = 1
+                dlmd1 = abs(dlmd[k, rec - 1])
+                dlmd2 = abs(dlmd[k, rec - 2])
+                dlmdl = abs(dlmd[k, rec - l])
                 if options.convergence_criteria.satisfied(self, k):
                     if verb > 0:
                         msg = 'left eigenpair %d converged,\n' + \
@@ -706,7 +731,9 @@ class Solver:
                     lcon += 1
                     self.cnv[k] = self.iteration + 1
                 elif detect_stagn and res[k] >= 0 and \
-                    d != 0.0 and abs(dlmd[k, rec - 1]) > d:
+                    (res[k] < 0.1*res_err and dlmd1 > 0.1*dlmd2 or
+                    res[k] < res_err and dlmd1 > dlmd2 or \
+                    res[k] < 100*res_err and l > 10 and dlmd1 > dlmdl):
                     if verb > 0:
                         msg = 'left eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
@@ -720,11 +747,16 @@ class Solver:
             for i in range(rightX - 1):
                 j = self.rcon + i
                 k = ix + nx - i - 1
-                l = max(2, int(res[k]/min_res[k]))
-                if l <= rec:
-                    d = abs(dlmd[k, rec - l])
+                res_err = min_res[k] + 10*delta_R[nx - i - 1]
+                a = acf[0, i]
+                if a < 1.0:
+                    q = math.log(res_err/res[k])/math.log(a)
+                    l = max(2, min(rec, int(q)))
                 else:
-                    d = 0.0
+                    l = 1
+                dlmd1 = abs(dlmd[k, rec - 1])
+                dlmd2 = abs(dlmd[k, rec - 2])
+                dlmdl = abs(dlmd[k, rec - l])
                 if options.convergence_criteria.satisfied(self, k):
                     if verb > 0:
                         msg = 'right eigenpair %d converged,\n' + \
@@ -733,7 +765,9 @@ class Solver:
                     rcon += 1
                     self.cnv[k] = self.iteration + 1
                 elif detect_stagn and res[k] >= 0 and \
-                    d != 0.0 and abs(dlmd[k, rec - 1]) > d:
+                    (res[k] < 0.1*res_err and dlmd1 > 0.1*dlmd2 or
+                    res[k] < 10*res_err and dlmd1 > dlmd2 or \
+                    res[k] < 100*res_err and l > 10 and dlmd1 > dlmdl):
                     if verb > 0:
                         msg = 'right eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
