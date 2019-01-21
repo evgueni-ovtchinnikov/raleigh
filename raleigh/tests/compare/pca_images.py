@@ -18,6 +18,7 @@ Options:
   -t <tol> , --restol=<tol>  residual tolerance [default: 1e-3]
   -f, --full  compute full SVD using scipy.linalg.svd
   -s, --svds  compute truncated SVD using scipy.sparse.linalg.svds
+  -k, --skl   compute truncated SVD using sklearn.decomposition.TruncatedSVD
 
 Created on Wed Sep  5 14:44:23 2018
 
@@ -37,11 +38,13 @@ tol = float(args['--restol'])
 arch = args['--arch']
 run_svd = args['--full']
 run_svds = args['--svds']
+run_skl = args['--skl']
 
 import numpy
 import numpy.linalg as nla
 import scipy.linalg as sla
 from scipy.sparse.linalg import svds
+from sklearn.decomposition import TruncatedSVD, PCA
 import sys
 import time
 
@@ -97,7 +100,8 @@ opt.block_size = block_size
 #opt.max_iter = 1000
 opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
-    ('relative residual tolerance', tol)
+    ('kinematic eigenvector error', tol)
+#    ('relative residual tolerance', tol)
 start = time.time()
 sigma_r, u_r, vt_r = pca(images, opt, npc = npc, tol = err_tol, arch = arch)
 stop = time.time()
@@ -105,20 +109,14 @@ time_r = stop - start
 ncon = sigma_r.shape[0]
 if err_tol > 0 or npc > 0: 
     print('\n%d singular vectors computed in %.1e sec' % (ncon, time_r))
+print('last singular value: %.1e' % sigma_r[-1])
 
-if err_tol > 0:
-    print('\n--- solving with restarted scipy.sparse.linalg.svds...')
-else:
-    print('\n--- solving with scipy.sparse.linalg.svds...')
-
-sigma_s = numpy.ndarray((0,), dtype = dtype)
-vt_s = numpy.ndarray((0, n), dtype = dtype)
 norms = nla.norm(images, axis = 1)
 vmin = numpy.amin(norms)
 vmax = numpy.amax(norms)
 print(vmin,vmax)
 
-if run_svd:
+if run_svd or run_skl:
     images0 = images.copy()
 
 if npc <= 0:
@@ -133,6 +131,62 @@ if npc <= 0:
 else:
     err_tol = 0
 
+if run_skl:
+    if err_tol > 0:
+        print('\n--- solving with restarted sklearn.decomposition.TruncatedSVD...')
+    else:
+        print('\n--- solving with sklearn.decomposition.TruncatedSVD...')
+
+e = numpy.ones((n, 1), dtype = dtype)
+s = numpy.ones((m,), dtype = dtype)
+s[:] = (numpy.dot(images, e)/n).transpose()
+norms = nla.norm(images, axis = 1)
+t = norms*norms - s*s*n
+norms = numpy.sqrt(abs(t))
+#s = numpy.reshape(s, (m, 1))
+#images -= numpy.dot(s, e.T)
+
+start = time.time()
+
+#norms = nla.norm(images, axis = 1)
+#print(nla.norm(norms - norms0)/nla.norm(norms))
+skl_svd = PCA(npc, tol = tol)
+#skl_svd = TruncatedSVD(npc, tol = tol)
+sigma_skl = numpy.ndarray((0,), dtype = dtype)
+vt_skl = numpy.ndarray((0, n), dtype = dtype)
+while run_skl:
+    skl_svd.fit(images)
+    s = skl_svd.singular_values_
+    vti = skl_svd.components_
+    sigma_skl = numpy.concatenate((sigma_skl, s))
+    vt_skl = numpy.concatenate((vt_skl, vti))
+    stop = time.time()
+    time_s = stop - start
+    print('%.2f sec: last singular value computed: %e' % (time_s, s[-1]))
+    print('deflating...')
+    images -= numpy.dot(numpy.dot(images, vti.transpose()), vti)
+    errs = numpy.amax(nla.norm(images, axis = 1)/norms)
+    print('max SVD error: %.3e' % errs)
+    if errs <= err_tol:
+        break
+    print('restarting...')
+
+stop = time.time()
+time_k = stop - start
+if run_skl:
+    print('sklearn time: %.1e' % time_k)
+
+if run_svd or run_skl:
+    images = images0
+
+if run_svds:
+    if err_tol > 0:
+        print('\n--- solving with restarted scipy.sparse.linalg.svds...')
+    else:
+        print('\n--- solving with scipy.sparse.linalg.svds...')
+
+sigma_s = numpy.ndarray((0,), dtype = dtype)
+vt_s = numpy.ndarray((0, n), dtype = dtype)
 start = time.time()
 
 e = numpy.ones((n, 1), dtype = dtype)
@@ -172,7 +226,8 @@ while run_svds:
 stop = time.time()
 time_s = stop - start
 ncon = sigma_s.shape[0]
-print('\n%d singular vectors computed in %.1e sec' % (ncon, time_s))
+if run_svds:
+    print('\n%d singular vectors computed in %.1e sec' % (ncon, time_s))
 
 if run_svd:
     images = images0
@@ -201,6 +256,11 @@ if run_svd:
 
 if err_tol > 0 or npc > 0: 
     # these timings make sense for non-interactive mode only
-    print('\n time: raleigh %.1e, svds %.1e' % (time_r, time_s))
+    #print('\n time: raleigh %.1e, svds %.1e' % (time_r, time_s))
+    print('\n raleigh time: %.1e' % time_r)
+    if run_skl:
+        print('\n sklearn time: %.1e' % time_k)
+    if run_svds:
+        print('\n scipy svds time: %.1e' % time_s)
 
 print('\ndone')

@@ -50,6 +50,7 @@ shift = args['--shift']
 import numpy
 import numpy.linalg as nla
 import scipy.linalg as sla
+from sklearn.decomposition import TruncatedSVD #, PCA
 import sys
 import time
 
@@ -161,6 +162,49 @@ D = A - numpy.dot(sigma_r*u, vt_r)
 err = nla.norm(D, axis = 1)/nla.norm(A, axis = 1)
 print('svd error %e' % numpy.amax(err))
 
+B = A.copy()
+skl_svd = TruncatedSVD(block_size, tol = tol)
+#skl_svd = PCA(block_size, tol = tol)
+sigma_skl = numpy.ndarray((0,), dtype = dtype)
+vt_skl = numpy.ndarray((0, n), dtype = dtype)
+start = time.time()
+#skl_svd.fit(A)
+while True:
+    skl_svd.fit(A)
+    s = skl_svd.singular_values_
+    vti = skl_svd.components_
+    sigma_skl = numpy.concatenate((sigma_skl, s))
+    vt_skl = numpy.concatenate((vt_skl, vti))
+    stop = time.time()
+    time_s = stop - start
+    print('%.2f sec: last singular value computed: %e' % (time_s, s[-1]))
+    if th == 0:
+        break
+    if s[-1] <= th:
+        break
+    print('deflating...')
+    A -= numpy.dot(numpy.dot(A, vti.transpose()), vti)
+    print('restarting...')
+stop = time.time()
+time_skl = stop - start
+print('sklearn time: %.1e' % time_skl)
+#sigma_skl = skl_svd.singular_values_
+#vt_skl = skl_svd.components_
+#print(sigma_skl)
+print(vt_skl.shape)
+#print(nla.norm(vt_skl, axis = 1))
+n_skl = min(sigma_skl.shape[0], sigma0.shape[0])
+if not ptb and n_skl > 0:
+    n_skl = min(n_skl, sigma0.shape[0])
+    err_vec = vec_err(v0[:,:n_skl], vt_skl.transpose()[:,:n_skl])
+    err_val = abs(sigma_skl[:n_skl] - sigma0[:n_skl])
+    print('\nmax singular vector error (sklearn): %.1e' % numpy.amax(err_vec))
+    print('\nmax singular value error (sklearn): %.1e' % numpy.amax(err_val))
+A = B
+D = A - numpy.dot(numpy.dot(A, vt_skl.transpose()), vt_skl)
+err = nla.norm(D, axis = 1)/nla.norm(A, axis = 1)
+print('svd error %e' % numpy.amax(err))
+
 if full:
     print('\n--- solving with scipy.linalg.svd...')
     start = time.time()
@@ -184,7 +228,7 @@ if use_op:
 
 start = time.time()
 
-while True:
+while False:
     if use_op:
         u, s, vti = svds(opA, k = block_size, tol = tol)
     else:
