@@ -99,6 +99,7 @@ opt = Options()
 opt.block_size = block_size
 #opt.max_iter = 1000
 opt.verbosity = -1
+opt.max_quota = 0.9
 opt.convergence_criteria.set_error_tolerance \
     ('residual tolerance', tol)
 #    ('kinematic eigenvector error', tol)
@@ -111,6 +112,16 @@ ncon = sigma_r.shape[0]
 if err_tol > 0 or npc > 0: 
     print('\n%d singular vectors computed in %.1e sec' % (ncon, time_r))
 print('last singular value: %.1e' % sigma_r[-1])
+
+e = numpy.ones((n, 1), dtype = dtype)
+a = numpy.ones((m,), dtype = dtype)
+a[:] = (numpy.dot(images, e)/n).transpose()
+
+#a = numpy.reshape(a, (m, 1))
+##images -= numpy.dot(a, e.T)
+#diff = images - numpy.dot(a, e.T) - numpy.dot(sigma_r*u_r, vt_r)
+#err = nla.norm(diff, axis = 1)/norms
+#print('svd error %e' % numpy.amax(err))
 
 norms = nla.norm(images, axis = 1)
 vmin = numpy.amin(norms)
@@ -138,19 +149,13 @@ if run_skl:
     else:
         print('\n--- solving with sklearn.decomposition.PCA...')
 
-e = numpy.ones((n, 1), dtype = dtype)
-s = numpy.ones((m,), dtype = dtype)
-s[:] = (numpy.dot(images, e)/n).transpose()
-norms = nla.norm(images, axis = 1)
-t = norms*norms - s*s*n
-norms = numpy.sqrt(abs(t))
-#s = numpy.reshape(s, (m, 1))
-#images -= numpy.dot(s, e.T)
-
 start = time.time()
 
 #norms = nla.norm(images, axis = 1)
 #print(nla.norm(norms - norms0)/nla.norm(norms))
+norms = nla.norm(images, axis = 1)
+t = norms*norms - a*a*n
+norms = numpy.sqrt(abs(t))
 skl_svd = PCA(npc, tol = tol)
 #skl_svd = TruncatedSVD(npc, tol = tol)
 sigma_skl = numpy.ndarray((0,), dtype = dtype)

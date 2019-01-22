@@ -12,6 +12,7 @@ Options:
   -m, --how-many=<m>   number of images to process (<0: all) [default: -1]
   -o, --output=<file>  output file name [default: images.npy]
   -d, --double         double the number of images by adding mirror images
+  -f, --face-area      set pixels outside face area to average value
   -v, --view           view processed images
 
 Created on Tue Aug 21 14:34:18 2018
@@ -27,10 +28,10 @@ datapath = args['<datapath>']
 m = int(args['--how-many'])
 output = args['--output']
 dble = args['--double']
+face = args['--face-area']
 view = args['--view']
 
 import numpy
-import numpy.linalg as nla
 import os
 import pylab
 import scipy.ndimage as ndimage
@@ -109,17 +110,23 @@ for subdir in os.listdir(image_dir):
 vmax = numpy.amax(images)
 vmin = numpy.amin(images)
 print('pixel values range: %f to %f' % (vmin, vmax))
-mask = trim_mask(nx, ny)
-v = (vmax - vmin)/2
-n = nx*ny
-for i in range(nimg):
-    image = images[2*i,:,:]
-    image[mask > 0] = 0
-    v = numpy.sum(image)/(n - numpy.sum(mask))
-    image[mask > 0] = v
-    images[2*i,:,:] = image
-    if dble:
-        images[2*i + 1, :, :] = image[:, ::-1]
+
+if face:
+    mask = trim_mask(nx, ny)
+    v = (vmax - vmin)/2
+    n = nx*ny
+    for i in range(nimg):
+        if dble:
+            j = 2*i
+        else:
+            j = i
+        image = images[j,:,:]
+        image[mask > 0] = 0
+        v = numpy.sum(image)/(n - numpy.sum(mask))
+        image[mask > 0] = v
+        images[j,:,:] = image
+        if dble:
+            images[j + 1, :, :] = image[:, ::-1]
 
 print('saving %d images to %s...' % (images.shape[0], output))
 numpy.save(output, images)

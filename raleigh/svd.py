@@ -39,6 +39,7 @@ class PSVDErrorCalculator:
         self.op = op
         self.solver = solver
         self.eigenvectors = eigenvectors
+        self.shift = shift
         if shift:
             self.ones = eigenvectors.new_vectors(1, self.n)
             ones = numpy.ones((1, self.n), dtype = eigenvectors.data_type())
@@ -61,10 +62,25 @@ class PSVDErrorCalculator:
             m = self.m
             n = self.n
             if m < n:
-                y = x.clone()
-                lmd = self.solver.eigenvalues[self.ncon :]
-                y.scale(lmd, multiply = True)
+                z = x.new_vectors(new, n)
+                self.op.apply(x, z, transp = True)
+                if self.shift:
+                    s = z.dot(self.ones)
+                    z.add(self.ones, -1.0/n, s)
+                    s = z.dot(self.ones)
+                    z.add(self.ones, -1.0/n, s)
+                y = x.new_vectors(new, m)
+                self.op.apply(z, y)
+#                lmd0 = y.dots(x)
+#                s0 = x.dots(x)
                 q = x.dots(y, transp = True)
+#                y = x.clone()
+#                lmd = self.solver.eigenvalues[self.ncon :]
+#                y.scale(lmd, multiply = True)
+#                q = x.dots(y, transp = True)
+#                print(numpy.amax(nla.norm(q - q0)/nla.norm(q)))
+#                print(numpy.amax(nla.norm(lmd - lmd0)/nla.norm(lmd)))
+#                print(lmd0[0], s0[0], lmd[0])
             else:
                 y = x.new_vectors(new, m)
                 self.op.apply(x, y)
@@ -278,32 +294,32 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
                 s = v.dot(e)
                 u.add(w, -1, s)
 
-        vv = v.dot(v)
-        if nsv[0] == 0:
-            uu = -u.dot(u)
-        else:
-            uu = u.dot(u)
-        lmd, x = scipy.linalg.eigh(uu, vv, turbo = False)
-        w = v.new_vectors(nv)
-        v.multiply(x, w)
-        w.copy(v)
-        w = u.new_vectors(nv)
-        u.multiply(x, w)
-        w.copy(u)
+#        vv = v.dot(v)
+#        if nsv[0] == 0:
+#            uu = -u.dot(u)
+#        else:
+#            uu = u.dot(u)
+#        lmd, x = scipy.linalg.eigh(uu, vv) #, turbo = False)
+#        w = v.new_vectors(nv)
+#        v.multiply(x, w)
+#        w.copy(v)
+#        w = u.new_vectors(nv)
+#        u.multiply(x, w)
+#        w.copy(u)
         sigma = numpy.sqrt(abs(u.dots(u)))
         u.scale(sigma)
     else:
         sigma = numpy.ndarray((0,), dtype = v.data_type())
-    lcon = solver.lcon
-    rcon = solver.rcon
-    if nsv[0] == 0:
-        u.select(rcon)
-        v.select(rcon)
-        sigma = sigma[:rcon]
-    else:
-        u.select(lcon)
-        v.select(lcon)
-        sigma = sigma[:lcon]
+#    lcon = solver.lcon
+#    rcon = solver.rcon
+#    if nsv[0] == 0:
+#        u.select(rcon)
+#        v.select(rcon)
+#        sigma = sigma[:rcon]
+#    else:
+#        u.select(lcon)
+#        v.select(lcon)
+#        sigma = sigma[:lcon]
     if transp:
         return sigma, v.data().T, conj(u.data())
     else:
