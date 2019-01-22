@@ -308,8 +308,14 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
 #        w.copy(u)
         sigma = numpy.sqrt(abs(u.dots(u)))
         u.scale(sigma)
+        ind = numpy.argsort(-sigma)
+        sigma = sigma[ind]
+        u = u.data().T[:, ind]
+        v = v.data().T[:, ind]
     else:
         sigma = numpy.ndarray((0,), dtype = v.data_type())
+        u = None
+        v = None
 #    lcon = solver.lcon
 #    rcon = solver.rcon
 #    if nsv[0] == 0:
@@ -321,9 +327,11 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
 #        v.select(lcon)
 #        sigma = sigma[:lcon]
     if transp:
-        return sigma, v.data().T, conj(u.data())
+        return sigma, v, conj(u.T)
+#        return sigma, v.data().T, conj(u.data())
     else:
-        return sigma, u.data().T, conj(v.data())
+        return sigma, u, conj(v.T)
+#        return sigma, u.data().T, conj(v.data())
 
 def truncated_svd(a, opt, nsv = -1, largest = True, tol = 0, th = 0, msv = 0, \
                   isv = None, shift = False, \
