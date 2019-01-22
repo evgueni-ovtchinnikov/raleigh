@@ -155,9 +155,12 @@ class Solver:
         if what.find('block') > -1:
             return self.block_size
         elif what.find('res') > -1 and what.find('vec') == -1:
-            if what.find('rel') > -1:
-                return self.res[which]/abs(self.lmd[which])
-            return self.res[which]
+#            if what.find('rel') > -1:
+#                return self.res[which]/abs(self.lmd[which])
+            max_lmd = numpy.amax(abs(self.lmd))
+            if self.lcon + self.rcon > 0:
+                max_lmd = max(max_lmd, numpy.amax(abs(self.eigenvalues)))
+            return self.res[which]/max_lmd
         elif what.find('val') > -1:
             if what.find('err') > -1:
                 err = self.err_lmd[:, which]
@@ -301,10 +304,10 @@ class Solver:
         m = self.block_size
         if left == 0:
             r = 0.0
-            l = 0 #1
+            l = 1
         elif right == 0:
             r = 1.0
-            l = m #- 1
+            l = m - 1
         elif left > 0 and right > 0:
             r = left/(left + 1.0*right)
             l = int(round(r*m))

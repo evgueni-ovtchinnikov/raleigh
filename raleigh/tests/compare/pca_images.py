@@ -18,7 +18,7 @@ Options:
   -t <tol> , --restol=<tol>  residual tolerance [default: 1e-3]
   -f, --full  compute full SVD using scipy.linalg.svd
   -s, --svds  compute truncated SVD using scipy.sparse.linalg.svds
-  -k, --skl   compute truncated SVD using sklearn.decomposition.TruncatedSVD
+  -k, --skl   compute truncated SVD using sklearn.decomposition.PCA
 
 Created on Wed Sep  5 14:44:23 2018
 
@@ -44,7 +44,7 @@ import numpy
 import numpy.linalg as nla
 import scipy.linalg as sla
 from scipy.sparse.linalg import svds
-from sklearn.decomposition import TruncatedSVD, PCA
+from sklearn.decomposition import PCA
 import sys
 import time
 
@@ -100,7 +100,8 @@ opt.block_size = block_size
 #opt.max_iter = 1000
 opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
-    ('kinematic eigenvector error', tol)
+    ('residual tolerance', tol)
+#    ('kinematic eigenvector error', tol)
 #    ('relative residual tolerance', tol)
 start = time.time()
 sigma_r, u_r, vt_r = pca(images, opt, npc = npc, tol = err_tol, arch = arch)
@@ -133,9 +134,9 @@ else:
 
 if run_skl:
     if err_tol > 0:
-        print('\n--- solving with restarted sklearn.decomposition.TruncatedSVD...')
+        print('\n--- solving with restarted sklearn.decomposition.PCA...')
     else:
-        print('\n--- solving with sklearn.decomposition.TruncatedSVD...')
+        print('\n--- solving with sklearn.decomposition.PCA...')
 
 e = numpy.ones((n, 1), dtype = dtype)
 s = numpy.ones((m,), dtype = dtype)

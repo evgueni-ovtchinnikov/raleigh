@@ -146,6 +146,7 @@ if not ptb and n_r > 0:
     n_r = min(n_r, sigma0.shape[0])
     err_vec = vec_err(v0[:,:n_r], vt_r.transpose()[:,:n_r])
     err_val = abs(sigma_r[:n_r] - sigma0[:n_r])
+    #print(err_vec*sigma_r[:n_r])
     print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
     print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
 #else:
@@ -191,13 +192,14 @@ print('sklearn time: %.1e' % time_skl)
 #sigma_skl = skl_svd.singular_values_
 #vt_skl = skl_svd.components_
 #print(sigma_skl)
-print(vt_skl.shape)
+#print(vt_skl.shape)
 #print(nla.norm(vt_skl, axis = 1))
 n_skl = min(sigma_skl.shape[0], sigma0.shape[0])
 if not ptb and n_skl > 0:
     n_skl = min(n_skl, sigma0.shape[0])
     err_vec = vec_err(v0[:,:n_skl], vt_skl.transpose()[:,:n_skl])
     err_val = abs(sigma_skl[:n_skl] - sigma0[:n_skl])
+    #print(err_vec*sigma_skl[:n_skl])
     print('\nmax singular vector error (sklearn): %.1e' % numpy.amax(err_vec))
     print('\nmax singular value error (sklearn): %.1e' % numpy.amax(err_val))
 A = B
