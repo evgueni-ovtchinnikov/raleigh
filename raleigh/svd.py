@@ -34,7 +34,7 @@ class PSVDErrorCalculator:
         self.shift = False
         self.ncon = 0
         self.norms = nla.norm(a, axis = 1)
-#        self.err = self.norms.copy()
+        self.err = self.norms.copy()
     def set_up(self, op, solver, eigenvectors, shift = False):
         self.op = op
         self.solver = solver
@@ -49,9 +49,10 @@ class PSVDErrorCalculator:
             aves = numpy.zeros((self.m,), dtype = eigenvectors.data_type())
             aves[:] = self.aves.data()
             s = self.norms*self.norms - aves*aves/self.n
-            self.norms = numpy.sqrt(abs(s))
+            self.err = numpy.sqrt(abs(s))
+#            self.norms = numpy.sqrt(abs(s))
             self.aves.scale(self.n*ones[0,:1])
-        self.err = self.norms.copy()
+#        self.err = self.norms.copy()
     def update_errors(self):
         ncon = self.eigenvectors.nvec()
         new = ncon - self.ncon
@@ -113,16 +114,16 @@ class DefaultStoppingCriteria:
         self.norms = self.err_calc.norms
         if solver.rcon <= self.ncon:
             return False
-        now = time.time()
-        new = solver.rcon - self.ncon
-        elapsed_time = now - self.start_time
-        self.elapsed_time += elapsed_time
         self.err = self.err_calc.update_errors()
         err_rel = numpy.amax(self.err/self.norms)
         lmd = solver.eigenvalues[self.ncon : solver.rcon]
         sigma = -numpy.sort(-numpy.sqrt(abs(lmd)))
         if self.ncon == 0:
             self.sigma = sigma[0]
+        now = time.time()
+        new = solver.rcon - self.ncon
+        elapsed_time = now - self.start_time
+        self.elapsed_time += elapsed_time
         i = new - 1
         si = sigma[i]
         si_rel = si/self.sigma

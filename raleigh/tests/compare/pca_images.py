@@ -114,6 +114,17 @@ if err_tol > 0 or npc > 0:
 print('last singular value: %.1e' % sigma_r[-1])
 
 e = numpy.ones((n, 1), dtype = dtype)
+s = numpy.dot(images, e)/n
+#imgs = images - numpy.dot(s, e.T)
+#diff = images - numpy.dot(s, e.T) - imgs
+#print(nla.norm(diff)/nla.norm(images))
+#norms = nla.norm(imgs, axis = 1)
+norms = nla.norm(images, axis = 1)
+diff = images - numpy.dot(s, e.T) - numpy.dot(sigma_r*u_r, vt_r)
+errs = nla.norm(diff, axis = 1)/norms
+print('max PCA error: %.1e' % numpy.amax(errs))
+
+e = numpy.ones((n, 1), dtype = dtype)
 a = numpy.ones((m,), dtype = dtype)
 a[:] = (numpy.dot(images, e)/n).transpose()
 
@@ -149,13 +160,18 @@ if run_skl:
     else:
         print('\n--- solving with sklearn.decomposition.PCA...')
 
-start = time.time()
-
 #norms = nla.norm(images, axis = 1)
 #print(nla.norm(norms - norms0)/nla.norm(norms))
 norms = nla.norm(images, axis = 1)
-t = norms*norms - a*a*n
-norms = numpy.sqrt(abs(t))
+#t = norms*norms - a*a*n
+#norms = numpy.sqrt(abs(t))
+#vmin = numpy.amin(norms)
+#vmax = numpy.amax(norms)
+#print(vmin,vmax)
+
+start = time.time()
+#avs = numpy.dot(images, e)/n
+#images -= numpy.dot(avs, e.T)
 skl_svd = PCA(npc, tol = tol)
 #skl_svd = TruncatedSVD(npc, tol = tol)
 sigma_skl = numpy.ndarray((0,), dtype = dtype)
@@ -164,14 +180,21 @@ while run_skl:
     skl_svd.fit(images)
     s = skl_svd.singular_values_
     vti = skl_svd.components_
+    #print(vti.shape)
     sigma_skl = numpy.concatenate((sigma_skl, s))
     vt_skl = numpy.concatenate((vt_skl, vti))
     stop = time.time()
     time_s = stop - start
-    print('%.2f sec: last singular value computed: %e' % (time_s, s[-1]))
+    pcs = vt_skl.shape[0]
+    print('%.2f sec: last singular value computed: sigma[%d] = %e' \
+        % (time_s, pcs - 1, s[-1]))
+    if err_tol <= 0:
+        break
     print('deflating...')
-    images -= numpy.dot(numpy.dot(images, vti.transpose()), vti)
-    errs = numpy.amax(nla.norm(images, axis = 1)/norms)
+    images -= numpy.dot(numpy.dot(images, vti.T), vti)
+    new_norms = nla.norm(images, axis = 1)
+    #print(nla.norm(norms), nla.norm(new_norms), nla.norm(avs))
+    errs = numpy.amax(new_norms/norms)
     print('max SVD error: %.3e' % errs)
     if errs <= err_tol:
         break
@@ -181,6 +204,13 @@ stop = time.time()
 time_k = stop - start
 if run_skl:
     print('sklearn time: %.1e' % time_k)
+
+#print(vt_skl.shape)
+s = numpy.dot(images, e)/n
+diff = images - numpy.dot(s, e.T)
+diff -= numpy.dot(numpy.dot(diff, vt_skl.T), vt_skl)
+errs = nla.norm(diff, axis = 1)/norms
+print('max PCA error: %.1e' % numpy.amax(errs))
 
 if run_svd or run_skl:
     images = images0
