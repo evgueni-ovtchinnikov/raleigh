@@ -132,11 +132,11 @@ time_r = stop - start
 ncon = sigma_r.shape[0]
 if err_tol > 0 or npc > 0: 
     print('\n%d singular vectors computed in %.1e sec' % (ncon, time_r))
-print('last singular value: %.1e' % sigma_r[-1])
+print('last singular value: %e' % sigma_r[-1])
 if npc > 0:
-    print(sigma_r[:npc])
+    print(sigma_r[npc - 1])
 else:
-    print(sigma_r[:ncon])
+    print(sigma_r[ncon - 1])
 
 #e = numpy.ones((n, 1), dtype = dtype)
 #a = numpy.dot(images, e)/n
@@ -145,25 +145,25 @@ diff = images - numpy.dot(e, a) - numpy.dot(sigma_r*u_r, vt_r)
 #diff = images - numpy.dot(a, e.T) - numpy.dot(sigma_r*u_r, vt_r)
 errs = nla.norm(diff, axis = 1)/norms
 print('max PCA error: %.1e' % numpy.amax(errs))
+
+if run_svd or run_skl:
+    images0 = images.copy()
+
+##images -= numpy.dot(a, e.T)
+#images -= numpy.dot(e, a)
+##npc = ncon
+#sigma_rs, u_rs, vt_rs = \
+#    truncated_svd(images, opt, nsv = npc, tol = err_tol, arch = arch)
+#if npc > 0:
+#    print(sigma_rs[:npc])
+#else:
+#    print(sigma_rs[:ncon])
+#norms = nla.norm(images, axis = 1)
+#diff = images - numpy.dot(sigma_rs*u_rs, vt_rs)
+#errs = nla.norm(diff, axis = 1)/norms
+#print('max PCA error: %.1e' % numpy.amax(errs))
 #
-#if run_svd or run_skl:
-#    images0 = images.copy()
-
-#images -= numpy.dot(a, e.T)
-images -= numpy.dot(e, a)
-#npc = ncon
-sigma_rs, u_rs, vt_rs = \
-    truncated_svd(images, opt, nsv = npc, tol = err_tol, arch = arch)
-if npc > 0:
-    print(sigma_rs[:npc])
-else:
-    print(sigma_rs[:ncon])
-norms = nla.norm(images, axis = 1)
-diff = images - numpy.dot(sigma_rs*u_rs, vt_rs)
-errs = nla.norm(diff, axis = 1)/norms
-print('max PCA error: %.1e' % numpy.amax(errs))
-
-quit()
+#quit()
 
 if npc <= 0:
     if block_size < 1:
@@ -188,14 +188,14 @@ norms = nla.norm(images, axis = 1)
 start = time.time()
 #avs = numpy.dot(images, e)/n
 #images -= numpy.dot(avs, e.T)
-#skl_svd = PCA(npc, tol = tol)
-skl_svd = TruncatedSVD(npc, tol = tol)
+skl_svd = PCA(npc, tol = tol)
+#skl_svd = TruncatedSVD(npc, tol = tol)
 sigma_skl = numpy.ndarray((0,), dtype = dtype)
 vt_skl = numpy.ndarray((0, n), dtype = dtype)
 while run_skl:
     skl_svd.fit(images)
     s = skl_svd.singular_values_
-    print(s)
+    #print(s)
     vti = skl_svd.components_
     #print(vti.shape)
     sigma_skl = numpy.concatenate((sigma_skl, s))
@@ -208,10 +208,12 @@ while run_skl:
     if err_tol <= 0:
         break
     print('deflating...')
-    images -= numpy.dot(numpy.dot(images, vti.T), vti)
-    new_norms = nla.norm(images, axis = 1)
+    imgs = images - numpy.dot(e, a)
+    images -= numpy.dot(numpy.dot(imgs, vti.T), vti)
+    errs = numpy.amax(nla.norm(imgs, axis = 1)/norms)
+    #new_norms = nla.norm(images, axis = 1)
     #print(nla.norm(norms), nla.norm(new_norms), nla.norm(avs))
-    errs = numpy.amax(new_norms/norms)
+    #errs = numpy.amax(new_norms/norms)
     print('max SVD error: %.3e' % errs)
     if errs <= err_tol:
         break
@@ -223,14 +225,19 @@ if run_skl:
     print('sklearn time: %.1e' % time_k)
 
 #print(vt_skl.shape)
-s = numpy.dot(images, e)/n
-diff = images - numpy.dot(s, e.T)
+#s = numpy.dot(images, e)/n
+#diff = images - numpy.dot(s, e.T)
+diff = images - numpy.dot(e, a)
 diff -= numpy.dot(numpy.dot(diff, vt_skl.T), vt_skl)
 errs = nla.norm(diff, axis = 1)/norms
 print('max PCA error: %.1e' % numpy.amax(errs))
 
+pcs = vt_skl.shape[0]
+k = min(ncon, pcs) - 1
+print(sigma_r[k], sigma_skl[k])
+
 if run_svd or run_skl:
-    images = images0
+    images = images0.copy()
 
 if run_svds:
     if err_tol > 0:
@@ -242,13 +249,15 @@ sigma_s = numpy.ndarray((0,), dtype = dtype)
 vt_s = numpy.ndarray((0, n), dtype = dtype)
 start = time.time()
 
-e = numpy.ones((n, 1), dtype = dtype)
-s = numpy.dot(images, e)/n
-images -= numpy.dot(s, e.T)
+#e = numpy.ones((n, 1), dtype = dtype)
+#s = numpy.dot(images, e)/n
+#images -= numpy.dot(s, e.T)
 norms = nla.norm(images, axis = 1)
-vmin = numpy.amin(norms)
-vmax = numpy.amax(norms)
-print(vmin,vmax)
+images -= numpy.dot(e, a)
+#norms = nla.norm(images, axis = 1)
+#vmin = numpy.amin(norms)
+#vmax = numpy.amax(norms)
+#print(vmin,vmax)
 
 while run_svds:
     u, s, vti = svds(images, k = npc, tol = tol)
@@ -280,16 +289,18 @@ if run_svd:
     images = images0
     print('\n--- solving with scipy.linalg.svd...')
     start = time.time()
-    e = numpy.ones((n, 1), dtype = dtype)
-    s = numpy.dot(images, e)/n
-    images -= numpy.dot(s, e.T)
+#    e = numpy.ones((n, 1), dtype = dtype)
+#    s = numpy.dot(images, e)/n
+#    images -= numpy.dot(s, e.T)
+    images -= numpy.dot(e, a)
     u0, sigma0, vt0 = sla.svd(images, full_matrices = False, overwrite_a = True)
     stop = time.time()
     time_f = stop - start
     print('\n full SVD time: %.1e' % time_f)
     n_r = min(sigma_r.shape[0], sigma0.shape[0])
     if n_r > 0:
-        print(sigma0[:npc])
+        if npc > 0:
+            print(sigma0[:npc])
         err_vec = vec_err(vt0.T[:,:n_r], vt_r.T[:,:n_r])
         err_val = abs(sigma_r[:n_r] - sigma0[:n_r])/sigma0[0]
         print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
