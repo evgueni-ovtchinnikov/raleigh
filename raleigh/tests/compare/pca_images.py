@@ -54,6 +54,7 @@ if raleigh_path not in sys.path:
 
 from raleigh.solver import Options
 from raleigh.svd import pca, truncated_svd
+from raleigh.algebra import Vectors
 
 def vec_err(u, v):
     w = v.copy()
@@ -86,6 +87,35 @@ print('data range: %e to %e' % (vmin, vmax))
 
 images = numpy.reshape(images, (m, n))
 dtype = images.dtype.type
+e = numpy.ones((m, 1), dtype = dtype)
+a = numpy.dot(e.T, images)/m
+#
+#vi = Vectors(n, m, data_type = dtype)
+#vi.fill(images)
+#va = vi.new_vectors(1)
+#va.add(vi, 1.0/m, e)
+#
+#sa = va.dots(va)
+#bv = vi.dot(va).T
+#tv = vi.dots(vi).reshape((m, 1))
+#yv = numpy.sqrt(tv - 2*bv + sa*e)
+#
+#vi.add(va, -1.0, e.T)
+#xv = numpy.sqrt(vi.dots(vi).reshape(m, 1))
+#
+#print(nla.norm(xv - yv)/nla.norm(xv))
+#
+#b = numpy.dot(images, a.T)
+#s = nla.norm(a)
+#s = s*s
+#t = nla.norm(images, axis = 1).reshape((m, 1))
+#t = t*t
+#y = numpy.sqrt(t - 2*b + s*e)
+#
+#images -= numpy.dot(e, a)
+#x = nla.norm(images, axis = 1).reshape((m, 1))
+#
+#print(nla.norm(x - y)/nla.norm(x))
 
 print('\n--- solving with raleigh.svd.pca...')
 opt = Options()
@@ -105,23 +135,34 @@ if err_tol > 0 or npc > 0:
 print('last singular value: %.1e' % sigma_r[-1])
 if npc > 0:
     print(sigma_r[:npc])
+else:
+    print(sigma_r[:ncon])
 
-e = numpy.ones((n, 1), dtype = dtype)
-a = numpy.dot(images, e)/n
+#e = numpy.ones((n, 1), dtype = dtype)
+#a = numpy.dot(images, e)/n
 norms = nla.norm(images, axis = 1)
+diff = images - numpy.dot(e, a) - numpy.dot(sigma_r*u_r, vt_r)
 #diff = images - numpy.dot(a, e.T) - numpy.dot(sigma_r*u_r, vt_r)
-#errs = nla.norm(diff, axis = 1)/norms
-#print('max PCA error: %.1e' % numpy.amax(errs))
+errs = nla.norm(diff, axis = 1)/norms
+print('max PCA error: %.1e' % numpy.amax(errs))
+#
+#if run_svd or run_skl:
+#    images0 = images.copy()
 
-if run_svd or run_skl:
-    images0 = images.copy()
-
-images -= numpy.dot(a, e.T)
-
+#images -= numpy.dot(a, e.T)
+images -= numpy.dot(e, a)
+#npc = ncon
 sigma_rs, u_rs, vt_rs = \
     truncated_svd(images, opt, nsv = npc, tol = err_tol, arch = arch)
 if npc > 0:
     print(sigma_rs[:npc])
+else:
+    print(sigma_rs[:ncon])
+norms = nla.norm(images, axis = 1)
+diff = images - numpy.dot(sigma_rs*u_rs, vt_rs)
+errs = nla.norm(diff, axis = 1)/norms
+print('max PCA error: %.1e' % numpy.amax(errs))
+
 quit()
 
 if npc <= 0:
