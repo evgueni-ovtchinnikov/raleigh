@@ -20,6 +20,86 @@ if raleigh_path not in sys.path:
 
 from raleigh.solver import Options, Problem, Solver
 
+class OperatorSVD:
+#        def __init__(self, op, gpu, transp = False, shift = False):
+    def __init__(self, op, v, gpu, transp = False, shift = False):
+        self.op = op
+        self.gpu = gpu
+        self.transp = transp
+        self.shift = shift
+        self.time = 0
+        m, n = self.op.shape()
+        if transp:
+            self.w = v.new_vectors(0, n)
+#                self.w = Vectors(n)
+        else:
+            self.w = v.new_vectors(0, m)
+#                self.w = Vectors(m)
+        if shift:
+            dt = op.data_type()
+            ones = numpy.ones((1, m), dtype = dt)
+            self.ones = v.new_vectors(1, m)
+#                self.ones = Vectors(m, 1, data_type = dt)
+            self.ones.fill(ones)
+            self.aves = v.new_vectors(1, n)
+#                self.aves = Vectors(n, 1, data_type = dt)
+            self.op.apply(self.ones, self.aves, transp = True)
+            self.aves.scale(m*ones[0,:1])
+#                ones = numpy.ones((1, n), dtype = dt)
+#                self.ones = Vectors(n, 1, data_type = dt)
+#                self.ones.fill(ones)
+#                self.aves = Vectors(m, 1, data_type = dt)
+#                self.op.apply(self.ones, self.aves)
+#                self.aves.scale(n*ones[0,:1])
+    def apply(self, x, y):
+        m, n = self.op.shape()
+        k = x.nvec()
+        start = time.time()
+        if self.transp:
+            if self.w.nvec() < k:
+                self.w = x.new_vectors(k, n)
+#                    self.w = Vectors(n, k, x.data_type())
+            z = self.w
+            z.select(k)
+            self.op.apply(x, z, transp = True)
+            if self.shift:
+                s = x.dot(self.ones)
+                z.add(self.aves, -1, s)
+#                    s = z.dot(self.ones)
+#                    z.add(self.ones, -1.0/n, s)
+#                    # accurate orthogonalization needed!
+#                    s = z.dot(self.ones)
+#                    z.add(self.ones, -1.0/n, s)
+            self.op.apply(z, y)
+            if self.shift:
+                s = z.dot(self.aves)
+                y.add(self.ones, -1, s)
+        else:
+            if self.w.nvec() < k:
+                self.w = x.new_vectors(k, m)
+#                    self.w = Vectors(m, k, x.data_type())
+            z = self.w
+            z.select(k)
+            self.op.apply(x, z)
+            if self.shift:
+                s = z.dot(self.ones)
+                z.add(self.ones, -1.0/m, s)
+                # accurate orthogonalization needed!
+                s = z.dot(self.ones)
+                z.add(self.ones, -1.0/m, s)
+#                    s = x.dot(self.ones)
+#                    z.add(self.aves, -1, s)
+            self.op.apply(z, y, transp = True)
+#                if self.shift:
+#                    s = z.dot(self.aves)
+#                    y.add(self.ones, -1, s)
+        if self.gpu is not None:
+            self.gpu.synchronize()
+#        if self.gpu:
+#            self.cuda.synchronize()
+        stop = time.time()
+        self.time += stop - start
+
 class PSVDErrorCalculator:
     def __init__(self, a):
 #        self.reset()
@@ -53,10 +133,6 @@ class PSVDErrorCalculator:
             t = (self.norms*self.norms).reshape((self.m, 1))
             x = t - 2*b + s*numpy.ones((self.m, 1))
             self.err = numpy.sqrt(abs(x))
-#sa = va.dots(va)
-#bv = vi.dot(va).T
-#tv = vi.dots(vi).reshape((m, 1))
-#yv = numpy.sqrt(tv - 2*bv + sa*e)
 #            self.ones = eigenvectors.new_vectors(1, self.n)
 #            ones = numpy.ones((1, self.n), dtype = eigenvectors.data_type())
 #            self.ones.fill(ones)
@@ -172,88 +248,21 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
             import raleigh.cuda.cuda as cuda
             from raleigh.cuda.cublas_algebra import Vectors, Matrix
             op = Matrix(a)
-            gpu = True
+            gpu = cuda
+#            gpu = True
         except:
             if len(arch) > 3 and arch[3] == '!':
                 raise RuntimeError('cannot use GPU')
-            gpu = False
+            gpu = None
+#            gpu = False
     else:
-        gpu = False
-    if not gpu:
+        gpu = None
+#        gpu = False
+#    if not gpu:
+    if gpu is None:
         from raleigh.algebra import Vectors, Matrix
 #        from raleigh.ndarray.numpy_algebra import Vectors, Matrix
         op = Matrix(a)
-
-    class OperatorSVD:
-        def __init__(self, op, gpu, transp = False, shift = False):
-            self.op = op
-            self.gpu = gpu
-            self.transp = transp
-            self.shift = shift
-            self.time = 0
-            m, n = self.op.shape()
-            if transp:
-                self.w = Vectors(n)
-            else:
-                self.w = Vectors(m)
-            if shift:
-                dt = op.data_type()
-                ones = numpy.ones((1, m), dtype = dt)
-                self.ones = Vectors(m, 1, data_type = dt)
-                self.ones.fill(ones)
-                self.aves = Vectors(n, 1, data_type = dt)
-                self.op.apply(self.ones, self.aves, transp = True)
-                self.aves.scale(m*ones[0,:1])
-#                ones = numpy.ones((1, n), dtype = dt)
-#                self.ones = Vectors(n, 1, data_type = dt)
-#                self.ones.fill(ones)
-#                self.aves = Vectors(m, 1, data_type = dt)
-#                self.op.apply(self.ones, self.aves)
-#                self.aves.scale(n*ones[0,:1])
-        def apply(self, x, y):
-            m, n = self.op.shape()
-            k = x.nvec()
-            start = time.time()
-            if self.transp:
-                if self.w.nvec() < k:
-                    self.w = Vectors(n, k, x.data_type())
-                z = self.w
-                z.select(k)
-                self.op.apply(x, z, transp = True)
-                if self.shift:
-                    s = x.dot(self.ones)
-                    z.add(self.aves, -1, s)
-#                    s = z.dot(self.ones)
-#                    z.add(self.ones, -1.0/n, s)
-#                    # accurate orthogonalization needed!
-#                    s = z.dot(self.ones)
-#                    z.add(self.ones, -1.0/n, s)
-                self.op.apply(z, y)
-                if self.shift:
-                    s = z.dot(self.aves)
-                    y.add(self.ones, -1, s)
-            else:
-                if self.w.nvec() < k:
-                    self.w = Vectors(m, k, x.data_type())
-                z = self.w
-                z.select(k)
-                self.op.apply(x, z)
-                if self.shift:
-                    s = z.dot(self.ones)
-                    z.add(self.ones, -1.0/m, s)
-                    # accurate orthogonalization needed!
-                    s = z.dot(self.ones)
-                    z.add(self.ones, -1.0/m, s)
-#                    s = x.dot(self.ones)
-#                    z.add(self.aves, -1, s)
-                self.op.apply(z, y, transp = True)
-#                if self.shift:
-#                    s = z.dot(self.aves)
-#                    y.add(self.ones, -1, s)
-            if self.gpu:
-                cuda.synchronize()
-            stop = time.time()
-            self.time += stop - start
 
     m, n = a.shape
     dt = a.dtype.type
@@ -283,8 +292,9 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
                 isvec += (None,)
         isv = isvec
 
-    opSVD = OperatorSVD(op, gpu, transp, shift)
+#    opSVD = OperatorSVD(op, gpu, transp, shift)
     v = Vectors(n, data_type = dt)
+    opSVD = OperatorSVD(op, v, gpu, transp, shift)
     problem = Problem(v, lambda x, y: opSVD.apply(x, y))
     solver = Solver(problem)
 
