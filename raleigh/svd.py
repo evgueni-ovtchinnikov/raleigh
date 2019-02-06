@@ -378,16 +378,17 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
         return sigma, u, conj(v.T)
 #        return sigma, u.data().T, conj(v.data())
 
-def truncated_svd(a, opt, nsv = -1, largest = True, tol = 0, th = 0, msv = 0, \
+#def truncated_svd(a, opt, nsv = -1, largest = True, tol = 0, th = 0, msv = 0, \
+def truncated_svd(a, opt, nsv = -1, tol = 0, th = 0, msv = 0, \
                   isv = None, shift = False, \
                   arch = 'cpu'):
-    if largest:
-        if opt.stopping_criteria is None and nsv < 0:
-            opt = copy.deepcopy(opt)
-            opt.stopping_criteria = DefaultStoppingCriteria(a, tol, th, msv)
-        return partial_svd(a, opt, (0, nsv), (None, isv), shift, arch)
-    else:
-        return partial_svd(a, opt, (nsv, 0), (isv, None), shift, arch)
+#    if largest:
+    if opt.stopping_criteria is None and nsv < 0:
+        opt = copy.deepcopy(opt)
+        opt.stopping_criteria = DefaultStoppingCriteria(a, tol, th, msv)
+    return partial_svd(a, opt, (0, nsv), (None, isv), shift, arch)
+#    else:
+#        return partial_svd(a, opt, (nsv, 0), (isv, None), shift, arch)
 
 def pca(a, opt = Options(), npc = -1, tol = 0, th = 0, msv = 0, ipc = None, \
         arch = 'cpu'):
