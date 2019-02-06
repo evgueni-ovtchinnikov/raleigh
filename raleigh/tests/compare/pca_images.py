@@ -132,11 +132,11 @@ time_r = stop - start
 ncon = sigma_r.shape[0]
 if err_tol > 0 or npc > 0: 
     print('\n%d singular vectors computed in %.1e sec' % (ncon, time_r))
-print('last singular value: %e' % sigma_r[-1])
-if npc > 0:
-    print(sigma_r[npc - 1])
-else:
-    print(sigma_r[ncon - 1])
+print('first and last singular values: %e %e' % (sigma_r[0], sigma_r[-1]))
+#if npc > 0:
+#    print(sigma_r[npc - 1])
+#else:
+#    print(sigma_r[ncon - 1])
 
 #e = numpy.ones((n, 1), dtype = dtype)
 #a = numpy.dot(images, e)/n
@@ -234,7 +234,8 @@ print('max PCA error: %.1e' % numpy.amax(errs))
 
 pcs = vt_skl.shape[0]
 k = min(ncon, pcs) - 1
-print(sigma_r[k], sigma_skl[k])
+if k >= 0:
+    print(sigma_r[k], sigma_skl[k])
 
 if run_svd or run_skl:
     images = images0.copy()
@@ -297,14 +298,21 @@ if run_svd:
     stop = time.time()
     time_f = stop - start
     print('\n full SVD time: %.1e' % time_f)
+    print(sigma0[0])
+    if npc > 0:
+        print(sigma0[npc - 1])
     n_r = min(sigma_r.shape[0], sigma0.shape[0])
     if n_r > 0:
-        if npc > 0:
-            print(sigma0[:npc])
         err_vec = vec_err(vt0.T[:,:n_r], vt_r.T[:,:n_r])
         err_val = abs(sigma_r[:n_r] - sigma0[:n_r])/sigma0[0]
         print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
         print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
+    n_k = min(sigma_skl.shape[0], sigma0.shape[0])
+    if n_k > 0:
+        err_vec = vec_err(vt0.T[:,:n_k], vt_skl.T[:,:n_k])
+        err_val = abs(sigma_skl[:n_k] - sigma0[:n_k])/sigma0[0]
+        print('\nmax singular vector error (sklearn): %.1e' % numpy.amax(err_vec))
+        print('\nmax singular value error (sklearn): %.1e' % numpy.amax(err_val))
     n_s = min(sigma_s.shape[0], sigma0.shape[0])
     if n_s > 0:
         err_vec = vec_err(vt0.T[:,:n_s], vt_s.T[:,:n_s])
