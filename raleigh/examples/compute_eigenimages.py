@@ -16,7 +16,7 @@ Options:
   -e <err> , --imerr=<err>   image approximation error tolerance (<= 0: not set,
                              run in interactive mode) [default: 0]
   -b <blk> , --bsize=<blk>   CG block size (< 0: auto) [default: -1]
-  -t <tol> , --svtol=<tol>   singular vector error tolerance [default: 1e-2]
+  -t <tol> , --rtol=<tol>    residual tolerance [default: 1e-3]
   -a <arch>, --arch=<arch>   architecture [default: cpu]
 
 Created on Mon Jun 18 12:10:20 2018
@@ -34,7 +34,7 @@ ni = int(args['--nimgs'])
 mi = int(args['--mimgs'])
 err_tol = float(args['--imerr'])
 block_size = int(args['--bsize'])
-svec_tol = float(args['--svtol'])
+tol = float(args['--rtol'])
 arch = args['--arch']
 
 import numpy
@@ -75,6 +75,8 @@ vmax = numpy.amax(images)
 print('data range: %e to %e' % (vmin, vmax))
 
 images = numpy.reshape(images, (m, n))
+ones = numpy.ones((m, 1), dtype = images.dtype.type)
+mean = numpy.dot(ones.T, images)/m
 
 if block_size < 1:
     b = max(1, min(m, n)//100)
@@ -88,7 +90,8 @@ opt.block_size = block_size
 opt.max_iter = 500
 opt.verbosity = -1
 opt.convergence_criteria.set_error_tolerance \
-    ('kinematic eigenvector error', svec_tol)
+    ('residual tolerance', tol)
+#    ('kinematic eigenvector error', svec_tol)
 
 start = time.time()
 sigma, u, vt = pca(images, opt, tol = err_tol, arch = arch)
@@ -126,16 +129,39 @@ if mi > 0:
         print('elapsed time %.2e sec' % elapsed_time)
 
 dt = images.dtype.type
-e = numpy.ones((n, 1), dtype = dt)
-s = numpy.dot(images, e)/n
-images -= numpy.dot(s, e.T)
-coord = numpy.reshape((sigma*u).T, (ncon, m))
+#e = numpy.ones((n, 1), dtype = dt)
+#s = numpy.dot(images, e)/n
+#images -= numpy.dot(s, e.T)
 nrm = nla.norm(images, axis = 1)
-images -= numpy.dot(coord.T, vt)
-err = nla.norm(images, axis = 1)/nrm
-print('svd error %e' % numpy.amax(err))
+coord = numpy.reshape((sigma*u).T, (ncon, m))
+#diff = images - numpy.dot(ones, mean) 
+#diff -= numpy.dot(coord.T, vt)
+#err = nla.norm(diff, axis = 1)/nrm
+#print('svd error %e' % numpy.amax(err))
+
+import pylab
+
+while True:
+    i = int(input('image number (negative to exit): '))
+    if i < 0 or i >= m:
+        break
+    pylab.figure()
+    pylab.title('image %d' % i)
+    img = images[i,:]
+    image = numpy.reshape(img, (ny, nx))
+    pylab.imshow(image, cmap = 'gray')
+    img = numpy.dot(coord[:,i].T, vt) + mean
+    pca_image = numpy.reshape(img, (ny, nx))
+    pylab.figure()
+    pylab.title('PCA approximation of the image')
+    pylab.imshow(pca_image, cmap = 'gray')
+    pylab.show()
+
+print('saving...')
 eigim = numpy.reshape(vt, (ncon, ny, nx))    
-numpy.save('eigim.npy', eigim)
-numpy.save('coord.npy', coord)
+numpy.save('mean.npy', mean)
+numpy.save('eigenimages.npy', eigim)
+numpy.save('coordinates.npy', coord)
 numpy.save('sigma.npy', sigma[:ncon])
+
 print('done')

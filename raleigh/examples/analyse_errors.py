@@ -47,6 +47,12 @@ u = numpy.load(filename)
 filename = path + '/%scoord.npy' % pref
 print('loading images coordinates in eigenimages basis from %s...' % filename)
 v = numpy.load(filename)
+filename = path + '/%smean.npy' % pref
+try:
+    mean = numpy.load(filename)
+    print('loaded mean image from %s...' % filename)
+except:
+    mean = None
 
 nsv, nyu, nxu = u.shape
 m = v.shape[1]
@@ -60,6 +66,8 @@ ni, ny, nx = images.shape
 #    images = images[:ni,:,:]
 print('%d images of size %dx%d loaded' % (ni, ny, nx))
 vmax = numpy.amax(images)
+
+mean = numpy.reshape(mean, (ny, nx))
 
 #if ni != m or nx != nxu or ny != nyu:
 if nx != nxu or ny != nyu:
@@ -104,7 +112,10 @@ while True:
         w = v[:,i]
     else:
         w = numpy.dot(u, images[i,:])
-    imgi = numpy.zeros((ny, nx), dtype = images.dtype)
+    if mean is None:
+        imgi = numpy.zeros((ny, nx), dtype = images.dtype)
+    else:
+        imgi = mean.copy()
     bitmaps = []
     fig = plt.figure()
     step = 1
