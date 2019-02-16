@@ -361,7 +361,7 @@ class Solver:
         
         # convergence criteria
         if options.convergence_criteria is None:
-            convergence_criteria = DefaultConvergenceCriteria
+            convergence_criteria = DefaultConvergenceCriteria()
         else:
             convergence_criteria = options.convergence_criteria
 

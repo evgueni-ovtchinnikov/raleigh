@@ -187,6 +187,17 @@ class PSVDErrorCalculator:
             self.ncon = ncon
         return self.err
 
+class DefaultConvergenceCriteria:
+    def __init__(self):
+        self.tolerance = 1e-3
+    def set_tolerance(self, tolerance):
+        self.tolerance = tolerance
+    def satisfied(self, solver, i):
+        err = solver.convergence_data('res', i)
+        res = solver.res[i]
+        lmd = solver.lmd[i]
+        return err >= 0 and err <= self.tolerance and res <= 0.25*abs(lmd)
+        
 class DefaultStoppingCriteria:
     def __init__(self, a, err_tol = 0, sigma_th = 0, max_nsv = 0):
         self.ncon = 0
@@ -249,16 +260,12 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
             from raleigh.cuda.cublas_algebra import Vectors, Matrix
             op = Matrix(a)
             gpu = cuda
-#            gpu = True
         except:
             if len(arch) > 3 and arch[3] == '!':
                 raise RuntimeError('cannot use GPU')
             gpu = None
-#            gpu = False
     else:
         gpu = None
-#        gpu = False
-#    if not gpu:
     if gpu is None:
         from raleigh.algebra import Vectors, Matrix
 #        from raleigh.ndarray.numpy_algebra import Vectors, Matrix
@@ -361,16 +368,6 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
         sigma = numpy.ndarray((0,), dtype = v.data_type())
         u = None
         v = None
-#    lcon = solver.lcon
-#    rcon = solver.rcon
-#    if nsv[0] == 0:
-#        u.select(rcon)
-#        v.select(rcon)
-#        sigma = sigma[:rcon]
-#    else:
-#        u.select(lcon)
-#        v.select(lcon)
-#        sigma = sigma[:lcon]
     if transp:
         return sigma, v, conj(u.T)
 #        return sigma, v.data().T, conj(u.data())
@@ -378,17 +375,16 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
         return sigma, u, conj(v.T)
 #        return sigma, u.data().T, conj(v.data())
 
-#def truncated_svd(a, opt, nsv = -1, largest = True, tol = 0, th = 0, msv = 0, \
 def truncated_svd(a, opt, nsv = -1, tol = 0, th = 0, msv = 0, \
                   isv = None, shift = False, \
                   arch = 'cpu'):
-#    if largest:
+    if opt.convergence_criteria is None:
+        opt = copy.deepcopy(opt)
+        opt.convergence_criteria = DefaultConvergenceCriteria()
     if opt.stopping_criteria is None and nsv < 0:
         opt = copy.deepcopy(opt)
         opt.stopping_criteria = DefaultStoppingCriteria(a, tol, th, msv)
     return partial_svd(a, opt, (0, nsv), (None, isv), shift, arch)
-#    else:
-#        return partial_svd(a, opt, (nsv, 0), (isv, None), shift, arch)
 
 def pca(a, opt = Options(), npc = -1, tol = 0, th = 0, msv = 0, ipc = None, \
         arch = 'cpu'):
