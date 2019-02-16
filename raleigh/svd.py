@@ -74,6 +74,11 @@ class OperatorSVD:
             self.gpu.synchronize()
         stop = time.time()
         self.time += stop - start
+    def mean(self):
+        if self.shift:
+            return self.aves
+        else:
+            return None
 
 class PSVDErrorCalculator:
     def __init__(self, a):
@@ -210,131 +215,173 @@ def conj(a):
     else:
         return a
 
-def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
-                arch = 'cpu'):
-
-    if arch[:3] == 'gpu':
-        try:
-            import raleigh.cuda.cuda as cuda
-            from raleigh.cuda.cublas_algebra import Vectors, Matrix
-            op = Matrix(a)
-            gpu = cuda
-        except:
-            if len(arch) > 3 and arch[3] == '!':
-                raise RuntimeError('cannot use GPU')
-            gpu = None
-    else:
-        gpu = None
-    if gpu is None:
-        from raleigh.algebra import Vectors, Matrix
-#        from raleigh.ndarray.numpy_algebra import Vectors, Matrix
-        op = Matrix(a)
-
-    m, n = a.shape
-    dt = a.dtype.type
-
-    isvec = ()
-    for i in range(2):
-        if isv[i] is not None:
-            k, l = isv[i].shape
-            if k != n:
-                msg = 'initial singular vectors must have dimension %d, not %d'
-                raise ValueError(msg % (n, k))
-            isvec += (Vectors(isv[i].T),)
+class PartialSVD:
+    def __init__(self):
+        self.sigma = None
+        self.u = None
+        self.v = None
+        self.mean = None
+        self.iterations = -1
+    def compute(self, a, opt, nsv = (-1, -1), isv = (None, None), \
+                shift = False, arch = 'cpu'):
+    
+        if arch[:3] == 'gpu':
+            try:
+                import raleigh.cuda.cuda as cuda
+                from raleigh.cuda.cublas_algebra import Vectors, Matrix
+                op = Matrix(a)
+                gpu = cuda
+            except:
+                if len(arch) > 3 and arch[3] == '!':
+                    raise RuntimeError('cannot use GPU')
+                gpu = None
         else:
-            isvec += (None,)
-    isv = isvec
-
-    transp = m < n
-    if transp:
-        n, m = m, n
+            gpu = None
+        if gpu is None:
+            from raleigh.algebra import Vectors, Matrix
+    #        from raleigh.ndarray.numpy_algebra import Vectors, Matrix
+            op = Matrix(a)
+    
+        m, n = a.shape
+        dt = a.dtype.type
+    
         isvec = ()
         for i in range(2):
             if isv[i] is not None:
-                tmp = Vectors(n, l, data_type = dt)
-                op.apply(isv[i], tmp)
-                isvec += (tmp,)
+                k, l = isv[i].shape
+                if k != n:
+                    msg = 'initial singular vectors must have dimension %d, not %d'
+                    raise ValueError(msg % (n, k))
+                isvec += (Vectors(isv[i].T),)
             else:
                 isvec += (None,)
         isv = isvec
-
-    v = Vectors(n, data_type = dt)
-    opSVD = OperatorSVD(op, v, gpu, transp, shift)
-    problem = Problem(v, lambda x, y: opSVD.apply(x, y))
-    solver = Solver(problem)
-
-    try:
-        opt.stopping_criteria.err_calc.set_up(op, solver, v, shift)
+    
+        transp = m < n
+        if transp:
+            n, m = m, n
+            isvec = ()
+            for i in range(2):
+                if isv[i] is not None:
+                    tmp = Vectors(n, l, data_type = dt)
+                    op.apply(isv[i], tmp)
+                    isvec += (tmp,)
+                else:
+                    isvec += (None,)
+            isv = isvec
+    
+        v = Vectors(n, data_type = dt)
+        opSVD = OperatorSVD(op, v, gpu, transp, shift)
+        problem = Problem(v, lambda x, y: opSVD.apply(x, y))
+        solver = Solver(problem)
+    
+        try:
+            opt.stopping_criteria.err_calc.set_up(op, solver, v, shift)
+            if opt.verbosity > 0:
+                print('partial SVD error calculation set up')
+        except:
+            if opt.verbosity > 0:
+                print('partial SVD error calculation not requested')
+            pass
+    
+        solver.solve(v, opt, which = nsv, init = isv)
         if opt.verbosity > 0:
-            print('partial SVD error calculation set up')
-    except:
-        if opt.verbosity > 0:
-            print('partial SVD error calculation not requested')
-        pass
+            print('operator application time: %.2e' % opSVD.time)
+    
+        nv = v.nvec()
+        u = Vectors(m, nv, v.data_type())
+        if nv > 0:
+            op.apply(v, u, transp)
+            if shift:
+                m, n = a.shape
+                dt = op.data_type()
+                ones = numpy.ones((1, m), dtype = dt)
+                e = Vectors(m, 1, data_type = dt)
+                e.fill(ones)
+                w = Vectors(n, 1, data_type = dt)
+                op.apply(e, w, transp = True)
+                w.scale(m*ones[0,:1])
+                if not transp:
+                    s = v.dot(w)
+                    u.add(e, -1, s)
+                else:
+                    s = v.dot(e)
+                    u.add(w, -1, s)
+    
+    #        vv = v.dot(v)
+    #        if nsv[0] == 0:
+    #            uu = -u.dot(u)
+    #        else:
+    #            uu = u.dot(u)
+    #        lmd, x = scipy.linalg.eigh(uu, vv) #, turbo = False)
+    #        w = v.new_vectors(nv)
+    #        v.multiply(x, w)
+    #        w.copy(v)
+    #        w = u.new_vectors(nv)
+    #        u.multiply(x, w)
+    #        w.copy(u)
+            sigma = numpy.sqrt(abs(u.dots(u)))
+            u.scale(sigma)
+            ind = numpy.argsort(-sigma)
+            sigma = sigma[ind]
+            u = u.data().T[:, ind]
+            v = v.data().T[:, ind]
+        else:
+            sigma = numpy.ndarray((0,), dtype = v.data_type())
+            u = None
+            v = None
+        self.sigma = sigma
+        self.mean = opSVD.mean()
+        self.iterations = solver.iteration
+        if transp:
+            self.u = v
+            self.v = u
+            return sigma, v, conj(u.T)
+    #        return sigma, v.data().T, conj(u.data())
+        else:
+            self.u = u
+            self.v = v
+            return sigma, u, conj(v.T)
+    #        return sigma, u.data().T, conj(v.data())
 
-    solver.solve(v, opt, which = nsv, init = isv)
-    if opt.verbosity > 0:
-        print('operator application time: %.2e' % opSVD.time)
-
-    nv = v.nvec()
-    u = Vectors(m, nv, v.data_type())
-    if nv > 0:
-        op.apply(v, u, transp)
-        if shift:
-            m, n = a.shape
-            dt = op.data_type()
-            ones = numpy.ones((1, m), dtype = dt)
-            e = Vectors(m, 1, data_type = dt)
-            e.fill(ones)
-            w = Vectors(n, 1, data_type = dt)
-            op.apply(e, w, transp = True)
-            w.scale(m*ones[0,:1])
-            if not transp:
-                s = v.dot(w)
-                u.add(e, -1, s)
-            else:
-                s = v.dot(e)
-                u.add(w, -1, s)
-
-#        vv = v.dot(v)
-#        if nsv[0] == 0:
-#            uu = -u.dot(u)
-#        else:
-#            uu = u.dot(u)
-#        lmd, x = scipy.linalg.eigh(uu, vv) #, turbo = False)
-#        w = v.new_vectors(nv)
-#        v.multiply(x, w)
-#        w.copy(v)
-#        w = u.new_vectors(nv)
-#        u.multiply(x, w)
-#        w.copy(u)
-        sigma = numpy.sqrt(abs(u.dots(u)))
-        u.scale(sigma)
-        ind = numpy.argsort(-sigma)
-        sigma = sigma[ind]
-        u = u.data().T[:, ind]
-        v = v.data().T[:, ind]
-    else:
-        sigma = numpy.ndarray((0,), dtype = v.data_type())
-        u = None
-        v = None
-    if transp:
-        return sigma, v, conj(u.T)
-#        return sigma, v.data().T, conj(u.data())
-    else:
-        return sigma, u, conj(v.T)
-#        return sigma, u.data().T, conj(v.data())
+class TSVD:
+    def __init__(self):
+        self.sigma = None
+        self.u = None
+        self.v = None
+        self.iterations = -1
+    def compute(self, a, opt, nsv = -1, tol = 0, th = 0, msv = 0, \
+                  isv = None, shift = False, \
+                  arch = 'cpu'):
+        if opt.convergence_criteria is None:
+            opt = copy.deepcopy(opt)
+            opt.convergence_criteria = DefaultConvergenceCriteria()
+        if opt.stopping_criteria is None and nsv < 0:
+            opt = copy.deepcopy(opt)
+            opt.stopping_criteria = DefaultStoppingCriteria(a, tol, th, msv)
+        psvd = PartialSVD()
+        psvd.compute(a, opt, (0, nsv), (None, isv), shift, arch)
+        self.sigma = psvd.sigma
+        self.u = psvd.u
+        self.v = psvd.v
+        self.mean = psvd.mean
+        self.iterations = psvd.iterations
+        return self.sigma, self.u, self.v.T
 
 def truncated_svd(a, opt, nsv = -1, tol = 0, th = 0, msv = 0, \
                   isv = None, shift = False, \
                   arch = 'cpu'):
-    if opt.convergence_criteria is None:
-        opt = copy.deepcopy(opt)
-        opt.convergence_criteria = DefaultConvergenceCriteria()
-    if opt.stopping_criteria is None and nsv < 0:
-        opt = copy.deepcopy(opt)
-        opt.stopping_criteria = DefaultStoppingCriteria(a, tol, th, msv)
-    return partial_svd(a, opt, (0, nsv), (None, isv), shift, arch)
+    tsvd = TSVD()
+    return tsvd.compute(a, opt = opt, nsv = nsv, tol = tol, th = th, \
+                        msv = msv, isv = isv, shift = shift, arch = arch)
+#    if opt.convergence_criteria is None:
+#        opt = copy.deepcopy(opt)
+#        opt.convergence_criteria = DefaultConvergenceCriteria()
+#    if opt.stopping_criteria is None and nsv < 0:
+#        opt = copy.deepcopy(opt)
+#        opt.stopping_criteria = DefaultStoppingCriteria(a, tol, th, msv)
+#    psvd = PartialSVD()
+#    return psvd.compute(a, opt, (0, nsv), (None, isv), shift, arch)
 
 def pca(a, opt = Options(), npc = -1, tol = 0, th = 0, msv = 0, ipc = None, \
         arch = 'cpu'):

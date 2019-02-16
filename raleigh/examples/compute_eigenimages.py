@@ -89,8 +89,8 @@ opt = Options()
 opt.block_size = block_size
 opt.max_iter = 500
 opt.verbosity = -1
-opt.convergence_criteria.set_error_tolerance \
-    ('residual tolerance', tol)
+#opt.convergence_criteria.set_error_tolerance \
+#    ('residual tolerance', tol)
 #    ('kinematic eigenvector error', svec_tol)
 
 start = time.time()
@@ -112,8 +112,8 @@ if mi > 0:
     #opt = Options()
     opt.max_iter = 500
     opt.verbosity = -1
-    opt.convergence_criteria.set_error_tolerance \
-        ('residual eigenvector error', svec_tol)
+#    opt.convergence_criteria.set_error_tolerance \
+#        ('residual eigenvector error', svec_tol)
     opt.block_size = ncon
     start = time.time()
     sigma, u, vt = pca \

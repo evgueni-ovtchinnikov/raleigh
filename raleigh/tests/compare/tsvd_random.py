@@ -65,7 +65,7 @@ if matrix_path not in sys.path:
 
 from random_matrix_for_svd import random_matrix_for_svd
 from raleigh.solver import Options
-from raleigh.svd import truncated_svd
+from raleigh.svd import truncated_svd, TSVD
 
 class MyStoppingCriteria:
     def __init__(self, a):
@@ -122,22 +122,24 @@ if th > 0:
     opt.block_size = block_size
 opt.max_iter = 1000
 opt.verbosity = verb
-opt.convergence_criteria.set_error_tolerance(err, tol)
+#opt.convergence_criteria.set_error_tolerance(err, tol)
 opt.stopping_criteria = MyStoppingCriteria(A)
 if th > 0:
     opt.stopping_criteria.set_threshold(th)
 else:
     opt.stopping_criteria.set_threshold(0)
+tsvd = TSVD()
 
 start = time.time()
 if th > 0:
-    sigma_r, u, vt_r = truncated_svd(A, opt, arch = arch, shift = shift)
+    sigma_r, u, vt_r = tsvd.compute(A, opt, arch = arch, shift = shift)
 else:
-    sigma_r, u, vt_r = truncated_svd(A, opt, nsv = block_size, arch = arch, \
+    sigma_r, u, vt_r = tsvd.compute(A, opt, nsv = block_size, arch = arch, \
                                  shift = shift)
 stop = time.time()
 time_r = stop - start
-iter_r = opt.stopping_criteria.iteration
+iter_r = tsvd.iterations
+#iter_r = opt.stopping_criteria.iteration
 print('raleigh time: %.1e' % time_r)
 
 n_r = sigma_r.shape[0]
