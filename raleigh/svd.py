@@ -21,7 +21,6 @@ if raleigh_path not in sys.path:
 from raleigh.solver import Options, Problem, Solver
 
 class OperatorSVD:
-#        def __init__(self, op, gpu, transp = False, shift = False):
     def __init__(self, op, v, gpu, transp = False, shift = False):
         self.op = op
         self.gpu = gpu
@@ -31,26 +30,16 @@ class OperatorSVD:
         m, n = self.op.shape()
         if transp:
             self.w = v.new_vectors(0, n)
-#                self.w = Vectors(n)
         else:
             self.w = v.new_vectors(0, m)
-#                self.w = Vectors(m)
         if shift:
             dt = op.data_type()
             ones = numpy.ones((1, m), dtype = dt)
             self.ones = v.new_vectors(1, m)
-#                self.ones = Vectors(m, 1, data_type = dt)
             self.ones.fill(ones)
             self.aves = v.new_vectors(1, n)
-#                self.aves = Vectors(n, 1, data_type = dt)
             self.op.apply(self.ones, self.aves, transp = True)
             self.aves.scale(m*ones[0,:1])
-#                ones = numpy.ones((1, n), dtype = dt)
-#                self.ones = Vectors(n, 1, data_type = dt)
-#                self.ones.fill(ones)
-#                self.aves = Vectors(m, 1, data_type = dt)
-#                self.op.apply(self.ones, self.aves)
-#                self.aves.scale(n*ones[0,:1])
     def apply(self, x, y):
         m, n = self.op.shape()
         k = x.nvec()
@@ -58,18 +47,12 @@ class OperatorSVD:
         if self.transp:
             if self.w.nvec() < k:
                 self.w = x.new_vectors(k, n)
-#                    self.w = Vectors(n, k, x.data_type())
             z = self.w
             z.select(k)
             self.op.apply(x, z, transp = True)
             if self.shift:
                 s = x.dot(self.ones)
                 z.add(self.aves, -1, s)
-#                    s = z.dot(self.ones)
-#                    z.add(self.ones, -1.0/n, s)
-#                    # accurate orthogonalization needed!
-#                    s = z.dot(self.ones)
-#                    z.add(self.ones, -1.0/n, s)
             self.op.apply(z, y)
             if self.shift:
                 s = z.dot(self.aves)
@@ -77,7 +60,6 @@ class OperatorSVD:
         else:
             if self.w.nvec() < k:
                 self.w = x.new_vectors(k, m)
-#                    self.w = Vectors(m, k, x.data_type())
             z = self.w
             z.select(k)
             self.op.apply(x, z)
@@ -87,16 +69,9 @@ class OperatorSVD:
                 # accurate orthogonalization needed!
                 s = z.dot(self.ones)
                 z.add(self.ones, -1.0/m, s)
-#                    s = x.dot(self.ones)
-#                    z.add(self.aves, -1, s)
             self.op.apply(z, y, transp = True)
-#                if self.shift:
-#                    s = z.dot(self.aves)
-#                    y.add(self.ones, -1, s)
         if self.gpu is not None:
             self.gpu.synchronize()
-#        if self.gpu:
-#            self.cuda.synchronize()
         stop = time.time()
         self.time += stop - start
 
@@ -133,16 +108,6 @@ class PSVDErrorCalculator:
             t = (self.norms*self.norms).reshape((self.m, 1))
             x = t - 2*b + s*numpy.ones((self.m, 1))
             self.err = numpy.sqrt(abs(x))
-#            self.ones = eigenvectors.new_vectors(1, self.n)
-#            ones = numpy.ones((1, self.n), dtype = eigenvectors.data_type())
-#            self.ones.fill(ones)
-#            self.aves = eigenvectors.new_vectors(1, self.m)
-#            self.op.apply(self.ones, self.aves)
-#            aves = numpy.zeros((self.m,), dtype = eigenvectors.data_type())
-#            aves[:] = self.aves.data()
-#            s = self.norms*self.norms - aves*aves/self.n
-#            self.err = numpy.sqrt(abs(s))
-#            self.aves.scale(self.n*ones[0,:1])
     def update_errors(self):
         ncon = self.eigenvectors.nvec()
         new = ncon - self.ncon
@@ -158,10 +123,6 @@ class PSVDErrorCalculator:
                 if self.shift:
                     s = x.dot(self.ones)
                     z.add(self.aves, -1, s)
-#                    s = z.dot(self.ones)
-#                    z.add(self.ones, -1.0/n, s)
-#                    s = z.dot(self.ones)
-#                    z.add(self.ones, -1.0/n, s)
                 y = x.new_vectors(new, m)
                 self.op.apply(z, y)
                 if self.shift:
@@ -177,8 +138,6 @@ class PSVDErrorCalculator:
                     # accurate orthogonalization needed!
                     s = y.dot(self.ones)
                     y.add(self.ones, -1.0/m, s)
-#                    s = x.dot(self.ones)
-#                    y.add(self.aves, -1, s)
                 q = y.dots(y, transp = True)
             s = self.err*self.err - q.reshape((m, 1))
             s[s < 0] = 0
@@ -299,7 +258,6 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
                 isvec += (None,)
         isv = isvec
 
-#    opSVD = OperatorSVD(op, gpu, transp, shift)
     v = Vectors(n, data_type = dt)
     opSVD = OperatorSVD(op, v, gpu, transp, shift)
     problem = Problem(v, lambda x, y: opSVD.apply(x, y))
@@ -314,7 +272,6 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
             print('partial SVD error calculation not requested')
         pass
 
-    #solver.solve(v, opt, which = (0, nsv), init = (None, isv))
     solver.solve(v, opt, which = nsv, init = isv)
     if opt.verbosity > 0:
         print('operator application time: %.2e' % opSVD.time)
@@ -332,13 +289,6 @@ def partial_svd(a, opt, nsv = (-1, -1), isv = (None, None), shift = False, \
             w = Vectors(n, 1, data_type = dt)
             op.apply(e, w, transp = True)
             w.scale(m*ones[0,:1])
-#            ones = numpy.ones((1, n), dtype = dt)
-#            e = Vectors(n, 1, data_type = dt)
-#            e.fill(ones)
-#            w = Vectors(m, 1, data_type = dt)
-#            op.apply(e, w)
-#            w.scale(n*ones[0,:1])
-#            if transp:
             if not transp:
                 s = v.dot(w)
                 u.add(e, -1, s)
