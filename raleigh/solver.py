@@ -98,7 +98,7 @@ class Options:
         self.max_iter = -1 #00
         self.block_size = -1
         self.threads = -1
-        self.convergence_criteria = DefaultConvergenceCriteria()
+        self.convergence_criteria = None #DefaultConvergenceCriteria()
         self.stopping_criteria = None #DefaultStoppingCriteria()
         self.detect_stagnation = True
         self.max_quota = 0.5
@@ -358,6 +358,12 @@ class Solver:
         self.min_res = -numpy.ones((m,), dtype = numpy.float32)
         self.err_lmd = -numpy.ones((2, m,), dtype = numpy.float32)
         self.err_X = -numpy.ones((2, m,), dtype = numpy.float32)
+        
+        # convergence criteria
+        if options.convergence_criteria is None:
+            convergence_criteria = DefaultConvergenceCriteria
+        else:
+            convergence_criteria = options.convergence_criteria
 
         # data for estimating error in computing residuals
         #err_AX = 0.0
@@ -726,7 +732,7 @@ class Solver:
                 dlmd1 = abs(dlmd[k, rec - 1])
                 dlmd2 = abs(dlmd[k, rec - 2])
                 dlmdl = abs(dlmd[k, rec - l])
-                if options.convergence_criteria.satisfied(self, k):
+                if convergence_criteria.satisfied(self, k):
                     if verb > 0:
                         msg = 'left eigenpair %d converged,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
@@ -760,7 +766,7 @@ class Solver:
                 dlmd1 = abs(dlmd[k, rec - 1])
                 dlmd2 = abs(dlmd[k, rec - 2])
                 dlmdl = abs(dlmd[k, rec - l])
-                if options.convergence_criteria.satisfied(self, k):
+                if convergence_criteria.satisfied(self, k):
                     if verb > 0:
                         msg = 'right eigenpair %d converged,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'

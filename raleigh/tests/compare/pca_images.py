@@ -56,6 +56,17 @@ from raleigh.solver import Options
 from raleigh.svd import pca, truncated_svd
 from raleigh.algebra import Vectors
 
+class MyConvergenceCriteria:
+    def __init__(self):
+        self.tolerance = 1e-3
+    def set_tolerance(self, tolerance):
+        self.tolerance = tolerance
+    def satisfied(self, solver, i):
+        err = solver.convergence_data('res', i)
+        res = solver.res[i]
+        lmd = solver.lmd[i]
+        return err >= 0 and err <= self.tolerance and res <= 0.25*abs(lmd)
+        
 def vec_err(u, v):
     w = v.copy()
     q = numpy.dot(u.T, v)
@@ -123,8 +134,10 @@ opt.block_size = block_size
 #opt.max_iter = 1000
 opt.verbosity = -1
 opt.max_quota = 0.9
-opt.convergence_criteria.set_error_tolerance \
-    ('residual tolerance', tol)
+opt.convergence_criteria = MyConvergenceCriteria();
+opt.convergence_criteria.set_tolerance(tol)
+#opt.convergence_criteria.set_error_tolerance \
+#    ('residual tolerance', tol)
 start = time.time()
 sigma_r, u_r, vt_r = pca(images, opt, npc = npc, tol = err_tol, arch = arch)
 stop = time.time()
