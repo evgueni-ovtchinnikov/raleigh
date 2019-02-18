@@ -65,7 +65,7 @@ if matrix_path not in sys.path:
 
 from random_matrix_for_svd import random_matrix_for_svd
 from raleigh.solver import Options
-from raleigh.svd import truncated_svd, TSVD
+from raleigh.svd import LowRankApproximation #truncated_svd, TSVD
 
 class MyStoppingCriteria:
     def __init__(self, a):
@@ -114,7 +114,7 @@ if block_size < 1:
         block_size += 32
     print('using block size %d' % block_size)
 
-print('\n--- solving with raleigh.svd.truncated_svd...')
+print('\n--- solving with raleigh.svd...')
 
 # set raleigh solver options
 opt = Options()
@@ -125,10 +125,10 @@ opt.verbosity = verb
 #opt.convergence_criteria.set_error_tolerance(err, tol)
 opt.stopping_criteria = MyStoppingCriteria(A)
 if th > 0:
-    opt.stopping_criteria.set_threshold(th)
+    opt.stopping_criteria.set_threshold(th/2)
 else:
     opt.stopping_criteria.set_threshold(0)
-tsvd = TSVD()
+tsvd = LowRankApproximation()
 
 start = time.time()
 if th > 0:
@@ -136,11 +136,12 @@ if th > 0:
 else:
     sigma_r, u, vt_r = tsvd.compute(A, opt, nsv = block_size, arch = arch, \
                                  shift = shift)
+w_r = sigma_r*u
 stop = time.time()
 time_r = stop - start
 iter_r = tsvd.iterations
 #iter_r = opt.stopping_criteria.iteration
-print('raleigh time: %.1e' % time_r)
+print('\nraleigh time: %.1e' % time_r)
 
 n_r = sigma_r.shape[0]
 print('\n%d singular vectors computed in %d iterations' % (n_r, iter_r))
@@ -161,10 +162,16 @@ if shift:
     s = numpy.dot(A, e)/n
     A -= numpy.dot(s, e.T)
 
-D = A - numpy.dot(sigma_r*u, vt_r)
+#D = A - numpy.dot(sigma_r*u, vt_r)
+#D = A - numpy.dot(numpy.dot(A, vt_r.transpose()), vt_r)
+D = A - numpy.dot(w_r, vt_r)
 err = nla.norm(D, axis = 1)/nla.norm(A, axis = 1)
-print('svd error %e' % numpy.amax(err))
+print('\nsvd error %.1e' % numpy.amax(err))
 
+if th > 0:
+    print('\n--- solving with restarted sklearn.decomposition.PCA...')
+else:
+    print('\n--- solving with sklearn.decomposition.PCA...')
 B = A.copy()
 skl_svd = TruncatedSVD(block_size, tol = tol)
 #skl_svd = PCA(block_size, tol = tol)
@@ -188,9 +195,10 @@ while True:
     print('deflating...')
     A -= numpy.dot(numpy.dot(A, vti.transpose()), vti)
     print('restarting...')
+w_skl = numpy.dot(A, vt_skl.transpose())
 stop = time.time()
 time_skl = stop - start
-print('sklearn time: %.1e' % time_skl)
+print('\nsklearn time: %.1e' % time_skl)
 #sigma_skl = skl_svd.singular_values_
 #vt_skl = skl_svd.components_
 #print(sigma_skl)
@@ -205,9 +213,10 @@ if not ptb and n_skl > 0:
     print('\nmax singular vector error (sklearn): %.1e' % numpy.amax(err_vec))
     print('\nmax singular value error (sklearn): %.1e' % numpy.amax(err_val))
 A = B
-D = A - numpy.dot(numpy.dot(A, vt_skl.transpose()), vt_skl)
+#D = A - numpy.dot(numpy.dot(A, vt_skl.transpose()), vt_skl)
+D = numpy.dot(w_skl, vt_skl)
 err = nla.norm(D, axis = 1)/nla.norm(A, axis = 1)
-print('svd error %e' % numpy.amax(err))
+print('\nsvd error %.1e' % numpy.amax(err))
 
 if full:
     print('\n--- solving with scipy.linalg.svd...')
@@ -283,7 +292,7 @@ if full:
         print('\nmax singular value error (svds): %.1e' % \
               numpy.amax(err_val))
 
-print('\n time: raleigh %.1e, svds %.1e' % (time_r, time_s))
+print('\n time: raleigh %.1e, sklearn %.1e' % (time_r, time_skl))
 if full:
     print('\n full SVD time: %.1e' % time_f)
 

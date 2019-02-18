@@ -160,7 +160,7 @@ class DefaultConvergenceCriteria:
         err = solver.convergence_data('res', i)
         res = solver.res[i]
         lmd = solver.lmd[i]
-        return err >= 0 and err <= self.tolerance and res <= 0.25*abs(lmd)
+        return err >= 0 and err <= self.tolerance #and res <= 0.25*abs(lmd)
         
 class DefaultStoppingCriteria:
     def __init__(self, a, err_tol = 0, sigma_th = 0, max_nsv = 0):
@@ -344,7 +344,7 @@ class PartialSVD:
             return sigma, u, conj(v.T)
     #        return sigma, u.data().T, conj(v.data())
 
-class TSVD:
+class LowRankApproximation:
     def __init__(self):
         self.sigma = None
         self.u = None
@@ -368,20 +368,20 @@ class TSVD:
         self.iterations = psvd.iterations
         return self.sigma, self.u, self.v.T
 
-def truncated_svd(a, opt, nsv = -1, tol = 0, th = 0, msv = 0, \
-                  isv = None, shift = False, \
-                  arch = 'cpu'):
-    tsvd = TSVD()
-    return tsvd.compute(a, opt = opt, nsv = nsv, tol = tol, th = th, \
-                        msv = msv, isv = isv, shift = shift, arch = arch)
-#    if opt.convergence_criteria is None:
-#        opt = copy.deepcopy(opt)
-#        opt.convergence_criteria = DefaultConvergenceCriteria()
-#    if opt.stopping_criteria is None and nsv < 0:
-#        opt = copy.deepcopy(opt)
-#        opt.stopping_criteria = DefaultStoppingCriteria(a, tol, th, msv)
-#    psvd = PartialSVD()
-#    return psvd.compute(a, opt, (0, nsv), (None, isv), shift, arch)
+#def truncated_svd(a, opt, nsv = -1, tol = 0, th = 0, msv = 0, \
+#                  isv = None, shift = False, \
+#                  arch = 'cpu'):
+#    tsvd = TSVD()
+#    return tsvd.compute(a, opt = opt, nsv = nsv, tol = tol, th = th, \
+#                        msv = msv, isv = isv, shift = shift, arch = arch)
+##    if opt.convergence_criteria is None:
+##        opt = copy.deepcopy(opt)
+##        opt.convergence_criteria = DefaultConvergenceCriteria()
+##    if opt.stopping_criteria is None and nsv < 0:
+##        opt = copy.deepcopy(opt)
+##        opt.stopping_criteria = DefaultStoppingCriteria(a, tol, th, msv)
+##    psvd = PartialSVD()
+##    return psvd.compute(a, opt, (0, nsv), (None, isv), shift, arch)
 
 def pca(a, opt = Options(), npc = -1, tol = 0, th = 0, msv = 0, ipc = None, \
         arch = 'cpu'):
@@ -399,5 +399,8 @@ def pca(a, opt = Options(), npc = -1, tol = 0, th = 0, msv = 0, ipc = None, \
     if max_iter < 0:
         opt.max_iter = max(100, min(m, n))
         #print('max_iter = %d' % opt.max_iter)
-    return truncated_svd(a, opt = opt, nsv = npc, tol = tol, th = th, \
+    lra = LowRankApproximation()
+    return lra.compute(a, opt = opt, nsv = npc, tol = tol, th = th, \
         msv = msv, isv = ipc, shift = True, arch = arch)
+#    return truncated_svd(a, opt = opt, nsv = npc, tol = tol, th = th, \
+#        msv = msv, isv = ipc, shift = True, arch = arch)
