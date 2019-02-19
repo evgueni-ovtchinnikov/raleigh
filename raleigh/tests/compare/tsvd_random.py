@@ -65,7 +65,8 @@ if matrix_path not in sys.path:
 
 from random_matrix_for_svd import random_matrix_for_svd
 from raleigh.solver import Options
-from raleigh.svd import LowRankApproximation #truncated_svd, TSVD
+from raleigh.apps.lra import LowerRankApproximation
+#from raleigh.svd import LowRankApproximation #truncated_svd, TSVD
 
 class MyStoppingCriteria:
     def __init__(self, a):
@@ -128,18 +129,19 @@ if th > 0:
     opt.stopping_criteria.set_threshold(th/2)
 else:
     opt.stopping_criteria.set_threshold(0)
-tsvd = LowRankApproximation()
+
+lra = LowerRankApproximation()
 
 start = time.time()
 if th > 0:
-    sigma_r, u, vt_r = tsvd.compute(A, opt, arch = arch, shift = shift)#, refine = True)
+    sigma_r, u, vt_r = lra.compute(A, opt, arch = arch, shift = shift)#, refine = True)
 else:
-    sigma_r, u, vt_r = tsvd.compute(A, opt, nsv = block_size, arch = arch, \
+    sigma_r, u, vt_r = lra.compute(A, opt, nsv = block_size, arch = arch, \
                                  shift = shift)
 w_r = sigma_r*u
 stop = time.time()
 time_r = stop - start
-iter_r = tsvd.iterations
+iter_r = lra.iterations
 #iter_r = opt.stopping_criteria.iteration
 print('\nraleigh time: %.1e' % time_r)
 

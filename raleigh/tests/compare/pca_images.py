@@ -53,7 +53,8 @@ if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 from raleigh.solver import Options
-from raleigh.svd import pca #, truncated_svd
+#from raleigh.svd import pca
+from raleigh.apps.lra import pca
 #from raleigh.algebra import Vectors
 
 def vec_err(u, v):

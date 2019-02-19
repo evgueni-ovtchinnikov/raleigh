@@ -47,7 +47,8 @@ if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 from raleigh.solver import Options
-from raleigh.svd import pca
+from raleigh.apps.lra import pca
+#from raleigh.svd import pca
 
 numpy.random.seed(1) # make results reproducible
 
