@@ -373,20 +373,6 @@ class LowRankApproximation:
 
 def pca(a, opt = Options(), npc = -1, tol = 0, th = 0, msv = 0, ipc = None, \
         arch = 'cpu'):
-#    m, n = a.shape
-#    opt = copy.deepcopy(opt)
-##    block_size = opt.block_size
-##    if block_size < 1 and npc < 0:
-##        b = max(1, min(m, n)//100)
-##        block_size = 32
-##        while block_size <= b - 16:
-##            block_size += 32
-##        #print('using block size %d' % block_size)
-##        opt.block_size = block_size
-#    max_iter = opt.max_iter
-#    if max_iter < 0:
-#        opt.max_iter = max(100, min(m, n))
-#        #print('max_iter = %d' % opt.max_iter)
     lra = LowRankApproximation()
     return lra.compute(a, opt = opt, nsv = npc, tol = tol, th = th, \
         msv = msv, isv = ipc, shift = True, arch = arch)
