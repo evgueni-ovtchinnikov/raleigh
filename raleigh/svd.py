@@ -10,7 +10,7 @@ Created on Wed Mar 21 14:06:26 2018
 import copy
 import numpy
 import numpy.linalg as nla
-#import scipy
+import scipy
 import sys
 import time
 
@@ -82,8 +82,6 @@ class OperatorSVD:
 
 class PSVDErrorCalculator:
     def __init__(self, a):
-#        self.reset()
-#    def reset(self):
         self.solver = None
         self.err = None
         self.op = None
@@ -152,14 +150,14 @@ class PSVDErrorCalculator:
         return self.err
 
 class DefaultConvergenceCriteria:
-    def __init__(self):
-        self.tolerance = 1e-3
+    def __init__(self, tol):
+        self.tolerance = tol
     def set_tolerance(self, tolerance):
         self.tolerance = tolerance
     def satisfied(self, solver, i):
         err = solver.convergence_data('res', i)
-        res = solver.res[i]
-        lmd = solver.lmd[i]
+#        res = solver.res[i]
+#        lmd = solver.lmd[i]
         return err >= 0 and err <= self.tolerance #and res <= 0.25*abs(lmd)
         
 class DefaultStoppingCriteria:
@@ -223,7 +221,7 @@ class PartialSVD:
         self.mean = None
         self.iterations = -1
     def compute(self, a, opt, nsv = (-1, -1), isv = (None, None), \
-                shift = False, arch = 'cpu'):
+                shift = False, refine = False, arch = 'cpu'):
     
         if arch[:3] == 'gpu':
             try:
@@ -239,7 +237,6 @@ class PartialSVD:
             gpu = None
         if gpu is None:
             from raleigh.algebra import Vectors, Matrix
-    #        from raleigh.ndarray.numpy_algebra import Vectors, Matrix
             op = Matrix(a)
     
         m, n = a.shape
@@ -307,25 +304,29 @@ class PartialSVD:
                 else:
                     s = v.dot(e)
                     u.add(w, -1, s)
-    
-    #        vv = v.dot(v)
-    #        if nsv[0] == 0:
-    #            uu = -u.dot(u)
-    #        else:
-    #            uu = u.dot(u)
-    #        lmd, x = scipy.linalg.eigh(uu, vv) #, turbo = False)
-    #        w = v.new_vectors(nv)
-    #        v.multiply(x, w)
-    #        w.copy(v)
-    #        w = u.new_vectors(nv)
-    #        u.multiply(x, w)
-    #        w.copy(u)
+            if refine:
+                vv = v.dot(v)
+                if nsv[0] == 0:
+                    uu = -u.dot(u)
+                else:
+                    uu = u.dot(u)
+                lmd, x = scipy.linalg.eigh(uu, vv) #, turbo = False)
+                w = v.new_vectors(nv)
+                v.multiply(x, w)
+                w.copy(v)
+                w = u.new_vectors(nv)
+                u.multiply(x, w)
+                w.copy(u)
             sigma = numpy.sqrt(abs(u.dots(u)))
             u.scale(sigma)
-            ind = numpy.argsort(-sigma)
-            sigma = sigma[ind]
-            u = u.data().T[:, ind]
-            v = v.data().T[:, ind]
+            if refine:
+                u = u.data().T
+                v = v.data().T
+            else:
+                ind = numpy.argsort(-sigma)
+                sigma = sigma[ind]
+                u = u.data().T[:, ind]
+                v = v.data().T[:, ind]
         else:
             sigma = numpy.ndarray((0,), dtype = v.data_type())
             u = None
@@ -337,12 +338,10 @@ class PartialSVD:
             self.u = v
             self.v = u
             return sigma, v, conj(u.T)
-    #        return sigma, v.data().T, conj(u.data())
         else:
             self.u = u
             self.v = v
             return sigma, u, conj(v.T)
-    #        return sigma, u.data().T, conj(v.data())
 
 class LowRankApproximation:
     def __init__(self):
@@ -350,17 +349,21 @@ class LowRankApproximation:
         self.u = None
         self.v = None
         self.iterations = -1
-    def compute(self, a, opt, nsv = -1, tol = 0, th = 0, msv = 0, \
-                  isv = None, shift = False, \
+    def compute(self, a, opt, nsv = -1, tol = 0, th = 0, msv = 0, rtol = 1e-3, \
+                  isv = None, shift = False, refine = False, \
                   arch = 'cpu'):
+        m, n = a.shape
+        opt = copy.deepcopy(opt)
+        if opt.block_size < 1:
+            opt.block_size = 128
+        if opt.max_iter < 0:
+            opt.max_iter = max(100, min(m, n))
         if opt.convergence_criteria is None:
-            opt = copy.deepcopy(opt)
-            opt.convergence_criteria = DefaultConvergenceCriteria()
+            opt.convergence_criteria = DefaultConvergenceCriteria(rtol)
         if opt.stopping_criteria is None and nsv < 0:
-            opt = copy.deepcopy(opt)
             opt.stopping_criteria = DefaultStoppingCriteria(a, tol, th, msv)
         psvd = PartialSVD()
-        psvd.compute(a, opt, (0, nsv), (None, isv), shift, arch)
+        psvd.compute(a, opt, (0, nsv), (None, isv), shift, refine, arch)
         self.sigma = psvd.sigma
         self.u = psvd.u
         self.v = psvd.v
@@ -368,39 +371,22 @@ class LowRankApproximation:
         self.iterations = psvd.iterations
         return self.sigma, self.u, self.v.T
 
-#def truncated_svd(a, opt, nsv = -1, tol = 0, th = 0, msv = 0, \
-#                  isv = None, shift = False, \
-#                  arch = 'cpu'):
-#    tsvd = TSVD()
-#    return tsvd.compute(a, opt = opt, nsv = nsv, tol = tol, th = th, \
-#                        msv = msv, isv = isv, shift = shift, arch = arch)
-##    if opt.convergence_criteria is None:
-##        opt = copy.deepcopy(opt)
-##        opt.convergence_criteria = DefaultConvergenceCriteria()
-##    if opt.stopping_criteria is None and nsv < 0:
-##        opt = copy.deepcopy(opt)
-##        opt.stopping_criteria = DefaultStoppingCriteria(a, tol, th, msv)
-##    psvd = PartialSVD()
-##    return psvd.compute(a, opt, (0, nsv), (None, isv), shift, arch)
-
 def pca(a, opt = Options(), npc = -1, tol = 0, th = 0, msv = 0, ipc = None, \
         arch = 'cpu'):
-    m, n = a.shape
-    opt = copy.deepcopy(opt)
-    block_size = opt.block_size
-    if block_size < 1 and npc < 0:
-        b = max(1, min(m, n)//100)
-        block_size = 32
-        while block_size <= b - 16:
-            block_size += 32
-        #print('using block size %d' % block_size)
-        opt.block_size = block_size
-    max_iter = opt.max_iter
-    if max_iter < 0:
-        opt.max_iter = max(100, min(m, n))
-        #print('max_iter = %d' % opt.max_iter)
+#    m, n = a.shape
+#    opt = copy.deepcopy(opt)
+##    block_size = opt.block_size
+##    if block_size < 1 and npc < 0:
+##        b = max(1, min(m, n)//100)
+##        block_size = 32
+##        while block_size <= b - 16:
+##            block_size += 32
+##        #print('using block size %d' % block_size)
+##        opt.block_size = block_size
+#    max_iter = opt.max_iter
+#    if max_iter < 0:
+#        opt.max_iter = max(100, min(m, n))
+#        #print('max_iter = %d' % opt.max_iter)
     lra = LowRankApproximation()
     return lra.compute(a, opt = opt, nsv = npc, tol = tol, th = th, \
         msv = msv, isv = ipc, shift = True, arch = arch)
-#    return truncated_svd(a, opt = opt, nsv = npc, tol = tol, th = th, \
-#        msv = msv, isv = ipc, shift = True, arch = arch)

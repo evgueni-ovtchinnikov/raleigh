@@ -132,7 +132,7 @@ tsvd = LowRankApproximation()
 
 start = time.time()
 if th > 0:
-    sigma_r, u, vt_r = tsvd.compute(A, opt, arch = arch, shift = shift)
+    sigma_r, u, vt_r = tsvd.compute(A, opt, arch = arch, shift = shift)#, refine = True)
 else:
     sigma_r, u, vt_r = tsvd.compute(A, opt, nsv = block_size, arch = arch, \
                                  shift = shift)
@@ -149,6 +149,7 @@ if not ptb and n_r > 0:
     n_r = min(n_r, sigma0.shape[0])
     err_vec = vec_err(v0[:,:n_r], vt_r.transpose()[:,:n_r])
     err_val = abs(sigma_r[:n_r] - sigma0[:n_r])
+    #print(err_vec)
     #print(err_vec*sigma_r[:n_r])
     print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
     print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
