@@ -98,7 +98,8 @@ opt.block_size = block_size
 opt.verbosity = -1
 opt.max_quota = 0.9
 start = time.time()
-sigma_r, u_r, vt_r = pca(images, opt, npc = npc, tol = err_tol, arch = arch)
+mean, u_r, sigma_r, vt_r = pca(images, opt, npc = npc, tol = err_tol, \
+    arch = arch)
 stop = time.time()
 time_r = stop - start
 ncon = sigma_r.shape[0]

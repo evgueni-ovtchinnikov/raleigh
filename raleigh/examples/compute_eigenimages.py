@@ -76,8 +76,8 @@ vmax = numpy.amax(images)
 print('data range: %e to %e' % (vmin, vmax))
 
 images = numpy.reshape(images, (m, n))
-ones = numpy.ones((m, 1), dtype = images.dtype.type)
-mean = numpy.dot(ones.T, images)/m
+#ones = numpy.ones((m, 1), dtype = images.dtype.type)
+#mean = numpy.dot(ones.T, images)/m
 
 if block_size < 1:
     b = max(1, min(m, n)//100)
@@ -95,7 +95,7 @@ opt.verbosity = -1
 #    ('kinematic eigenvector error', svec_tol)
 
 start = time.time()
-sigma, u, vt = pca(images, opt, tol = err_tol, arch = arch)
+mean, u, sigma, vt = pca(images, opt, tol = err_tol, arch = arch)
 #sigma, u, vt = truncated_svd(images, opt, tol = err_tol, arch = arch, shift = True)
 stop = time.time()
 elapsed_time = stop - start
@@ -159,7 +159,8 @@ while True:
     pylab.show()
 
 print('saving...')
-eigim = numpy.reshape(vt, (ncon, ny, nx))    
+mean = numpy.reshape(mean, (ny, nx))
+eigim = numpy.reshape(vt, (ncon, ny, nx))
 numpy.save('mean.npy', mean)
 numpy.save('eigenimages.npy', eigim)
 numpy.save('coordinates.npy', coord)
