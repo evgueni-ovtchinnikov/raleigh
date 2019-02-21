@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-"""Reads images from lfw folder or .npy file, erases background and saves in
-.npy file.
+"""Reads images from lfw folder or .npy file, optionally processes them and 
+   saves in .npy file.
 
 Usage:
   preprocess_lfw [--help | -h | options] <datapath>
@@ -11,6 +11,9 @@ Arguments:
 Options:
   -m, --how-many=<m>   number of images to process (<0: all) [default: -1]
   -o, --output=<file>  output file name [default: images.npy]
+  -s, --asymm=<s>      select images that differ from their mirror images
+                       by less than <s> times maximal difference and save them
+                       to photos.npy (requires -f, see below) [default: 0.5]
   -d, --double         double the number of images by adding mirror images
   -f, --face-area      set pixels outside face area to average value
   -v, --view           view processed images
@@ -27,6 +30,7 @@ args = docopt(__doc__, version=__version__)
 datapath = args['<datapath>']
 m = int(args['--how-many'])
 output = args['--output']
+asymm = float(args['--asymm'])
 dble = args['--double']
 face = args['--face-area']
 view = args['--view']
@@ -112,8 +116,13 @@ vmin = numpy.amin(images)
 print('pixel values range: %f to %f' % (vmin, vmax))
 
 if face:
+    if dble:
+        ni = 2*nimg
+    else:
+        ni = nimg
+    a = numpy.zeros(ni)
+    ia = numpy.zeros(ni, dtype = numpy.int32)
     mask = trim_mask(nx, ny)
-    v = (vmax - vmin)/2
     n = nx*ny
     for i in range(nimg):
         if dble:
@@ -125,8 +134,31 @@ if face:
         v = numpy.sum(image)/(n - numpy.sum(mask))
         image[mask > 0] = v
         images[j,:,:] = image
+        a[j] = numpy.linalg.norm(image - image[:, ::-1])
+        ia[j] = j
         if dble:
             images[j + 1, :, :] = image[:, ::-1]
+            a[j + 1] = a[j]
+            ia[j + 1] = j + 1
+    ind = numpy.argsort(a)
+    pylab.figure()
+    pylab.plot(numpy.arange(1, ni + 1, 1), a[ind])
+    pylab.show()
+    th = numpy.amax(a)*asymm
+    k = sum(a < th)
+    #photos = images[ind[:k],:,:]
+    iind = numpy.sort(ia[ind[:k]])
+    photos = images[iind,:,:]
+    print(photos.shape)
+    while True:
+        i = int(input('image: '))
+        if i < 0 or i >= k:
+            break
+        image = photos[i,:,:]
+        pylab.imshow(image, cmap = 'gray')
+        pylab.show()
+    print('saving %d photos to %s...' % (k, 'photos.npy'))
+    numpy.save('photos.npy', photos)
 
 print('saving %d images to %s...' % (images.shape[0], output))
 numpy.save(output, images)

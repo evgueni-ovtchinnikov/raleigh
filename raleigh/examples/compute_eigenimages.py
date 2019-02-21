@@ -65,6 +65,7 @@ if ni < m_all:
     m = ni
     images = all_images[:m,:,:]
 else:
+    print('using all %d images...' % m_all)
     m = m_all
     images = all_images
 
