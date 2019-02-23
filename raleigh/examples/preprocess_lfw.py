@@ -12,7 +12,8 @@ Options:
   -m, --how-many=<m>   number of images to process (<0: all) [default: -1]
   -o, --output=<file>  output file name [default: images.npy]
   -s, --asymm=<s>      select images that differ from their mirror images
-                       by less than <s> times maximal difference and save them
+                       by less than either (i) <s> times maximal difference,
+                       if s > 0 or (ii) mean difference and save them
                        to photos.npy [default: 0.5]
   -d, --double         double the number of images by adding mirror images
   -f, --face-area      set pixels outside face area to average value
@@ -147,8 +148,10 @@ pylab.show()
 max_asymm = numpy.amax(a)
 mean_asymm = numpy.mean(a)
 print('asymmetry: max %f, mean %f' % (max_asymm, mean_asymm))
-th = max_asymm*asymm
-th = mean_asymm
+if asymm > 0:
+    th = max_asymm*asymm
+else:
+    th = mean_asymm
 k = sum(a < th)
 #photos = images[ind[:k],:,:]
 iind = numpy.sort(ia[ind[:k]])
