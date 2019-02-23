@@ -10,7 +10,7 @@ Arguments:
 Options:
   -a <arch>, --arch=<arch>   architecture [default: cpu]
   -b <blk> , --bsize=<blk>   CG block size [default: -1]
-  -e <err> , --imerr=<err>   image approximation error tolerance [default: 0.3]
+  -e <err> , --imerr=<err>   image approximation error tolerance [default: 0]
   -n <nim> , --nimgs=<nim>   number of images to use (negative: all) 
                              [default: -1]
   -c <npc> , --npcs=<npc>    number of PCs to compute (negative: unknown)
@@ -97,8 +97,12 @@ opt.block_size = block_size
 #opt.max_iter = 1000
 opt.verbosity = -1
 opt.max_quota = 0.9
+if err_tol <= 0:
+    nc = npc
+else:
+    nc = -1
 start = time.time()
-mean, u_r, sigma_r, vt_r = pca(images, opt, npc = npc, tol = err_tol, \
+mean, u_r, sigma_r, vt_r = pca(images, opt, npc = nc, tol = err_tol, \
     arch = arch)
 stop = time.time()
 time_r = stop - start
@@ -119,16 +123,17 @@ if run_svd or run_skl:
     images0 = images.copy()
 
 if npc <= 0:
-    if block_size < 1:
-        # use default pca block size
-        b = max(1, min(m, n)//100)
-        block_size = 32
-        while block_size <= b - 16:
-            block_size += 32
-        print('using block size %d' % block_size)
-    npc = block_size
-else:
-    err_tol = 0
+    npc = max(1, min(m, n)//10)
+#    if block_size < 1:
+#        # use default pca block size
+#        b = max(1, min(m, n)//100)
+#        block_size = 32
+#        while block_size <= b - 16:
+#            block_size += 32
+#        print('using block size %d' % block_size)
+#    npc = block_size
+#else:
+#    err_tol = 0
 
 if run_skl:
     if err_tol > 0:
@@ -160,6 +165,7 @@ while run_skl:
     print('deflating...')
     imgs = images - numpy.dot(e, a)
     images -= numpy.dot(numpy.dot(imgs, vti.T), vti)
+    imgs = images - numpy.dot(e, a)
     errs = numpy.amax(nla.norm(imgs, axis = 1)/norms)
     print('max SVD error: %.3e' % errs)
     if errs <= err_tol:
