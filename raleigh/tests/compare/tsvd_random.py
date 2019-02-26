@@ -13,10 +13,9 @@ Arguments:
 Options:
   -a <arch>, --arch=<arch>   architecture [default: cpu]
   -b <blk> , --bsize=<blk>   block CG block size [default: -1]
-  -e <err> , --error=<err>   error measure [default: kinematic-eigenvector-err]
   -r <alph>, --alpha=<alph>  singular values decay rate [default: 100]
   -s <ths> , --thresh=<ths>  singular values threshold [default: 0.01]
-  -t <tol> , --tol=<tol>     error or residual tolerance [default: 1e-3]
+  -t <tol> , --tol=<tol>     residual tolerance [default: 1e-3]
   -v <verb>, --verb=<verb>   verbosity level [default: -1]
   -d, --double  use double precision
   -f, --full    compute full SVD too (using scipy.linalg.svd)
@@ -26,6 +25,8 @@ Options:
 
 @author: Evgueni Ovtchinnikov, UKRI
 """
+
+##  -e <err> , --error=<err>   error measure [default: kinematic-eigenvector-err]
 
 __version__ = '0.1.0'
 from docopt import docopt
@@ -40,7 +41,7 @@ block_size = int(args['--bsize'])
 th = float(args['--thresh'])
 tol = float(args['--tol'])
 verb = int(args['--verb'])
-err = args['--error']
+##err = args['--error']
 dble = args['--double']
 full = args['--full']
 use_op = args['--linop']
@@ -119,14 +120,14 @@ print('\n--- solving with raleigh.svd...')
 
 # set raleigh solver options
 opt = Options()
-if th > 0:
-    opt.block_size = block_size
+#if th > 0:
+#    opt.block_size = block_size
 opt.max_iter = 1000
 opt.verbosity = verb
 #opt.convergence_criteria.set_error_tolerance(err, tol)
 opt.stopping_criteria = MyStoppingCriteria(A)
 if th > 0:
-    opt.stopping_criteria.set_threshold(th/2)
+    opt.stopping_criteria.set_threshold(th)
 else:
     opt.stopping_criteria.set_threshold(0)
 
@@ -134,10 +135,19 @@ lra = LowerRankApproximation()
 
 start = time.time()
 if th > 0:
-    sigma_r, u, vt_r = lra.compute(A, opt, arch = arch, shift = shift)#, refine = True)
+    #sigma_r, u, vt_r = 
+    lra.compute(A, opt, arch = arch, shift = shift, rtol = tol)#, refine = True)
+    sigma_r = lra.sigma
+    u = lra.u
+    vt_r = lra.v.T
 else:
-    sigma_r, u, vt_r = lra.compute(A, opt, nsv = block_size, arch = arch, \
-                                 shift = shift)
+    #sigma_r, u, vt_r = 
+    lra.compute(A, opt, nsv = block_size, arch = arch, \
+                                 shift = shift, rtol = tol)
+    sigma_r = lra.sigma
+    u = lra.u
+    vt_r = lra.v.T
+
 w_r = sigma_r*u
 stop = time.time()
 time_r = stop - start
@@ -198,6 +208,7 @@ while True:
     print('deflating...')
     A -= numpy.dot(numpy.dot(A, vti.transpose()), vti)
     print('restarting...')
+A = B
 w_skl = numpy.dot(A, vt_skl.transpose())
 stop = time.time()
 time_skl = stop - start
@@ -207,7 +218,12 @@ print('\nsklearn time: %.1e' % time_skl)
 #print(sigma_skl)
 #print(vt_skl.shape)
 #print(nla.norm(vt_skl, axis = 1))
-n_skl = min(sigma_skl.shape[0], sigma0.shape[0])
+n_skl = numpy.sum(sigma_skl > th)
+if n_skl < sigma_skl.shape[0]:
+    print('sigma[%d] = %e' % (n_skl, sigma_skl[n_skl]))
+else:
+    print('sigma[%d] = %e' % (n_skl - 1, sigma_skl[n_skl - 1]))
+#n_skl = min(sigma_skl.shape[0], sigma0.shape[0])
 if not ptb and n_skl > 0:
     n_skl = min(n_skl, sigma0.shape[0])
     err_vec = vec_err(v0[:,:n_skl], vt_skl.transpose()[:,:n_skl])
@@ -215,9 +231,11 @@ if not ptb and n_skl > 0:
     #print(err_vec*sigma_skl[:n_skl])
     print('\nmax singular vector error (sklearn): %.1e' % numpy.amax(err_vec))
     print('\nmax singular value error (sklearn): %.1e' % numpy.amax(err_val))
-A = B
-#D = A - numpy.dot(numpy.dot(A, vt_skl.transpose()), vt_skl)
-D = numpy.dot(w_skl, vt_skl)
+if th > 0:
+    D = A - numpy.dot(w_skl[:, :n_skl], vt_skl[:n_skl, :])
+else:
+    D = A - numpy.dot(w_skl, vt_skl)
+#    D = A - numpy.dot(numpy.dot(A, vt_skl.transpose()), vt_skl)
 err = nla.norm(D, axis = 1)/nla.norm(A, axis = 1)
 print('\nsvd error %.1e' % numpy.amax(err))
 
