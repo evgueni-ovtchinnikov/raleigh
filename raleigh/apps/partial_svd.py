@@ -235,7 +235,7 @@ class DefaultStoppingCriteria:
         if solver.rcon <= self.ncon:
             return False
         self.err = self.err_calc.update_errors()
-        err_rel = numpy.amax(self.err/self.norms)
+        err_rel = numpy.amax(self.err)/numpy.amax(self.norms)
         lmd = solver.eigenvalues[self.ncon : solver.rcon]
         sigma = -numpy.sort(-numpy.sqrt(abs(lmd)))
         if self.ncon == 0:
