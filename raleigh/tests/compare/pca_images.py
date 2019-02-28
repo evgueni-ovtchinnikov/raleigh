@@ -116,8 +116,8 @@ if run_ral:
     print(numpy.amax(mean/a))
     imgs -= images
     imgs += numpy.dot(e, a)
-    errs = nla.norm(imgs, axis = 1)/norms
-    print('max PCA error: %.1e' % numpy.amax(errs))
+    errs = nla.norm(imgs, axis = 1) #/norms
+    print('max PCA error: %.1e' % (numpy.amax(errs)/numpy.amax(norms)))
 else:
     sigma_r = numpy.ndarray((0,), dtype = dtype)
 
@@ -153,7 +153,7 @@ if run_skl:
         imgs = images - numpy.dot(e, a)
         images -= numpy.dot(numpy.dot(imgs, vti.T), vti)
         imgs = images - numpy.dot(e, a)
-        errs = numpy.amax(nla.norm(imgs, axis = 1)/norms)
+        errs = numpy.amax(nla.norm(imgs, axis = 1))/numpy.amax(norms)
         print('max SVD error: %.3e' % errs)
         if errs <= err_tol:
             break
@@ -163,8 +163,8 @@ if run_skl:
     print('sklearn time: %.1e' % time_k)
     imgs = images - numpy.dot(e, a)
     imgs -= numpy.dot(numpy.dot(imgs, vt_skl.T), vt_skl)
-    errs = nla.norm(imgs, axis = 1)/norms
-    print('max PCA error: %.1e' % numpy.amax(errs))
+    errs = nla.norm(imgs, axis = 1) #/norms
+    print('max PCA error: %.1e' % (numpy.amax(errs)/numpy.amax(norms)))
 
 if run_svd:
     print('\n--- solving with scipy.linalg.svd...')
