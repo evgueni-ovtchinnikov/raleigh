@@ -373,7 +373,6 @@ class Solver:
         have_prev = numpy.zeros((m,), dtype = numpy.int32)
         dlmd = numpy.zeros((m, RECORDS), dtype = numpy.float32)
         dX = numpy.ones((m,), dtype = numpy.float32)
-        dXp = numpy.ones((m,), dtype = numpy.float32)
         acf = numpy.ones((2, m,), dtype = numpy.float32)
 
         # workspace
@@ -1049,7 +1048,6 @@ class Solver:
             Q = Q.astype(Qy.dtype)
             
             # estimate changes in eigenvalues and eigenvectors
-            dXp[:] = dX
             lmdx = numpy.concatenate \
                 ((lmdxy[:leftX], lmdxy[nxy - rightX:]))
             lmdy = lmdxy[leftX : nxy - rightX]
@@ -1124,72 +1122,44 @@ class Solver:
             cnv = self.cnv
             if shift_left > 0:
                 for i in range(l - shift_left):
-                    cnv[i] = cnv[i + shift_left]
-                    lmd[i] = lmd[i + shift_left]
-                    res[i] = res[i + shift_left]
-                    acf[:, i] = acf[:, i + shift_left]
-                    err_lmd[:, i] = err_lmd[:, i + shift_left]
-                    dlmd[i, :] = dlmd[i + shift_left, :]
-                    err_X[:, i] = err_X[:, i + shift_left]
-                    dX[i] = dX[i + shift_left]
-                    dXp[i] = dXp[i + shift_left]
-                    have_prev[i] = have_prev[i + shift_left]
+                    j = i + shift_left
+                    cnv[i] = cnv[j]
+                    lmd[i] = lmd[j]
+                    res[i] = res[j]
+                    acf[:, i] = acf[:, j]
+                    err_lmd[:, i] = err_lmd[:, j]
+                    dlmd[i, :] = dlmd[j, :]
+                    err_X[:, i] = err_X[:, j]
+                    dX[i] = dX[j]
+                    have_prev[i] = have_prev[j]
             if shift_left >= 0:
                 for i in range(l - shift_left, nl):
-                    cnv[i] = 0
-                    res[i] = -1.0
-                    acf[:, i] = 1.0
-                    err_lmd[:, i] = -1.0
-                    dlmd[i, :] = 0
-                    err_X[:, i] = -1.0
-                    dX[i] = 1.0
-                    dXp[i] = 1.0
-                    have_prev[i] = 0
+                    _reset_cnv_data \
+                        (i, cnv, res, acf, err_lmd, dlmd, err_X, dX, have_prev)
             else:
                 for i in range(l):
-                    cnv[i] = 0
-                    res[i] = -1.0
-                    acf[:, i] = 1.0
-                    err_lmd[:, i] = -1.0
-                    dlmd[i, :] = 0
-                    err_X[:, i] = -1.0
-                    dX[i] = 1.0
-                    dXp[i] = 1.0
-                    have_prev[i] = 0
+                    _reset_cnv_data \
+                        (i, cnv, res, acf, err_lmd, dlmd, err_X, dX, have_prev)
             if shift_right > 0:
                 for i in range(m - 1, l + shift_right - 1, -1):
-                    cnv[i] = cnv[i - shift_right]
-                    lmd[i] = lmd[i - shift_right]
-                    res[i] = res[i - shift_right]
-                    acf[:, i] = acf[:, i - shift_right]
-                    err_lmd[:, i] = err_lmd[:, i - shift_right]
-                    dlmd[i, :] = dlmd[i - shift_right, :]
-                    err_X[:, i] = err_X[:, i - shift_right]
-                    dX[i] = dX[i - shift_right]
-                    dXp[i] = dXp[i - shift_right]
-                    have_prev[i] = have_prev[i - shift_right]
+                    j = i - shift_right
+                    cnv[i] = cnv[j]
+                    lmd[i] = lmd[j]
+                    res[i] = res[j]
+                    acf[:, i] = acf[:, j]
+                    err_lmd[:, i] = err_lmd[:, j]
+                    dlmd[i, :] = dlmd[j, :]
+                    err_X[:, i] = err_X[:, j]
+                    dX[i] = dX[j]
+                    have_prev[i] = have_prev[j]
             if shift_right >= 0:
                 for i in range(l + shift_right - 1, nl - 1, -1):
-                    cnv[i] = 0
-                    res[i] = -1.0
-                    acf[:, i] = 1.0
-                    err_lmd[:, i] = -1.0
-                    dlmd[i, :] = 0
-                    err_X[:, i] = -1.0
-                    dX[i] = 1.0
-                    dXp[i] = 1.0
-                    have_prev[i] = 0
+                    _reset_cnv_data \
+                        (i, cnv, res, acf, err_lmd, dlmd, err_X, dX, have_prev)
             else:
                 for i in range(l, block_size):
-                    cnv[i] = 0
-                    res[i] = -1.0
-                    acf[:, i] = 1.0
-                    err_lmd[:, i] = -1.0
-                    dlmd[i, :] = 0
-                    err_X[:, i] = -1.0
-                    dX[i] = 1.0
-                    dXp[i] = 1.0
-                    have_prev[i] = 0
+                    _reset_cnv_data \
+                        (i, cnv, res, acf, err_lmd, dlmd, err_X, dX, have_prev)
 
             # compute RR coefficients for X and 'old search directions' Z
             # by re-arranging columns of Q
@@ -1267,3 +1237,13 @@ class Solver:
             left_block_size = left_block_size_new
 
         return 2
+
+def _reset_cnv_data(i, cnv, res, acf, err_lmd, dlmd, err_X, dX, have_prev):
+    cnv[i] = 0
+    res[i] = -1.0
+    acf[:, i] = 1.0
+    err_lmd[:, i] = -1.0
+    dlmd[i, :] = 0
+    err_X[:, i] = -1.0
+    dX[i] = 1.0
+    have_prev[i] = 0
