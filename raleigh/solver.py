@@ -370,7 +370,7 @@ class Solver:
         norm_AX = numpy.zeros((m,), dtype = numpy.float32)
 
         # convergence history data
-        have_prev = numpy.zeros((m,), dtype = numpy.int32)
+        iterations = numpy.zeros((m,), dtype = numpy.int32)
         dlmd = numpy.zeros((m, RECORDS), dtype = numpy.float32)
         dX = numpy.ones((m,), dtype = numpy.float32)
         acf = numpy.ones((2, m,), dtype = numpy.float32)
@@ -564,19 +564,17 @@ class Solver:
             if self.iteration > 0:
                 # compute eigenvalue decrements
                 for i in range(nx):
-                    if have_prev[ix + i]:
+                    if iterations[ix + i]:
                         delta = lmd[ix + i] - new_lmd[i]
                         eps = math.sqrt(epsilon)
                         eps *= max(abs(lmd[ix + i]), abs(new_lmd[i]))
                         if abs(delta) > eps:
                             dlmd[ix + i, rec - 1] = delta
+                    iterations[ix + i] += 1
                 if verb > 3:
                     print('eigenvalues shifts history:')
                     print(numpy.array_str(dlmd[ix : ix + nx, :rec].T, \
                                           precision = 2))
-                have_prev[ix : ix + nx] = 1
-            else:
-                have_prev[ix : ix + nx] = 0
 
             lmd[ix : ix + nx] = new_lmd
             
@@ -733,9 +731,11 @@ class Solver:
                 dlmdl = abs(dlmd[k, rec - l])
                 if convergence_criteria.satisfied(self, k):
                     if verb > 0:
-                        msg = 'left eigenpair %d converged,\n' + \
+                        msg = 'left eigenpair %d converged' + \
+                        ' after %d iterations,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
-                        print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
+                        it = iterations[k]
+                        print(msg % (j, it, lmd[k], err_X[0, k], err_X[1, k]))
                     lcon += 1
                     self.cnv[k] = self.iteration + 1
                 elif detect_stagn and res[k] >= 0 and \
@@ -752,9 +752,13 @@ class Solver:
                     break
 
             rcon = 0
-            for i in range(rightX - 1):
+#            for i in range(rightX - 1):
+            for i in range(rightX - max(1, rightX//4)):
                 j = self.rcon + i
                 k = ix + nx - i - 1
+                it = iterations[k]
+                if it < 2:
+                    break
                 res_err = min_res[k] + 10*delta_R[nx - i - 1]
                 a = acf[0, i]
                 if a < 1.0:
@@ -767,9 +771,10 @@ class Solver:
                 dlmdl = abs(dlmd[k, rec - l])
                 if convergence_criteria.satisfied(self, k):
                     if verb > 0:
-                        msg = 'right eigenpair %d converged,\n' + \
-                        ' eigenvalue %e, error %.1e / %.1e'
-                        print(msg % (j, lmd[k], err_X[0, k], err_X[1, k]))
+                        msg = 'right eigenpair %d converged' + \
+                        ' after %d iterations,\n' + \
+                        ' eigenvalue %e, residual %.1e, error %.1e / %.1e'
+                        print(msg % (j, it, lmd[k], res[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
                     self.cnv[k] = self.iteration + 1
                 elif detect_stagn and res[k] >= 0 and \
@@ -1131,15 +1136,15 @@ class Solver:
                     dlmd[i, :] = dlmd[j, :]
                     err_X[:, i] = err_X[:, j]
                     dX[i] = dX[j]
-                    have_prev[i] = have_prev[j]
+                    iterations[i] = iterations[j]
             if shift_left >= 0:
                 for i in range(l - shift_left, nl):
                     _reset_cnv_data \
-                        (i, cnv, res, acf, err_lmd, dlmd, err_X, dX, have_prev)
+                        (i, cnv, res, acf, err_lmd, dlmd, err_X, dX, iterations)
             else:
                 for i in range(l):
                     _reset_cnv_data \
-                        (i, cnv, res, acf, err_lmd, dlmd, err_X, dX, have_prev)
+                        (i, cnv, res, acf, err_lmd, dlmd, err_X, dX, iterations)
             if shift_right > 0:
                 for i in range(m - 1, l + shift_right - 1, -1):
                     j = i - shift_right
@@ -1151,15 +1156,15 @@ class Solver:
                     dlmd[i, :] = dlmd[j, :]
                     err_X[:, i] = err_X[:, j]
                     dX[i] = dX[j]
-                    have_prev[i] = have_prev[j]
+                    iterations[i] = iterations[j]
             if shift_right >= 0:
                 for i in range(l + shift_right - 1, nl - 1, -1):
                     _reset_cnv_data \
-                        (i, cnv, res, acf, err_lmd, dlmd, err_X, dX, have_prev)
+                        (i, cnv, res, acf, err_lmd, dlmd, err_X, dX, iterations)
             else:
                 for i in range(l, block_size):
                     _reset_cnv_data \
-                        (i, cnv, res, acf, err_lmd, dlmd, err_X, dX, have_prev)
+                        (i, cnv, res, acf, err_lmd, dlmd, err_X, dX, iterations)
 
             # compute RR coefficients for X and 'old search directions' Z
             # by re-arranging columns of Q
@@ -1238,7 +1243,7 @@ class Solver:
 
         return 2
 
-def _reset_cnv_data(i, cnv, res, acf, err_lmd, dlmd, err_X, dX, have_prev):
+def _reset_cnv_data(i, cnv, res, acf, err_lmd, dlmd, err_X, dX, iterations):
     cnv[i] = 0
     res[i] = -1.0
     acf[:, i] = 1.0
@@ -1246,4 +1251,4 @@ def _reset_cnv_data(i, cnv, res, acf, err_lmd, dlmd, err_X, dX, have_prev):
     dlmd[i, :] = 0
     err_X[:, i] = -1.0
     dX[i] = 1.0
-    have_prev[i] = 0
+    iterations[i] = 0
