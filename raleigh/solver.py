@@ -739,7 +739,8 @@ class Solver:
 
             rcon = 0
 #            for i in range(rightX - 1):
-            for i in range(rightX - max(1, rightX//4)):
+#            for i in range(rightX - max(1, rightX//4)):
+            for i in range(max(1, rightX//3)):
                 j = self.rcon + i
                 k = ix + nx - i - 1
                 it = iterations[k]
