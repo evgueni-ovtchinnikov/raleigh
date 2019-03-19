@@ -218,7 +218,7 @@ class PSVDErrorCalculator:
         return self.err
 
 class DefaultStoppingCriteria:
-    def __init__(self, a, err_tol = 0, sigma_th = 0, max_nsv = 0, norm = 'f'):
+    def __init__(self, a, err_tol = 0, norm = 'f', max_nsv = 0):
         self.ncon = 0
         self.sigma = 1
         self.iteration = 0
@@ -226,10 +226,7 @@ class DefaultStoppingCriteria:
         self.elapsed_time = 0
         self.err_calc = PSVDErrorCalculator(a)
         self.norms = self.err_calc.norms
-        #self.err = self.norms
-        #print('max data norm: %e' % numpy.amax(self.err))
         self.err_tol = err_tol
-        self.sigma_th = sigma_th
         self.max_nsv = max_nsv
         self.norm = norm
         self.f = 0
@@ -237,36 +234,37 @@ class DefaultStoppingCriteria:
         self.norms = self.err_calc.norms
         if solver.rcon <= self.ncon:
             return False
-        if self.ncon == 0:
-            self.err = self.err_calc.err
-            self.f = numpy.sum(self.err*self.err)
-        if self.norm == 'm':
-            self.err = self.err_calc.update_errors()
-            err_rel = numpy.amax(self.err)/numpy.amax(self.norms)
+        new = solver.rcon - self.ncon
         lmd = solver.eigenvalues[self.ncon : solver.rcon]
         sigma = -numpy.sort(-numpy.sqrt(abs(lmd)))
-        if self.norm == 'f':
-            self.f -= numpy.sum(sigma*sigma)
-            err_rel = math.sqrt(abs(self.f)/numpy.sum(self.norms*self.norms))
-        #print(err2) #, numpy.sum(self.err*self.err))
         if self.ncon == 0:
             self.sigma = sigma[0]
-        now = time.time()
-        new = solver.rcon - self.ncon
-        elapsed_time = now - self.start_time
-        self.elapsed_time += elapsed_time
+            self.err = self.err_calc.err
+            self.f = numpy.sum(self.err*self.err)
         i = new - 1
         si = sigma[i]
         si_rel = si/self.sigma
-        if self.err_tol <= 0:
-            msg = '%.2f sec: sigma[%d] = %e = %.2e*sigma[0], err = %.2e' % \
-                (self.elapsed_time, self.ncon + i, si, si_rel, err_rel)
+        if self.norm == 'm':
+            self.err = self.err_calc.update_errors()
+            err_rel = numpy.amax(self.err)/numpy.amax(self.norms)
+        elif self.norm == 'f':
+            self.f -= numpy.sum(sigma*sigma)
+            err_rel = math.sqrt(abs(self.f)/numpy.sum(self.norms*self.norms))
         else:
-            print('%.2f sec: sigma[%d] = %.2e*sigma[0], truncation error = %.2e' % \
-                  (self.elapsed_time, self.ncon + i, si_rel, err_rel))
+            err_rel = si_rel
+        now = time.time()
+        elapsed_time = now - self.start_time
+        self.elapsed_time += elapsed_time
+        if self.norm in ['f', 'm']:
+            msg = '%.2f sec: sigma[%d] = %.2e*sigma[0], truncation error = %.2e' % \
+                  (self.elapsed_time, self.ncon + i, si_rel, err_rel)
+        else:
+            msg = '%.2f sec: sigma[%d] = %e = %.2e*sigma[0]' % \
+                (self.elapsed_time, self.ncon + i, si, si_rel)
         self.ncon = solver.rcon
-        if self.err_tol > 0 or self.sigma_th > 0:
-            done = err_rel <= self.err_tol or si_rel <= self.sigma_th
+        if self.err_tol > 0:
+            print(msg)
+            done = err_rel <= self.err_tol
         else:
             done = (input(msg + ', more? ') == 'n')
         self.iteration = solver.iteration
