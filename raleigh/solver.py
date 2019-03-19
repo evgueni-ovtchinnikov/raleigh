@@ -96,6 +96,7 @@ class Options:
     def __init__(self):
         self.verbosity = 0
         self.max_iter = -1 #00
+        self.min_iter = 0
         self.block_size = -1
         self.threads = -1
         self.convergence_criteria = None #DefaultConvergenceCriteria()
@@ -526,6 +527,7 @@ class Solver:
 #        lmd_min = lmdx[0]
 #        lmd_max = lmdx[nx - 1]
         max_iter = options.max_iter
+        min_iter = options.min_iter
         if max_iter < 0:
             max_iter = 100
         # main CG loop
@@ -710,7 +712,7 @@ class Solver:
                 j = self.lcon + i
                 k = ix + i
                 it = iterations[k]
-                if it < 2:
+                if it < min_iter:
                     break
                 res_err = min_res[k] + 10*delta_R[i]
                 dlmd1 = abs(dlmd[k, rec - 1])
@@ -741,7 +743,7 @@ class Solver:
                 j = self.rcon + i
                 k = ix + nx - i - 1
                 it = iterations[k]
-                if it < 2:
+                if it < min_iter:
                     break
                 res_err = min_res[k] + 10*delta_R[nx - i - 1]
                 dlmd1 = abs(dlmd[k, rec - 1])
