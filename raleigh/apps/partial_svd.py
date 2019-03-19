@@ -6,6 +6,7 @@ Created on Tue Feb 19 13:58:54 2019
 @author: Evgueni Ovtchinnikov, UKRI
 """
 
+import math
 import numpy
 import numpy.linalg as nla
 import scipy
@@ -217,7 +218,7 @@ class PSVDErrorCalculator:
         return self.err
 
 class DefaultStoppingCriteria:
-    def __init__(self, a, err_tol = 0, sigma_th = 0, max_nsv = 0):
+    def __init__(self, a, err_tol = 0, sigma_th = 0, max_nsv = 0, norm = 'f'):
         self.ncon = 0
         self.sigma = 1
         self.iteration = 0
@@ -225,19 +226,29 @@ class DefaultStoppingCriteria:
         self.elapsed_time = 0
         self.err_calc = PSVDErrorCalculator(a)
         self.norms = self.err_calc.norms
-        self.err = self.norms
+        #self.err = self.norms
         #print('max data norm: %e' % numpy.amax(self.err))
         self.err_tol = err_tol
         self.sigma_th = sigma_th
         self.max_nsv = max_nsv
+        self.norm = norm
+        self.f = 0
     def satisfied(self, solver):
         self.norms = self.err_calc.norms
         if solver.rcon <= self.ncon:
             return False
-        self.err = self.err_calc.update_errors()
-        err_rel = numpy.amax(self.err)/numpy.amax(self.norms)
+        if self.ncon == 0:
+            self.err = self.err_calc.err
+            self.f = numpy.sum(self.err*self.err)
+        if self.norm == 'm':
+            self.err = self.err_calc.update_errors()
+            err_rel = numpy.amax(self.err)/numpy.amax(self.norms)
         lmd = solver.eigenvalues[self.ncon : solver.rcon]
         sigma = -numpy.sort(-numpy.sqrt(abs(lmd)))
+        if self.norm == 'f':
+            self.f -= numpy.sum(sigma*sigma)
+            err_rel = math.sqrt(abs(self.f)/numpy.sum(self.norms*self.norms))
+        #print(err2) #, numpy.sum(self.err*self.err))
         if self.ncon == 0:
             self.sigma = sigma[0]
         now = time.time()

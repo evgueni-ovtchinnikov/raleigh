@@ -42,6 +42,7 @@ run_svds = args['--svds']
 run_skl = args['--skl']
 run_ral = args['--ral']
 
+import math
 import numpy
 import numpy.linalg as nla
 import scipy.linalg as sla
@@ -52,9 +53,13 @@ import time
 raleigh_path = '../../..'
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
+lra_path = '../../../../lra'
+if lra_path not in sys.path:
+    sys.path.append(lra_path)
 
 from raleigh.solver import Options
-from raleigh.apps.lra import pca
+#from raleigh.apps.lra import pca
+from lra import pca
 
 def vec_err(u, v):
     w = v.copy()
@@ -101,17 +106,20 @@ if run_ral:
     else:
         nc = -1
     start = time.time()
-    mean, u_r, sigma_r, vt_r = pca(images, opt, npc = nc, tol = err_tol, \
+#    mean, u_r, sigma_r, vt_r = pca(images, opt, npc = nc, tol = err_tol, \
+    mean, trans_r, comps_r = pca(images, opt, npc = nc, tol = err_tol, \
         arch = arch)
     stop = time.time()
     time_r = stop - start
-    ncon = sigma_r.shape[0]
+#    ncon = sigma_r.shape[0]
+    ncon = comps_r.shape[0]
     if err_tol > 0 or npc > 0: 
         print('\n%d singular vectors computed in %.1e sec' % (ncon, time_r))
-    print('first and last singular values: %e %e' % (sigma_r[0], sigma_r[-1]))
+#    print('first and last singular values: %e %e' % (sigma_r[0], sigma_r[-1]))
     
     norms = nla.norm(images, axis = 1)
-    imgs = numpy.dot(sigma_r*u_r, vt_r)
+#    imgs = numpy.dot(sigma_r*u_r, vt_r)
+    imgs = numpy.dot(trans_r, comps_r)
     mean = numpy.mean(imgs, axis = 0)
     print(numpy.amax(mean/a))
     imgs -= images
@@ -153,9 +161,11 @@ if run_skl:
         imgs = images - numpy.dot(e, a)
         images -= numpy.dot(numpy.dot(imgs, vti.T), vti)
         imgs = images - numpy.dot(e, a)
-        errs = numpy.amax(nla.norm(imgs, axis = 1))/numpy.amax(norms)
-        print('max SVD error: %.3e' % errs)
-        if errs <= err_tol:
+        errs = nla.norm(imgs, axis = 1)
+        err_max = numpy.amax(errs)/numpy.amax(norms)
+        err_ave = math.sqrt(numpy.sum(errs*errs)/numpy.sum(norms*norms))
+        print('truncation error: %.2e max %.2e average' % (err_max, err_ave))
+        if err_ave <= err_tol:
             break
         print('restarting...')
     stop = time.time()
@@ -181,7 +191,8 @@ if run_svd:
         print(sigma0[npc - 1])
     n_r = min(sigma_r.shape[0], sigma0.shape[0])
     if n_r > 0:
-        err_vec = vec_err(vt0.T[:,:n_r], vt_r.T[:,:n_r])
+#        err_vec = vec_err(vt0.T[:,:n_r], vt_r.T[:,:n_r])
+        err_vec = vec_err(vt0.T[:,:n_r], comps_r.T[:,:n_r])
         err_val = abs(sigma_r[:n_r] - sigma0[:n_r])/sigma0[0]
         print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
         print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
