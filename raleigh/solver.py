@@ -713,7 +713,7 @@ class Solver:
                           (lmd[i], res[i], \
                           abs(err_lmd[0, i]), abs(err_lmd[1, i]), \
                           abs(err_X[0, i]), abs(err_X[1, i]), \
-                          acf[0, i], iterations[i]))# self.cnv[i]))
+                          acf[0, i], self.cnv[i]))
 
             lcon = 0
 #            for i in range(leftX - 1):
