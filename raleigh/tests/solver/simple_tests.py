@@ -64,6 +64,7 @@ opt.block_size = block_size
 opt.convergence_criteria = raleigh.solver.DefaultConvergenceCriteria()
 opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-25)
 opt.verbosity = 2
+opt.max_iter = 170
 
 v = Vectors(n, data_type = dtype)
 

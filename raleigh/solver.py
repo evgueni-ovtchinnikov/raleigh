@@ -531,7 +531,16 @@ class Solver:
         if max_iter < 0:
             max_iter = 100
         # main CG loop
-        for self.iteration in range(max_iter):
+        self.iteration = 0
+        while True:
+            maxit = 0
+            if left != 0:
+                maxit = numpy.amax(iterations[:left_block_size])
+            if right != 0:
+                maxit = max(maxit, numpy.amax(iterations[left_block_size:]))
+            if maxit > max_iter:
+                break
+#        for self.iteration in range(max_iter):
 
             if verb > 0:
                 print('------------- iteration %d' % self.iteration)
@@ -704,7 +713,7 @@ class Solver:
                           (lmd[i], res[i], \
                           abs(err_lmd[0, i]), abs(err_lmd[1, i]), \
                           abs(err_X[0, i]), abs(err_X[1, i]), \
-                          acf[0, i], self.cnv[i]))
+                          acf[0, i], iterations[i]))# self.cnv[i]))
 
             lcon = 0
 #            for i in range(leftX - 1):
@@ -1218,6 +1227,7 @@ class Solver:
             leftX = leftX_new
             rightX = rightX_new
             left_block_size = left_block_size_new
+            self.iteration += 1
 
         return 2
 
