@@ -4,78 +4,12 @@ RAL EIGensolver for real symmetric and Hermitian problems.
 @author: Evgueni Ovtchinnikov, UKRI-STFC
 '''
 
-from raleigh.piv_chol import piv_chol
 import math
 import numpy
 import numpy.linalg as nla
 import scipy.linalg as sla
 
-RECORDS = 2000 #20
-
-def conjugate(a):
-    if a.dtype.kind == 'c':
-        return a.conj().T
-    else:
-        return a.T
-
-def real(a):
-    if a.dtype.kind == 'c':
-        return a.real
-    else:
-        return a
-
-def transform(A, U):
-    B = sla.solve_triangular(conjugate(U), conjugate(A), lower = True)
-    A = sla.solve_triangular(conjugate(U), conjugate(B), lower = True)
-    return A
-
-def default_block_size(which, extra, init, threads):
-    left = int(which[0])
-    right = int(which[1])
-    extra_left = int(extra[0])
-    extra_right = int(extra[1])
-    init_left = 0
-    init_right = 0
-    if init[0] is not None:
-        init_left = int(init[0].nvec())
-    if init[1] is not None:
-        init_right = int(init[1].nvec())
-    if threads <= 8:
-        threads = 8
-    if left == 0 and right == 0:
-        return 0
-    if left <= 0 and right <= 0:
-        if init_left == 0 and init_right == 0:
-            if left < 0 and right < 0:
-                return 2*threads
-            else:
-                return threads
-        m = init_left + init_right
-        m = threads*((m - 1)//threads + 1)
-        if left < 0 or right < 0:
-            m = max(m, 2*threads)
-        return m
-    left_total = 0
-    right_total = 0
-    if left > 0:
-        if extra_left >= 0:
-            left_total = max(left + extra_left, init_left)
-        else:
-            left_total = int(math.floor(max(left, init_left)*1.2))
-    if right > 0:
-        if extra_right >= 0:
-            right_total = max(right + extra_right, init_right)
-        else:
-            right_total = int(math.floor(max(right, init_right)*1.2))
-    if left < 0:
-        left_total = right_total
-    if right < 0:
-        right_total = left_total
-    m = int(left_total + right_total)
-    m = threads*((m - 1)//threads + 1)
-    if left < 0 or right < 0:
-        m = max(m, 2*threads)
-    return m
+RECORDS = 100
 
 class DefaultConvergenceCriteria:
     def __init__(self):
@@ -87,44 +21,34 @@ class DefaultConvergenceCriteria:
     def satisfied(self, solver, i):
         err = solver.convergence_data(self.error, i)
         return err >= 0 and err <= self.tolerance
-        
-class DefaultStoppingCriteria:
-    def satisfied(self, solver):
-        return False
 
 class Options:
     def __init__(self):
         self.verbosity = 0
-        self.max_iter = -1 #00
+        self.max_iter = -1
         self.min_iter = 0
         self.block_size = -1
         self.threads = -1
-        self.convergence_criteria = None #DefaultConvergenceCriteria()
-        self.stopping_criteria = None #DefaultStoppingCriteria()
+        self.convergence_criteria = None
+        self.stopping_criteria = None
         self.detect_stagnation = True
         self.max_quota = 0.5
-        
+
 class EstimatedErrors:
     def __init__(self):
-        self.kinematic = numpy.ndarray((0,), dtype = numpy.float32)
-        self.residual = numpy.ndarray((0,), dtype = numpy.float32)
+        self.kinematic = numpy.ndarray((0,), dtype=numpy.float32)
+        self.residual = numpy.ndarray((0,), dtype=numpy.float32)
     def __getitem__(self, item):
         return self.kinematic[item], self.residual[item]
     def append(self, est):
-        self.kinematic = numpy.concatenate((self.kinematic, est[0,:]))
-        self.residual = numpy.concatenate((self.residual, est[1,:]))
+        self.kinematic = numpy.concatenate((self.kinematic, est[0, :]))
+        self.residual = numpy.concatenate((self.residual, est[1, :]))
     def reorder(self, ind):
         self.kinematic = self.kinematic[ind]
         self.residual = self.residual[ind]
 
-class error(Exception):
-    def __init__(self, value):
-        self.value = value
-    def __str__(self):
-        return '??? ' + repr(self.value)
-
 class Problem:
-    def __init__(self, v, A, B = None, prod = None):
+    def __init__(self, v, A, B=None, prod=None):
         self.__vector = v
         self.__A = A
         self.__B = B
@@ -148,16 +72,22 @@ class Solver:
     def __init__(self, problem):
         self.__problem = problem
         self.__P = None
+        self.iteration = 0
+        self.lcon = 0
+        self.rcon = 0
+        self.eigenvalues = numpy.ndarray((0,), dtype=numpy.float64)
+        self.eigenvalue_errors = EstimatedErrors()
+        self.eigenvector_errors = EstimatedErrors()
+        self.residual_norms = numpy.ndarray((0,), dtype=numpy.float32)
+        self.convergence_status = numpy.ndarray((0,), dtype=numpy.int32)
 
     def set_preconditioner(self, P):
         self.__P = P
-        
-    def convergence_data(self, what = 'residual', which = 0):
+
+    def convergence_data(self, what='residual', which=0):
         if what.find('block') > -1:
             return self.block_size
         elif what.find('res') > -1 and what.find('vec') == -1:
-#            if what.find('rel') > -1:
-#                return self.res[which]/abs(self.lmd[which])
             max_lmd = numpy.amax(abs(self.lmd))
             if self.lcon + self.rcon > 0:
                 max_lmd = max(max_lmd, numpy.amax(abs(self.eigenvalues)))
@@ -180,13 +110,9 @@ class Solver:
         else:
             raise ValueError('convergence data %s not found' % what)
 
-    def solve \
-        (self, eigenvectors, \
-         options = Options(), \
-         which = (-1,-1), \
-         extra = (-1,-1), \
-         init = (None, None)):
-            
+    def solve(self, eigenvectors, options=Options(), which=(-1, -1), \
+        extra=(-1, -1), init=(None, None)):
+
         verb = options.verbosity
 
         left = int(which[0])
@@ -198,7 +124,7 @@ class Solver:
 
         m = int(options.block_size)
         if m < 0:
-            m = default_block_size(which, extra, init, options.threads)
+            m = _default_block_size(which, extra, init, options.threads)
         else:
             if left == 0 or right == 0:
                 if m < 3:
@@ -210,32 +136,31 @@ class Solver:
                     if verb > -1:
                         print('Block size %d too small, will use 4 instead' % m)
                     m = 4
-#        block_size = m
         self.block_size = m
-        
+
         n = eigenvectors.dimension()
-        
+
         #output
         self.iteration = 0
         self.lcon = 0
         self.rcon = 0
-        self.eigenvalues = numpy.ndarray((0,), dtype = numpy.float64)
+        self.eigenvalues = numpy.ndarray((0,), dtype=numpy.float64)
         self.eigenvalue_errors = EstimatedErrors()
         self.eigenvector_errors = EstimatedErrors()
-        self.residual_norms = numpy.ndarray((0,), dtype = numpy.float32)
-        self.convergence_status = numpy.ndarray((0,), dtype = numpy.int32)
+        self.residual_norms = numpy.ndarray((0,), dtype=numpy.float32)
+        self.convergence_status = numpy.ndarray((0,), dtype=numpy.int32)
 
         if m < n//2:
             try:
                 status = self._solve(eigenvectors, options, which, extra, init)
                 if status > 1:
                     return status
-            except error as err:
+            except _Error as err:
                 print('%s' % err.value)
                 return -1
         else:
             status = 1
-            
+
         if status == 0:
             return 0 # success
 
@@ -244,9 +169,6 @@ class Solver:
         m = n - nc
         if verb > -1:
             print('%d eigenpairs not computed' % m)
-            
-#        if status == 2:
-#            return 1 # cannot compute the rest        
 
         X = eigenvectors.new_vectors(m)
         X.fill_random()
@@ -269,7 +191,7 @@ class Solver:
             if nc > 0:
                 Gc = BXc.dot(Xc)
                 # approximate inverse of Gc
-                Gci = 2*numpy.identity(nc, dtype = data_type) - Gc
+                Gci = 2*numpy.identity(nc, dtype=data_type) - Gc
             Q = numpy.dot(Gci, X.dot(BXc))
             X.add(Xc, -1.0, Q)
             Q = numpy.dot(Gci, X.dot(BXc))
@@ -286,8 +208,7 @@ class Solver:
         else:
             A(X, Z)
             XAX = Z.dot(X)
-        lmdx, Q = sla.eigh(XAX, XBX, turbo=False, overwrite_a = True, overwrite_b = True)
-#        print(lmdx)
+        lmdx, Q = sla.eigh(XAX, XBX, turbo=False, overwrite_a=True, overwrite_b=True)
         X.multiply(Q, Z)
         Z.copy(X)
         eigenvectors.append(X)
@@ -296,12 +217,12 @@ class Solver:
         return 0
 
     def _solve(self, eigenvectors, options, which, extra, init):
-            
+
         verb = options.verbosity
 
         left = int(which[0])
         right = int(which[1])
-        
+
         m = self.block_size
         if left == 0:
             r = 0.0
@@ -322,7 +243,7 @@ class Solver:
         lr_ratio = r
         block_size = m
         left_block_size = l
-        
+
         extra_left = int(extra[0])
         extra_right = int(extra[1])
         if left >= 0:
@@ -353,13 +274,13 @@ class Solver:
         epsilon = numpy.finfo(data_type).eps
 
         # convergence data
-        self.cnv = numpy.zeros((m,), dtype = numpy.int32)
-        self.lmd = numpy.zeros((m,), dtype = numpy.float64)
-        self.res = -numpy.ones((m,), dtype = numpy.float32)
-        self.min_res = -numpy.ones((m,), dtype = numpy.float32)
-        self.err_lmd = -numpy.ones((2, m,), dtype = numpy.float32)
-        self.err_X = -numpy.ones((2, m,), dtype = numpy.float32)
-        
+        self.cnv = numpy.zeros((m,), dtype=numpy.int32)
+        self.lmd = numpy.zeros((m,), dtype=numpy.float64)
+        self.res = -numpy.ones((m,), dtype=numpy.float32)
+        self.min_res = -numpy.ones((m,), dtype=numpy.float32)
+        self.err_lmd = -numpy.ones((2, m,), dtype=numpy.float32)
+        self.err_X = -numpy.ones((2, m,), dtype=numpy.float32)
+
         # convergence criteria
         if options.convergence_criteria is None:
             convergence_criteria = DefaultConvergenceCriteria()
@@ -367,19 +288,17 @@ class Solver:
             convergence_criteria = options.convergence_criteria
 
         # data for estimating error in computing residuals
-        #err_AX = 0.0
-        norm_AX = numpy.zeros((m,), dtype = numpy.float32)
+        norm_AX = numpy.zeros((m,), dtype=numpy.float32)
 
         # convergence history data
-        iterations = numpy.zeros((m,), dtype = numpy.int32)
-        dlmd = numpy.zeros((m, RECORDS), dtype = numpy.float32)
-        dX = numpy.ones((m,), dtype = numpy.float32)
-        acf = numpy.ones((2, m,), dtype = numpy.float32)
+        iterations = numpy.zeros((m,), dtype=numpy.int32)
+        dlmd = numpy.zeros((m, RECORDS), dtype=numpy.float32)
+        dX = numpy.ones((m,), dtype=numpy.float32)
+        acf = numpy.ones((2, m,), dtype=numpy.float32)
 
         # workspace
         X = vector.new_vectors(m)
         X.fill_random()
-        #X.fill_orthogonal(m)
         Y = vector.new_vectors(m)
         Z = vector.new_vectors(m)
         W = vector.new_vectors(m)
@@ -425,7 +344,7 @@ class Solver:
         X.select(m)
         s = numpy.sqrt(X.dots(X))
         X.scale(s)
-            
+
         # shorcuts
         detect_stagn = options.detect_stagnation
         lmd = self.lmd
@@ -449,7 +368,7 @@ class Solver:
         if nc > 0:
             Gc = BXc.dot(Xc)
             # approximate inverse of Gc
-            Gci = 2*numpy.identity(nc, dtype = data_type) - Gc
+            Gci = 2*numpy.identity(nc, dtype=data_type) - Gc
 
         # initialize
         leftX = left_block_size
@@ -474,10 +393,9 @@ class Solver:
 
         # do pivoted Cholesky for XBX to eliminate linear dependent X
         U = XBX.copy()
-        ind, dropped, last_piv = piv_chol(U, 0, 1e-2)
+        ind, dropped = _piv_chol(U, 0, 1e-2)
         if dropped > 0:
-            #print(ind)
-            if verb > -1:
+            if verb > 0:
                 print('dropped %d initial vectors out of %d' % (dropped, nx))
             # drop linear dependent initial vectors
             nx -= dropped
@@ -524,15 +442,14 @@ class Solver:
             BX.multiply(Q, Z)
             Z.copy(BX)
 
-#        lmd_min = lmdx[0]
-#        lmd_max = lmdx[nx - 1]
+# ===== main CG loop
         max_iter = options.max_iter
         min_iter = options.min_iter
         if max_iter < 0:
             max_iter = 100
-        # main CG loop
         self.iteration = 0
         while True:
+
             maxit = 0
             if left != 0:
                 maxit = numpy.amax(iterations[:left_block_size])
@@ -540,29 +457,25 @@ class Solver:
                 maxit = max(maxit, numpy.amax(iterations[left_block_size:]))
             if maxit > max_iter:
                 break
-#        for self.iteration in range(max_iter):
 
             if verb > 0:
                 print('------------- iteration %d' % self.iteration)
 
             if pro:
                 XAX = AX.dot(BX)
-#                da = AX.dots(BX)
             else:
                 XAX = AX.dot(X)
-#                da = AX.dots(X)
             XBX = BX.dot(X)
-#            db = BX.dots(X)
             da = XAX.diagonal()
             db = XBX.diagonal()
-            new_lmd = real(da/db)
+            new_lmd = _real(da/db)
 
             # estimate error in residual computation due to the error in
             # computing AX, to be used in detecting convergence stagnation
             Lmd = numpy.zeros((nx, nx))
             Lmd[range(nx), range(nx)] = lmdx #new_lmd
             RX = XAX - numpy.dot(XBX, Lmd)
-            delta_R = nla.norm(RX, axis = 0)
+            delta_R = nla.norm(RX, axis=0)
             if gen:
                 s = numpy.sqrt(abs(X.dots(X)))
                 delta_R /= s
@@ -585,10 +498,10 @@ class Solver:
                 if verb > 3:
                     print('eigenvalues shifts history:')
                     print(numpy.array_str(dlmd[ix : ix + nx, :rec].T, \
-                                          precision = 2))
+                                          precision=2))
 
             lmd[ix : ix + nx] = new_lmd
-            
+
             # compute residuals
             # std: A X - X lmd
             # gen: A X - B X lmd
@@ -668,7 +581,6 @@ class Solver:
                 for k in range(1, leftX):
                     i = ix + k
                     if dX[i] > 0.01:
-#                    if abs(err_X[0, i]) > 0.01:
                         break
                     if lmd[i] - lmd[i - 1] > res[i]:
                         l = k
@@ -687,7 +599,6 @@ class Solver:
                 for k in range(1, rightX):
                     i = ix + nx - k - 1
                     if dX[i] > 0.01:
-#                    if abs(err_X[0, i]) > 0.01:
                         break
                     if lmd[i + 1] - lmd[i] > res[i]:
                         l = k
@@ -716,7 +627,6 @@ class Solver:
                           acf[0, i], self.cnv[i]))
 
             lcon = 0
-#            for i in range(leftX - 1):
             for i in range(leftX - max(1, leftX//4)):
                 j = self.lcon + i
                 k = ix + i
@@ -747,9 +657,7 @@ class Solver:
                     break
 
             rcon = 0
-#            for i in range(rightX - 1):
             for i in range(rightX - max(1, rightX//4)):
-#            for i in range(max(1, rightX//3)):
                 j = self.rcon + i
                 k = ix + nx - i - 1
                 it = iterations[k]
@@ -808,7 +716,7 @@ class Solver:
                     else:
                         Gl = Xc.dot(X)
                 if ncon > 0:
-                    Gc = numpy.concatenate((Gc, Gu), axis = 1)
+                    Gc = numpy.concatenate((Gc, Gu), axis=1)
                     Gc = numpy.concatenate((Gc, Gl))
                 ncon += lcon
             if rcon > 0:
@@ -841,15 +749,15 @@ class Solver:
                     else:
                         Gl = Xc.dot(X)
                 if ncon > 0:
-                    Gc = numpy.concatenate((Gc, Gu), axis = 1)
+                    Gc = numpy.concatenate((Gc, Gu), axis=1)
                     Gc = numpy.concatenate((Gc, Gl))
                 ncon += rcon
             if ncon > 0:
-                H = Gc - numpy.identity(ncon, dtype = data_type)
+                H = Gc - numpy.identity(ncon, dtype=data_type)
                 if verb > 2:
                     print('Gram error: %e' % nla.norm(H))
                 # approximate inverse, good enough for Gram error up to 1e-8
-                Gci = 2*numpy.identity(ncon, dtype = data_type) - Gc
+                Gci = 2*numpy.identity(ncon, dtype=data_type) - Gc
 
             self.lcon += lcon
             self.rcon += rcon
@@ -863,11 +771,11 @@ class Solver:
             lim = options.max_quota * eigenvectors.dimension()
             if eigenvectors.nvec() > lim:
                 return 1
-            
+
             leftX -= lcon
             rightX -= rcon
-            
-            ## re-select Xs, AXs, BXs accordingly
+
+            # re-select Xs, AXs, BXs accordingly
             iy = ix
             ny = nx
             ix += lcon
@@ -904,7 +812,7 @@ class Solver:
                 Den = Mu - Lmd
                 sy = numpy.sqrt(abs(Y.dots(Y)))
                 sz = numpy.sqrt(abs(Z.dots(Z)))
-                Beta = numpy.ndarray((nz, ny), dtype = data_type)
+                Beta = numpy.ndarray((nz, ny), dtype=data_type)
                 for iz in range(nz):
                     for iy in range(ny):
                         s = sy[iy]/sz[iz]
@@ -912,7 +820,7 @@ class Solver:
                             Beta[iz, iy] = 0.0
                         else:
                             Beta[iz, iy] = Num[iz, iy]/Den[iz, iy]
-                
+
                 # conjugate search directions
                 AZ.select(ny)
                 Y.add(Z, -1.0, Beta)
@@ -928,9 +836,9 @@ class Solver:
             Y.add(X, -1.0, Q)
             if pro:
                 BY.add(BX, -1.0, Q)
-            
-            if Xc.nvec() > 0: #and (P is not None or gen):
-               # orthogonalize Y to Xc
+
+            if Xc.nvec() > 0:
+                # orthogonalize Y to Xc
                 # std: W := W - Xc Xc* W (not needed if P is None)
                 # gen: W := W - Xc BXc* W
                 # pro: W := W - Xc BXc* W (not needed if P is None)
@@ -956,12 +864,12 @@ class Solver:
                 if nx > 0:
                     XBY = BY.dot(X)
                 YBY = BY.dot(Y)
-                
+
             if nx > 0:
-                YBX = conjugate(XBY)
+                YBX = _conjugate(XBY)
                 GB = numpy.concatenate((XBX, YBX))
                 H = numpy.concatenate((XBY, YBY))
-                GB = numpy.concatenate((GB, H), axis = 1)
+                GB = numpy.concatenate((GB, H), axis=1)
             else:
                 GB = YBY
 
@@ -972,12 +880,12 @@ class Solver:
                 eps = 1e-4
             else:
                 eps = 1e-8
-            ind, dropped, last_piv = piv_chol(U, nx, eps)
+            ind, dropped = _piv_chol(U, nx, eps)
             if dropped > 0:
                 if verb > 0:
                     print('dropped %d search directions out of %d' \
                           % (dropped, ny))
-            
+
             ny -= dropped
             if ny < 1:
                 if verb > -1:
@@ -1013,51 +921,51 @@ class Solver:
                     XAY = AY.dot(X)
                 YAY = AY.dot(Y)
             if nx > 0:
-                YAX = conjugate(XAY)
+                YAX = _conjugate(XAY)
                 GA = numpy.concatenate((XAX, YAX))
                 H = numpy.concatenate((XAY, YAY))
-                GA = numpy.concatenate((GA, H), axis = 1)
+                GA = numpy.concatenate((GA, H), axis=1)
             else:
                 GA = YAY
 
             # solve Rayleigh-Ritz eigenproblem
-            G = transform(GA, U)
+            G = _transform(GA, U)
             YAY = G[nx : nxy, nx : nxy]
             lmdy, Qy = sla.eigh(YAY)
             G[:, nx : nxy] = numpy.dot(G[:, nx : nxy], Qy)
             if nx > 0:
-                G[nx : nxy, :nx] = conjugate(G[:nx, nx : nxy])
-            G[nx : nxy, nx : nxy] = numpy.dot(conjugate(Qy), G[nx : nxy, nx : nxy])
-            
+                G[nx : nxy, :nx] = _conjugate(G[:nx, nx : nxy])
+            G[nx : nxy, nx : nxy] = numpy.dot(_conjugate(Qy), G[nx : nxy, nx : nxy])
+
             if G.dtype.kind == 'c':
                 G = G.astype(numpy.complex128)
             else:
                 G = G.astype(numpy.float64)
-                
+
             lmdxy, Q = sla.eigh(G)
 
             lmdxy = lmdxy.astype(lmdy.dtype)
             Q = Q.astype(Qy.dtype)
-            
+
             # estimate changes in eigenvalues and eigenvectors
             lmdx = numpy.concatenate \
                 ((lmdxy[:leftX], lmdxy[nxy - rightX:]))
             lmdy = lmdxy[leftX : nxy - rightX]
             QX = numpy.concatenate \
-                ((Q[:, :leftX], Q[:, nxy - rightX:]), axis = 1)
+                ((Q[:, :leftX], Q[:, nxy - rightX:]), axis=1)
             QYX = QX[nx:, :].copy()
             lmdX = numpy.ndarray((1, nx))
             lmdY = numpy.ndarray((ny, 1))
             lmdX[0, :] = lmdx
             lmdY[:, 0] = lmdy
             Delta = (lmdY - lmdX)*QYX*QYX
-            dX[ix : ix + nx] = nla.norm(QYX, axis = 0)
+            dX[ix : ix + nx] = nla.norm(QYX, axis=0)
             if rec == RECORDS:
                 for i in range(rec - 1):
                     dlmd[:, i] = dlmd[:, i + 1]
             else:
                 rec += 1
-            dlmd[ix : ix + nx, rec - 1] = real(numpy.sum(Delta, axis = 0))
+            dlmd[ix : ix + nx, rec - 1] = _real(numpy.sum(Delta, axis=0))
 
             # select new numbers of left and right eigenpairs
             if left < 0:
@@ -1160,7 +1068,7 @@ class Solver:
             lmdx = numpy.concatenate \
                 ((lmdxy[:leftX_new], lmdxy[nxy - rightX_new:]))
             QX = numpy.concatenate \
-                ((Q[:, :leftX_new], Q[:, nxy - rightX_new:]), axis = 1)
+                ((Q[:, :leftX_new], Q[:, nxy - rightX_new:]), axis=1)
             lft = leftX_new
             rgt = rightX_new
             nz = nxy - lft - rgt
@@ -1172,7 +1080,7 @@ class Solver:
             if nx > 0:
                 QXZ = QZ[:nx, :].copy()
             QYZ = QZ[nx:, :].copy()
-    
+
             # update X and 'old search directions' Z and their A- and B-images
             W.select(nx_new)
             Z.select(nx_new)
@@ -1221,7 +1129,7 @@ class Solver:
                     Z.add(X, 1.0, QXZ)
             X.select(nx_new, ix_new)
             W.copy(X)
-                
+
             nx = nx_new
             ix = ix_new
             leftX = leftX_new
@@ -1230,6 +1138,77 @@ class Solver:
             self.iteration += 1
 
         return 2
+
+class _Error(Exception):
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return '??? ' + repr(self.value)
+
+def _conjugate(a):
+    if a.dtype.kind == 'c':
+        return a.conj().T
+    else:
+        return a.T
+
+def _real(a):
+    if a.dtype.kind == 'c':
+        return a.real
+    else:
+        return a
+
+def _transform(A, U):
+    B = sla.solve_triangular(_conjugate(U), _conjugate(A), lower=True)
+    A = sla.solve_triangular(_conjugate(U), _conjugate(B), lower=True)
+    return A
+
+def _default_block_size(which, extra, init, threads):
+    left = int(which[0])
+    right = int(which[1])
+    extra_left = int(extra[0])
+    extra_right = int(extra[1])
+    init_left = 0
+    init_right = 0
+    if init[0] is not None:
+        init_left = int(init[0].nvec())
+    if init[1] is not None:
+        init_right = int(init[1].nvec())
+    if threads <= 8:
+        threads = 8
+    if left == 0 and right == 0:
+        return 0
+    if left <= 0 and right <= 0:
+        if init_left == 0 and init_right == 0:
+            if left < 0 and right < 0:
+                return 2*threads
+            else:
+                return threads
+        m = init_left + init_right
+        m = threads*((m - 1)//threads + 1)
+        if left < 0 or right < 0:
+            m = max(m, 2*threads)
+        return m
+    left_total = 0
+    right_total = 0
+    if left > 0:
+        if extra_left >= 0:
+            left_total = max(left + extra_left, init_left)
+        else:
+            left_total = int(math.floor(max(left, init_left)*1.2))
+    if right > 0:
+        if extra_right >= 0:
+            right_total = max(right + extra_right, init_right)
+        else:
+            right_total = int(math.floor(max(right, init_right)*1.2))
+    if left < 0:
+        left_total = right_total
+    if right < 0:
+        right_total = left_total
+    m = int(left_total + right_total)
+    m = threads*((m - 1)//threads + 1)
+    if left < 0 or right < 0:
+        m = max(m, 2*threads)
+    return m
 
 def _reset_cnv_data(i, cnv, res, acf, err_lmd, dlmd, err_X, dX, iterations):
     cnv[i] = 0
@@ -1240,3 +1219,101 @@ def _reset_cnv_data(i, cnv, res, acf, err_lmd, dlmd, err_X, dX, iterations):
     err_X[:, i] = -1.0
     dX[i] = 1.0
     iterations[i] = 0
+
+def _piv_chol(A, k, eps, blk=64, verb=0):
+    n = A.shape[0]
+    buff = A[0, :].copy()
+    ind = [i for i in range(n)]
+    drop_case = 0
+    dropped = 0
+    last_check = -1
+    if k > 0:
+        U = sla.cholesky(A[:k, :k])
+        A[:k, :k] = U.copy()
+        A[:k, k : n] = sla.solve_triangular \
+                       (_conjugate(U), A[:k, k : n], lower=True)
+        A[k : n, :k].fill(0.0)
+        A[k : n, k : n] -= numpy.dot(_conjugate(A[:k, k : n]), A[:k, k : n])
+    l = k
+    for i in range(k, n):
+        s = numpy.diag(A[i : n, i : n]).copy()
+        if i > l:
+            t = nla.norm(A[l : i, i : n], axis=0)
+            s -= t*t
+        j = i + numpy.argmax(s)
+        if i != j:
+            buff[:] = A[i, :]
+            A[i,:] = A[j, :]
+            A[j,:] = buff
+            buff[:] = A[:, i]
+            A[:, i] = A[:, j]
+            A[:, j] = buff
+            ind[i], ind[j] = ind[j], ind[i]
+        if i > l:
+            A[i, i : n] -= numpy.dot(_conjugate(A[l : i, i]), A[l : i, i : n])
+        last_piv = A[i, i].real
+        if last_piv <= eps:
+            A[i : n, :].fill(0.0)
+            drop_case = 1
+            dropped = n - i
+            break
+        A[i, i] = math.sqrt(last_piv)
+        A[i, i + 1 : n] /= A[i, i]
+        A[i + 1 : n, i].fill(0.0)
+        if i - l == blk - 1 or i == n - 1:
+            last_check = i
+            lmin = _estimate_lmin(A[: i + 1, : i + 1])
+            lmax = _estimate_lmax(A[: i + 1, : i + 1])
+            if verb > 0:
+                print('%e %e %e' % (A[i, i], lmin, lmax))
+            if lmin/lmax <= eps:
+                A[i : n, :].fill(0.0)
+                drop_case = 2
+                dropped = n - i
+                break
+        if i - l == blk - 1 and i < n - 1:
+            j = i + 1
+            A[j : n, j : n] -= numpy.dot(_conjugate(A[l : j, j : n]), \
+                A[l : j, j : n])
+            l += blk
+    if last_check < n - 1 and drop_case != 2:
+        i = last_check
+        j = n - dropped - 1
+        while i < j:
+            m = i + (j - i + 1)//2
+            lmin = _estimate_lmin(A[: m + 1, : m + 1])
+            lmax = _estimate_lmax(A[: m + 1, : m + 1])
+            if verb > 0:
+                print('%d %e %e' % (m, lmin, lmax))
+            if lmin/lmax <= eps:
+                if j > m:
+                    j = m
+                    continue
+                else:
+                    A[j : n, :].fill(0.0)
+                    dropped = n - j
+                    last_piv = A[j - 1, j - 1]**2
+                    break
+            else:
+                i = m
+                continue
+    return ind, dropped
+
+def _estimate_lmax(U):
+    U = numpy.triu(U)
+    return sla.norm(numpy.dot(_conjugate(U), U), ord=1)
+def _estimate_lmin(U):
+    n = U.shape[0]
+    if U.dtype.kind == 'c':
+        tr = 2
+    else:
+        tr = 1
+    x = numpy.ones((n,), dtype=U.dtype)
+    s = numpy.dot(x, x)
+    for i in range(3):
+        y = sla.solve_triangular(U, x, trans=tr)
+        t = numpy.dot(y, y)
+        rq = s/t
+        x = sla.solve_triangular(U, y)
+        s = numpy.dot(x, x)
+    return rq
