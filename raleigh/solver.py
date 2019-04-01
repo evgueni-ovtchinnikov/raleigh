@@ -922,8 +922,8 @@ class Solver:
             AY.select(ny)
             if not std:
                 BY.copy(W, indy[:ny])
-                W.copy(BY)
                 BY.select(ny)
+                W.copy(BY)
 
             # compute A-Gram matrix for (X,Y)
             if pro:
