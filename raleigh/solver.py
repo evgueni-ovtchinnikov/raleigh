@@ -12,6 +12,10 @@ import scipy.linalg as sla
 RECORDS = 100
 
 class DefaultConvergenceCriteria:
+    '''
+    Convergence criteria to be used if not specified by the user via Options
+    (see Options.convergence_criteria below).
+    '''
     def __init__(self):
         self.tolerance = 1e-3
         self.error = 'kinematic eigenvector error'
@@ -23,6 +27,9 @@ class DefaultConvergenceCriteria:
         return err >= 0 and err <= self.tolerance
 
 class Options:
+    '''
+    Solver options.
+    '''
     def __init__(self):
         self.verbosity = 0
         self.max_iter = -1
@@ -35,6 +42,9 @@ class Options:
         self.max_quota = 0.5
 
 class EstimatedErrors:
+    '''
+    Estimated errors accumulator.
+    '''
     def __init__(self):
         self.kinematic = numpy.ndarray((0,), dtype=numpy.float32)
         self.residual = numpy.ndarray((0,), dtype=numpy.float32)
@@ -48,6 +58,9 @@ class EstimatedErrors:
         self.residual = self.residual[ind]
 
 class Problem:
+    '''
+    Eigenvalue problem specification.
+    '''
     def __init__(self, v, A, B=None, prod=None):
         self.__vector = v
         self.__A = A
@@ -69,6 +82,9 @@ class Problem:
         return self.__vector
 
 class Solver:
+    '''
+    Eigenvalue problem solver specification.
+    '''
     def __init__(self, problem):
         self.__problem = problem
         self.__P = None
@@ -1243,8 +1259,8 @@ def _piv_chol(A, k, eps, blk=64, verb=0):
         j = i + numpy.argmax(s)
         if i != j:
             buff[:] = A[i, :]
-            A[i,:] = A[j, :]
-            A[j,:] = buff
+            A[i, :] = A[j, :]
+            A[j, :] = buff
             buff[:] = A[:, i]
             A[:, i] = A[:, j]
             A[:, j] = buff
