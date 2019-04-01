@@ -1,3 +1,3 @@
 '''
-NumPy ndarray implementation of RALEIGH.
+RALEIGH algebra implementation based on numpy.ndarray.
 '''

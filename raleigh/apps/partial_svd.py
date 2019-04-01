@@ -38,7 +38,7 @@ class PartialSVD:
         else:
             gpu = None
         if gpu is None:
-            from ..algebra import Vectors, Matrix
+            from ..ndarray.algebra import Vectors, Matrix
             op = Matrix(a)
     
         m, n = a.shape
