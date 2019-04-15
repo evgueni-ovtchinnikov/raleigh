@@ -109,11 +109,11 @@ if matrix == 'lap3d':
 else:
     path = 'C:/Users/wps46139/Documents/Data/Matrices/'
     print('reading the matrix from %s...' % matrix)
-    A = mmread(path + matrix)
-    A = scs.triu(A.tocsr(), format = 'csr')
-    a = A.data.astype(dtype)
-    ia = A.indptr + 1
-    ja = A.indices + 1
+    M = mmread(path + matrix).tocsr()
+    U = scs.triu(M, format = 'csr')
+    a = U.data.astype(dtype)
+    ia = U.indptr + 1
+    ja = U.indices + 1
 
 n = ia.shape[0] - 1
 v = Vectors(n, data_type = dtype)
@@ -126,19 +126,19 @@ print('setting up the solver...')
 start = time.time()
 SSDS.define_structure(ia, ja)
 SSDS.reorder()
-SSDS.factorize(a, pos_def = True) #, scale = (dt == 's'))
+SSDS.factorize(a) #, scale = (dt == 's'))
 stop = time.time()
 setup_time = stop - start
 print('setup time: %.2e' % setup_time)
-inertia = SSDS.inertia()
-print('positive eigenvalues: %d' % int(inertia[0]))
-print('negative eigenvalues: %d' % int(inertia[1]))
+#inertia = SSDS.inertia()
+#print('positive eigenvalues: %d' % int(inertia[0]))
+#print('negative eigenvalues: %d' % int(inertia[1]))
 
 opt = raleigh.solver.Options()
 opt.block_size = block_size
 opt.convergence_criteria = raleigh.solver.DefaultConvergenceCriteria()
-opt.convergence_criteria.set_error_tolerance('k eigenvector error', 1e-5)
-opt.max_iter = 30
+opt.convergence_criteria.set_error_tolerance('k eigenvector error', 1e-10)
+#opt.max_iter = 30
 #opt.verbosity = 2
 
 evp = raleigh.solver.Problem(v, opAinv)
@@ -152,3 +152,11 @@ print('after %d iterations, %d converged eigenvalues are:' \
       % (solver.iteration, v.nvec()))
 print(1./solver.eigenvalues)
 print('solve time: %.2e' % solve_time)
+
+print('solving with scipy eigsh...')
+start = time.time()
+vals, vecs = scs.linalg.eigsh(M, left, sigma = 0, tol = 1e-10)
+stop = time.time()
+eigsh_time = stop - start
+print(vals)
+print('eigsh time: %.2e' % eigsh_time)

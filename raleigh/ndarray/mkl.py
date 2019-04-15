@@ -256,26 +256,26 @@ class SparseSymmetricDirectSolver:
                                      ptr_order)
         if err is not self.__MKL_DSS_SUCCESS:
             raise RuntimeError('mkl.dss_reorder failed')
-    def factorize(self, a, sigma = 0, pos_def = False, scale = True):
-        if sigma == 0.0 and not scale:
+    def factorize(self, a, sigma = 0, pos_def = False): #, scale = True):
+        if sigma == 0.0: # and not scale:
             a_s = a
-            self.__scale = None
+##            self.__scale = None
         else:
             a_s = a.copy()
             if sigma != 0.0:
                 a_s[self.__ia[:-1] - 1] -= sigma
-            if scale:
-                d = a_s[self.__ia[:-1] - 1]
-                s = numpy.sqrt(abs(d))
-                rows = self.__ia.shape[0] - 1
-                for row in range(rows):
-                    for i in range(self.__ia[row], self.__ia[row + 1]):
-                        col = self.__ja[i - 1] - 1
-                        sc = s[row]*s[col]
-                        if sc != 0.0: a_s[i - 1] /= sc
-                self.__scale = s
-            else:
-                self.__scale = None
+##            if scale:
+##                d = a_s[self.__ia[:-1] - 1]
+##                s = numpy.sqrt(abs(d))
+##                rows = self.__ia.shape[0] - 1
+##                for row in range(rows):
+##                    for i in range(self.__ia[row], self.__ia[row + 1]):
+##                        col = self.__ja[i - 1] - 1
+##                        sc = s[row]*s[col]
+##                        if sc != 0.0: a_s[i - 1] /= sc
+##                self.__scale = s
+##            else:
+##                self.__scale = None
         if pos_def:
             pd = ctypes.c_int(self.__MKL_DSS_POSITIVE_DEFINITE)
         else:

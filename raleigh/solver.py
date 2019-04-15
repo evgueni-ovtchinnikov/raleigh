@@ -552,7 +552,7 @@ class Solver:
             else:
                 s = W.dots(W)
             res[ix : ix + nx] = numpy.sqrt(abs(s))
-            if self.iteration == 2:
+            if self.iteration == 1:
                 min_res[:] = res*epsilon
 
             # kinematic error estimates
@@ -649,7 +649,7 @@ class Solver:
                 it = iterations[k]
                 if it < min_iter:
                     break
-                res_err = min_res[k] + 10*delta_R[i]
+                res_err = min_res[k] + 10*delta_R[i] #TODO: cf. the right margin 
                 dlmd1 = abs(dlmd[k, rec - 1])
                 dlmd2 = abs(dlmd[k, rec - 2])
                 if convergence_criteria.satisfied(self, k):
@@ -679,7 +679,7 @@ class Solver:
                 it = iterations[k]
                 if it < min_iter:
                     break
-                res_err = min_res[k] + 10*delta_R[nx - i - 1]
+                res_err = 20*min_res[k] + 20*delta_R[nx - i - 1]
                 dlmd1 = abs(dlmd[k, rec - 1])
                 dlmd2 = abs(dlmd[k, rec - 2])
                 if convergence_criteria.satisfied(self, k):
