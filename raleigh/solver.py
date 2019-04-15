@@ -467,9 +467,9 @@ class Solver:
         while True:
 
             maxit = 0
-            if left != 0:
+            if left != 0 and left_block_size > 0:
                 maxit = numpy.amax(iterations[:left_block_size])
-            if right != 0:
+            if right != 0 and left_block_size < block_size:
                 maxit = max(maxit, numpy.amax(iterations[left_block_size:]))
             if maxit > max_iter:
                 break
@@ -552,7 +552,7 @@ class Solver:
             else:
                 s = W.dots(W)
             res[ix : ix + nx] = numpy.sqrt(abs(s))
-            if self.iteration == 0:
+            if self.iteration == 2:
                 min_res[:] = res*epsilon
 
             # kinematic error estimates
@@ -661,7 +661,7 @@ class Solver:
                         print(msg % (j, it, lmd[k], err_X[0, k], err_X[1, k]))
                     lcon += 1
                     self.cnv[k] = self.iteration + 1
-                elif detect_stagn and res[k] >= 0 and \
+                elif detect_stagn and res[k] >= 0 and it > 2 and \
                     res[k] < res_err and dlmd1 > dlmd2:
                     if verb > 0:
                         msg = 'left eigenpair %d stagnated,\n' + \
@@ -690,7 +690,7 @@ class Solver:
                         print(msg % (j, it, lmd[k], res[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
                     self.cnv[k] = self.iteration + 1
-                elif detect_stagn and res[k] >= 0 and \
+                elif detect_stagn and res[k] >= 0 and it > 2 and \
                     res[k] < res_err and dlmd1 > dlmd2:
                     if verb > 0:
                         msg = 'right eigenpair %d stagnated,\n' + \

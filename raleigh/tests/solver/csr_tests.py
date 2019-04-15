@@ -30,7 +30,10 @@ raleigh_path = '../../..'
 
 import numpy
 from scipy.io import mmread
+import scipy.sparse as scs
 import sys
+import time
+
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
@@ -116,16 +119,36 @@ n = ia.shape[0] - 1
 v = Vectors(n, data_type = dtype)
 A = SparseSymmetricMatrix(a, ia, ja)
 opA = lambda x, y: A.dot(x.data(), y.data())
+SSDS = SparseSymmetricDirectSolver(dtype)
+opAinv = lambda x, y: SSDS.solve(x.data(), y.data())
+
+print('setting up the solver...')
+start = time.time()
+SSDS.define_structure(ia, ja)
+SSDS.reorder()
+SSDS.factorize(a, pos_def = True) #, scale = (dt == 's'))
+stop = time.time()
+setup_time = stop - start
+print('setup time: %.2e' % setup_time)
+inertia = SSDS.inertia()
+print('positive eigenvalues: %d' % int(inertia[0]))
+print('negative eigenvalues: %d' % int(inertia[1]))
 
 opt = raleigh.solver.Options()
 opt.block_size = block_size
 opt.convergence_criteria = raleigh.solver.DefaultConvergenceCriteria()
-opt.convergence_criteria.set_error_tolerance('eigenvector error', 1e-5)
+opt.convergence_criteria.set_error_tolerance('k eigenvector error', 1e-5)
+opt.max_iter = 30
 #opt.verbosity = 2
 
-evp = raleigh.solver.Problem(v, opA)
+evp = raleigh.solver.Problem(v, opAinv)
 solver = raleigh.solver.Solver(evp)
-solver.solve(v, opt, which = (left, 0))
+
+start = time.time()
+solver.solve(v, opt, which = (0, left))
+stop = time.time()
+solve_time = stop - start
 print('after %d iterations, %d converged eigenvalues are:' \
       % (solver.iteration, v.nvec()))
-print(solver.eigenvalues)
+print(1./solver.eigenvalues)
+print('solve time: %.2e' % solve_time)
