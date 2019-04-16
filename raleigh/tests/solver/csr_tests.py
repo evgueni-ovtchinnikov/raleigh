@@ -6,11 +6,14 @@ Usage:
     scr_tests [--help | -h | options]
 
 Options:
-    -m <mat>, --matrix=<mat>   problem matrix [default: lap3d]
-    -n <dim>, --dim=<dim>      mesh sizes nx = ny = nz for lap3d [default: 10]
-    -b <blk>, --bsize=<blk>    block CG block size [default: -1]
-    -d <dat>, --dtype=<dat>    data type (BLAS prefix s/d/c/z) [default: s]
-    -l <lft>, --left=<lft>     number of left eigenvalues wanted [default: -1]
+    -m <mat>, --matrix=<mat>  problem matrix [default: lap3d]
+    -n <dim>, --dim=<dim>     mesh sizes nx = ny = nz for lap3d [default: 10]
+    -b <blk>, --bsize=<blk>   block CG block size [default: -1]
+    -d <dat>, --dtype=<dat>   data type (BLAS prefix s/d) [default: d]
+    -s <sft>, --shift=<sft>   shift [default: 0]
+    -l <lft>, --left=<lft>    number of eigenvalues left of shift [default: 0]
+    -r <rgt>, --right=<rgt>   number of eigenvalues right of shift [default: 0]
+    -S, --scipy  solve with SciPy eigsh
 
 @author: Evgueni Ovtchinnikov, UKRI-STFC
 """
@@ -24,7 +27,10 @@ if matrix == 'lap3d':
     nx = int(args['--dim'])
 block_size = int(args['--bsize'])
 dt = args['--dtype']
+sigma = float(args['--shift'])
 left = int(args['--left'])
+right = int(args['--right'])
+eigsh = args['--scipy']
 
 raleigh_path = '../../..'
 
@@ -42,6 +48,13 @@ from raleigh.ndarray.cblas_algebra import Vectors
 from raleigh.ndarray.mkl import SparseSymmetricMatrix
 from raleigh.ndarray.mkl import SparseSymmetricDirectSolver
 
+class MyStoppingCriteria:
+    def __init__(self, n):
+        self.__n = n
+    def satisfied(self, solver):
+        if solver.lcon + solver.rcon >= self.__n:
+            return True
+        return False
 
 def lap3d_matrix(nx, ny, nz, dtype = numpy.float64):
     hx = 1.0
@@ -126,13 +139,17 @@ print('setting up the solver...')
 start = time.time()
 SSDS.define_structure(ia, ja)
 SSDS.reorder()
-SSDS.factorize(a) #, scale = (dt == 's'))
+SSDS.factorize(a, sigma = sigma)
 stop = time.time()
 setup_time = stop - start
 print('setup time: %.2e' % setup_time)
-#inertia = SSDS.inertia()
-#print('positive eigenvalues: %d' % int(inertia[0]))
-#print('negative eigenvalues: %d' % int(inertia[1]))
+inertia = SSDS.inertia()
+pos = int(inertia[0])
+neg = int(inertia[1])
+print('positive eigenvalues: %d' % pos)
+print('negative eigenvalues: %d' % neg)
+left = min(left, neg)
+right = min(right, pos)
 
 opt = raleigh.solver.Options()
 opt.block_size = block_size
@@ -140,23 +157,30 @@ opt.convergence_criteria = raleigh.solver.DefaultConvergenceCriteria()
 opt.convergence_criteria.set_error_tolerance('k eigenvector error', 1e-10)
 #opt.max_iter = 30
 #opt.verbosity = 2
+if left < 0 and right < 0:
+    opt.stopping_criteria = MyStoppingCriteria(-left)
 
 evp = raleigh.solver.Problem(v, opAinv)
 solver = raleigh.solver.Solver(evp)
 
 start = time.time()
-solver.solve(v, opt, which = (0, left))
+solver.solve(v, opt, which = (left, right))
 stop = time.time()
 solve_time = stop - start
 print('after %d iterations, %d converged eigenvalues are:' \
       % (solver.iteration, v.nvec()))
-print(1./solver.eigenvalues)
+print(numpy.sort(sigma + 1./solver.eigenvalues))
 print('solve time: %.2e' % solve_time)
 
-print('solving with scipy eigsh...')
-start = time.time()
-vals, vecs = scs.linalg.eigsh(M, left, sigma = 0, tol = 1e-10)
-stop = time.time()
-eigsh_time = stop - start
-print(vals)
-print('eigsh time: %.2e' % eigsh_time)
+if eigsh:
+    if left < 0 and right < 0:
+        k = -left
+    else:
+        k = left + right
+    print('solving with scipy eigsh...')
+    start = time.time()
+    vals, vecs = scs.linalg.eigsh(M, k, sigma = sigma, tol = 1e-10)
+    stop = time.time()
+    eigsh_time = stop - start
+    print(vals)
+    print('eigsh time: %.2e' % eigsh_time)
