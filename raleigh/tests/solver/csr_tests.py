@@ -162,6 +162,7 @@ if left < 0 and right < 0:
 
 evp = raleigh.solver.Problem(v, opAinv)
 solver = raleigh.solver.Solver(evp)
+#solver.set_preconditioner(opAinv)
 
 start = time.time()
 solver.solve(v, opt, which = (left, right))
@@ -170,6 +171,7 @@ solve_time = stop - start
 print('after %d iterations, %d converged eigenvalues are:' \
       % (solver.iteration, v.nvec()))
 print(numpy.sort(sigma + 1./solver.eigenvalues))
+#print(numpy.sort(solver.eigenvalues))
 print('solve time: %.2e' % solve_time)
 
 if eigsh:

@@ -288,6 +288,7 @@ class Solver:
         pro = (problem_type == 'p')
         data_type = vector.data_type()
         epsilon = numpy.finfo(data_type).eps
+        single = (data_type == numpy.float32 or data_type == numpy.complex64)
 
         # convergence data
         self.cnv = numpy.zeros((m,), dtype=numpy.int32)
@@ -552,7 +553,7 @@ class Solver:
             else:
                 s = W.dots(W)
             res[ix : ix + nx] = numpy.sqrt(abs(s))
-            if self.iteration == 1:
+            if self.iteration == 0:
                 min_res[:] = res*epsilon
 
             # kinematic error estimates
@@ -642,6 +643,10 @@ class Solver:
                           abs(err_X[0, i]), abs(err_X[1, i]), \
                           acf[0, i], self.cnv[i]))
 
+            if single:
+                q = 10
+            else:
+                q = 100
             lcon = 0
             for i in range(leftX - max(1, leftX//4)):
                 j = self.lcon + i
@@ -649,7 +654,7 @@ class Solver:
                 it = iterations[k]
                 if it < min_iter:
                     break
-                res_err = min_res[k] + 10*delta_R[i] #TODO: cf. the right margin 
+                res_err = q*min_res[k] + 10*delta_R[i]
                 dlmd1 = abs(dlmd[k, rec - 1])
                 dlmd2 = abs(dlmd[k, rec - 2])
                 if convergence_criteria.satisfied(self, k):
@@ -662,7 +667,7 @@ class Solver:
                     lcon += 1
                     self.cnv[k] = self.iteration + 1
                 elif detect_stagn and res[k] >= 0 and it > 2 and \
-                    res[k] < res_err and dlmd1 > dlmd2:
+                    res[k] < res_err and (dlmd1 > dlmd2 or dlmd1 == 0.0):
                     if verb > 0:
                         msg = 'left eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
@@ -679,7 +684,7 @@ class Solver:
                 it = iterations[k]
                 if it < min_iter:
                     break
-                res_err = 20*min_res[k] + 20*delta_R[nx - i - 1]
+                res_err = q*min_res[k] + 10*delta_R[nx - i - 1]
                 dlmd1 = abs(dlmd[k, rec - 1])
                 dlmd2 = abs(dlmd[k, rec - 2])
                 if convergence_criteria.satisfied(self, k):
@@ -691,7 +696,7 @@ class Solver:
                     rcon += 1
                     self.cnv[k] = self.iteration + 1
                 elif detect_stagn and res[k] >= 0 and it > 2 and \
-                    res[k] < res_err and dlmd1 > dlmd2:
+                    res[k] < res_err and (dlmd1 > dlmd2 or dlmd1 == 0.0):
                     if verb > 0:
                         msg = 'right eigenpair %d stagnated,\n' + \
                         ' eigenvalue %e, error %.1e / %.1e'
@@ -892,7 +897,7 @@ class Solver:
             # do pivoted Cholesky for GB
             U = GB
             ny = Y.nvec()
-            if data_type == numpy.float32 or data_type == numpy.complex64:
+            if single:
                 eps = 1e-4
             else:
                 eps = 1e-8
@@ -958,7 +963,7 @@ class Solver:
             else:
                 G = G.astype(numpy.float64)
 
-            lmdxy, Q = sla.eigh(G)
+            lmdxy, Q = sla.eigh(G, turbo = False)
 
             lmdxy = lmdxy.astype(lmdy.dtype)
             Q = Q.astype(Qy.dtype)
