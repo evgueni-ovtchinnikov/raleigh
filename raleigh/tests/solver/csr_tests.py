@@ -13,6 +13,7 @@ Options:
     -s <sft>, --shift=<sft>   shift [default: 0]
     -l <lft>, --left=<lft>    number of eigenvalues left of shift [default: 0]
     -r <rgt>, --right=<rgt>   number of eigenvalues right of shift [default: 0]
+    -t <tol>, --tol=<tol>     error/residual tolerance [default: 1e-10]
     -S, --scipy  solve with SciPy eigsh
 
 @author: Evgueni Ovtchinnikov, UKRI-STFC
@@ -30,6 +31,7 @@ dt = args['--dtype']
 sigma = float(args['--shift'])
 left = int(args['--left'])
 right = int(args['--right'])
+tol = float(args['--tol'])
 eigsh = args['--scipy']
 
 raleigh_path = '../../..'
@@ -37,6 +39,7 @@ raleigh_path = '../../..'
 import numpy
 from scipy.io import mmread
 import scipy.sparse as scs
+from scipy.sparse.linalg import LinearOperator
 import sys
 import time
 
@@ -154,7 +157,7 @@ right = min(right, pos)
 opt = raleigh.solver.Options()
 opt.block_size = block_size
 opt.convergence_criteria = raleigh.solver.DefaultConvergenceCriteria()
-opt.convergence_criteria.set_error_tolerance('k eigenvector error', 1e-10)
+opt.convergence_criteria.set_error_tolerance('k eigenvector error', tol)
 #opt.max_iter = 30
 #opt.verbosity = 2
 if left < 0 and right < 0:
@@ -174,15 +177,23 @@ print(numpy.sort(sigma + 1./solver.eigenvalues))
 #print(numpy.sort(solver.eigenvalues))
 print('solve time: %.2e' % solve_time)
 
+def mv(x):
+    y = x.copy()
+    SSDS.solve(x, y)
+    return y
+
 if eigsh:
+    opM = LinearOperator(dtype = dtype, shape = (n, n), \
+                         matmat = mv, matvec = mv, rmatvec = mv)
     if left < 0 and right < 0:
         k = -left
     else:
         k = left + right
     print('solving with scipy eigsh...')
     start = time.time()
-    vals, vecs = scs.linalg.eigsh(M, k, sigma = sigma, tol = 1e-10)
+    vals, vecs = scs.linalg.eigsh(opM, k, tol = 1e-12)
+#    vals, vecs = scs.linalg.eigsh(M, k, sigma = sigma, tol = tol)
     stop = time.time()
     eigsh_time = stop - start
-    print(vals)
+    print(numpy.sort(sigma + 1./vals))
     print('eigsh time: %.2e' % eigsh_time)
