@@ -176,11 +176,20 @@ print('after %d iterations, %d converged eigenvalues are:' \
 print(numpy.sort(sigma + 1./solver.eigenvalues))
 #print(numpy.sort(solver.eigenvalues))
 print('solve time: %.2e' % solve_time)
+nr = solver.eigenvalues.shape[0]
+vecs_r = v.data().T
 
 def mv(x):
     y = x.copy()
     SSDS.solve(x, y)
     return y
+
+def vec_err(u, v):
+    w = v.copy()
+    q = numpy.dot(u.T, v)
+    w = numpy.dot(u, q) - v
+    s = numpy.linalg.norm(w, axis = 0)
+    return s
 
 if eigsh:
     opM = LinearOperator(dtype = dtype, shape = (n, n), \
@@ -197,3 +206,6 @@ if eigsh:
     eigsh_time = stop - start
     print(numpy.sort(sigma + 1./vals))
     print('eigsh time: %.2e' % eigsh_time)
+    ns = vals.shape[0]
+    ne = int(min(nr, ns))
+    print(vec_err(vecs[:, :ne], vecs_r[:, :ne]))

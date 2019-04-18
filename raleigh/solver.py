@@ -660,6 +660,7 @@ class Solver:
 ##                res_err = q*min_res[k] + 10*delta_R[i]
                 dlmd1 = abs(dlmd[k, max(0, rec - 1)])
                 dlmd2 = abs(dlmd[k, max(0, rec - 2)])
+##                print(dlmd1, dlmd2, dlmd_min)
                 if convergence_criteria.satisfied(self, k):
                     if verb > 0:
                         msg = 'left eigenpair %d converged' + \
@@ -670,7 +671,7 @@ class Solver:
                     lcon += 1
                     self.cnv[k] = self.iteration + 1
                 elif detect_stagn and it > 2 and dlmd1 <= dlmd_min \
-                     and dlmd1 > dlmd2:
+                     and (dlmd1 > dlmd2 or dlmd1 == 0.0):
 ##                elif detect_stagn and res[k] >= 0 and it > 2 and \
 ##                    res[k] < res_err and (dlmd1 > dlmd2 or dlmd1 == 0.0):
                     if verb > 0:
@@ -702,7 +703,7 @@ class Solver:
                     rcon += 1
                     self.cnv[k] = self.iteration + 1
                 elif detect_stagn and it > 2 and dlmd1 <= dlmd_min \
-                     and dlmd1 > dlmd2:
+                     and (dlmd1 > dlmd2 or dlmd1 == 0.0):
 ##                elif detect_stagn and it > 2 and ((res[k] >= 0 and \
 ##                    res[k] < res_err and dlmd1 > dlmd2) or dlmd1 <= dlmd_min):
                     if verb > 0:
