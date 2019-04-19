@@ -124,23 +124,26 @@ class SparseSymmetricMatrix:
         if a.dtype == numpy.float32:
             self.__csrmm = mkl.mkl_scsrmm
             self.__csrsymv = mkl.mkl_scsrsymv
+            descr = 'SUNF  '
         elif a.dtype == numpy.float64:
             self.__csrmm = mkl.mkl_dcsrmm
             self.__csrsymv = mkl.mkl_dcsrsymv
+            descr = 'SUNF  '
         elif a.dtype == numpy.complex64:
             self.__csrmm = mkl.mkl_ccsrmm
             self.__csrsymv = mkl.mkl_ccsrsymv
+            descr = 'HUNF  '
         elif a.dtype == numpy.complex128:
             self.__csrmm = mkl.mkl_zcsrmm
             self.__csrsymv = mkl.mkl_zcsrsymv
+            descr = 'HUNF  '
         else:
             raise ValueError('unsupported data type')
         self.__csrmm.restype = None
         uplo = 'U'
-        self.__u = ctypes.c_char_p(uplo.encode('utf-8'))
         trans = 'N'
+        self.__u = ctypes.c_char_p(uplo.encode('utf-8'))
         self.__t = ctypes.c_char_p(trans.encode('utf-8'))
-        descr = 'SUNF  '
         self.__d = ctypes.c_char_p(descr.encode('utf-8'))
     def __array_ptr(self, array, shift = 0):
         return ctypes.c_void_p(array.ctypes.data + shift)
