@@ -140,7 +140,7 @@ class SparseSymmetricMatrix:
         else:
             raise ValueError('unsupported data type')
         self.__csrmm.restype = None
-        uplo = 'U'
+        uplo = 'L'
         trans = 'N'
         self.__u = ctypes.c_char_p(uplo.encode('utf-8'))
         self.__t = ctypes.c_char_p(trans.encode('utf-8'))
