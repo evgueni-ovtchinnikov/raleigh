@@ -644,7 +644,7 @@ class Solver:
                           acf[0, i], self.cnv[i]))
 
             if self.iteration < 2:
-                dlmd_min = epsilon*numpy.amax(abs(dlmd[:, 0]))
+                dlmd_min = (epsilon**0.67)*numpy.amax(abs(dlmd[:, 0]))
 ##            if single:
 ##                q = 10
 ##            else:
