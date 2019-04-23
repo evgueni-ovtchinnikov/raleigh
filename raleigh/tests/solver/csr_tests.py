@@ -215,6 +215,7 @@ if eigsh:
 #    vals, vecs = scs.linalg.eigsh(M, k, sigma = sigma, tol = tol)
     stop = time.time()
     eigsh_time = stop - start
+    sigma = 0 # for now
     print(numpy.sort(sigma + 1./vals))
     print('eigsh time: %.2e' % eigsh_time)
     ns = vals.shape[0]
