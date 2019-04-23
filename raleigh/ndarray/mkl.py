@@ -202,6 +202,9 @@ class ParDiSo:
         self.__ptr = ctypes.c_void_p(self.__dummy.ctypes.data)
         self.__ptr_iparm = _array_ptr(self.__iparm)
         mkl.pardisoinit(self.__handle, ctypes.byref(mtype), self.__ptr_iparm)
+        if dtype == numpy.float32 or dtype == numpy.complex64:
+            #print('single precision')
+            self.__iparm[27] = 1
     def __del__(self):
         step = ctypes.c_int(-1)
         maxf = ctypes.c_int(1)
