@@ -163,7 +163,11 @@ class SparseSymmetricMatrix:
                            self.__a, self.__ib, self.__ja, ptr_x, ptr_y)
             return
         #print('using *csrmm...')
-        m, n = s[0], numpy.prod(s[1:])
+        if len(s) > 1:
+            m, n = s[0], int(numpy.prod(s[1:]))
+        else:
+            m = 1
+            n = self.__n.value
         mn = numpy.array([m, n])
         ptr_m = _array_ptr(mn)
         ptr_n = _array_ptr(mn[1:])
