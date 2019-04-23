@@ -49,6 +49,7 @@ if raleigh_path not in sys.path:
 import raleigh.solver
 from raleigh.ndarray.cblas_algebra import Vectors
 from raleigh.ndarray.mkl import SparseSymmetricMatrix
+from raleigh.ndarray.mkl import ParDiSo
 from raleigh.ndarray.mkl import SparseSymmetricDirectSolver
 
 class MyStoppingCriteria:
@@ -135,20 +136,25 @@ n = ia.shape[0] - 1
 v = Vectors(n, data_type = dtype)
 A = SparseSymmetricMatrix(a, ia, ja)
 opA = lambda x, y: A.dot(x.data(), y.data())
-SSDS = SparseSymmetricDirectSolver(dtype)
-opAinv = lambda x, y: SSDS.solve(x.data(), y.data())
+pardiso = ParDiSo(dtype)
+opAinv = lambda x, y: pardiso.solve(x.data(), y.data())
+#SSDS = SparseSymmetricDirectSolver(dtype)
+#opAinv = lambda x, y: SSDS.solve(x.data(), y.data())
 
 print('setting up the solver...')
 start = time.time()
-SSDS.define_structure(ia, ja)
-SSDS.reorder()
-SSDS.factorize(a, sigma = sigma)
+pardiso.analyse(a, ia, ja)
+pardiso.factorize()
+neg, pos = pardiso.inertia()
+#SSDS.define_structure(ia, ja)
+#SSDS.reorder()
+#SSDS.factorize(a, sigma = sigma)
 stop = time.time()
 setup_time = stop - start
 print('setup time: %.2e' % setup_time)
-inertia = SSDS.inertia()
-pos = int(inertia[0])
-neg = int(inertia[1])
+#inertia = SSDS.inertia()
+#pos = int(inertia[0])
+#neg = int(inertia[1])
 print('positive eigenvalues: %d' % pos)
 print('negative eigenvalues: %d' % neg)
 left = min(left, neg)
@@ -181,7 +187,8 @@ vecs_r = v.data().T
 
 def mv(x):
     y = x.copy()
-    SSDS.solve(x, y)
+    pardiso.solve(x, y)
+    #SSDS.solve(x, y)
     return y
 
 def vec_err(u, v):

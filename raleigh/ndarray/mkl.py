@@ -202,6 +202,7 @@ class ParDiSo:
         self.__ptr = ctypes.c_void_p(self.__dummy.ctypes.data)
         self.__ptr_iparm = _array_ptr(self.__iparm)
         mkl.pardisoinit(self.__handle, ctypes.byref(mtype), self.__ptr_iparm)
+        self.__iparm[4] = 2
         if dtype == numpy.float32 or dtype == numpy.complex64:
             #print('single precision')
             self.__iparm[27] = 1
@@ -376,7 +377,7 @@ class ParDiSo:
                 elif s < 0:
                     nneg += 2
                 i += 2
-        print(self.__iparm[21:23])
+        #print(self.__iparm[21:23])
         return nneg, npos
 
 class SparseSymmetricDirectSolver:
