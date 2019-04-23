@@ -112,15 +112,16 @@ class Cblas:
 
 class SparseSymmetricMatrix:
     def __init__(self, a, ia, ja):
-        self.__a = self.__array_ptr(a)
-        self.__ib = self.__array_ptr(ia)
-        self.__ie = self.__array_ptr(ia[1:])
-        self.__ja = self.__array_ptr(ja)
+        self.__a = _array_ptr(a)
+        self.__ib = _array_ptr(ia)
+        self.__ie = _array_ptr(ia[1:])
+        self.__ja = _array_ptr(ja)
         self.__n = ctypes.c_int(ia.shape[0] - 1)
         self.__dtype = a.dtype
         self.__oz = numpy.array([1.0, 0.0]).astype(a.dtype)
-        self.__one = self.__array_ptr(self.__oz)
-        self.__zero = self.__array_ptr(self.__oz[1:])
+        self.__one = _array_ptr(self.__oz)
+        self.__zero = _array_ptr(self.__oz[1:])
+        self.__complex = False
         if a.dtype == numpy.float32:
             self.__csrmm = mkl.mkl_scsrmm
             self.__csrsymv = mkl.mkl_scsrsymv
@@ -133,25 +134,25 @@ class SparseSymmetricMatrix:
             self.__csrmm = mkl.mkl_ccsrmm
             self.__csrsymv = mkl.mkl_ccsrsymv
             descr = 'HUNF  '
+            self.__complex = True
         elif a.dtype == numpy.complex128:
             self.__csrmm = mkl.mkl_zcsrmm
             self.__csrsymv = mkl.mkl_zcsrsymv
             descr = 'HUNF  '
+            self.__complex = True
         else:
             raise ValueError('unsupported data type')
         self.__csrmm.restype = None
-        uplo = 'L'
+        uplo = 'U'
         trans = 'N'
         self.__u = ctypes.c_char_p(uplo.encode('utf-8'))
         self.__t = ctypes.c_char_p(trans.encode('utf-8'))
         self.__d = ctypes.c_char_p(descr.encode('utf-8'))
-    def __array_ptr(self, array, shift = 0):
-        return ctypes.c_void_p(array.ctypes.data + shift)
     def dot(self, x, y):
-        ptr_x = self.__array_ptr(x)
-        ptr_y = self.__array_ptr(y)
+        ptr_x = _array_ptr(x)
+        ptr_y = _array_ptr(y)
         s = x.shape
-        if len(s) == 1 or s[0] == 1:
+        if (len(s) == 1 or s[0] == 1) and not self.__complex:
             #print('using *csrsymv...')
             if len(s) == 1:
                 n = s[0]
@@ -164,12 +165,212 @@ class SparseSymmetricMatrix:
         #print('using *csrmm...')
         m, n = s[0], numpy.prod(s[1:])
         mn = numpy.array([m, n])
-        ptr_m = self.__array_ptr(mn)
-        ptr_n = self.__array_ptr(mn[1:])
+        ptr_m = _array_ptr(mn)
+        ptr_n = _array_ptr(mn[1:])
         n = self.__n
         self.__csrmm(self.__t, ctypes.byref(n), ptr_m, ctypes.byref(n), \
             self.__one, self.__d, self.__a, self.__ja, self.__ib, self.__ie, \
             ptr_x, ptr_n, self.__zero, ptr_y, ptr_n)
+
+class ParDiSo:
+    def __init__(self, dtype = numpy.float64, pos_def = False):
+        self.__mkl = mkl
+        self.__pt = numpy.ndarray((64,), dtype = numpy.int64)
+        self.__iparm = numpy.ndarray((64,), dtype = numpy.int32)
+        self.__handle = _array_ptr(self.__pt)
+        if (dtype == numpy.float32 or dtype == numpy.float64):
+            m = 2
+        elif (dtype == numpy.complex64 or dtype == numpy.complex128):
+            m = 4
+        else:
+            raise ValueError('ParDiSo constructor: wrong data type')
+        if not pos_def:
+            m = -m
+        print('matrix type: %d' % m)
+        mtype = ctypes.c_int(m)
+        self.__dtype = dtype
+        self.__mtype = mtype
+        self.__a = None
+        self.__ia = None
+        self.__ja = None
+        self.__perm = None
+        self.__dummy = numpy.ndarray((1,))
+        self.__ptr = ctypes.c_void_p(self.__dummy.ctypes.data)
+        self.__ptr_iparm = _array_ptr(self.__iparm)
+        mkl.pardisoinit(self.__handle, ctypes.byref(mtype), self.__ptr_iparm)
+    def __del__(self):
+        step = ctypes.c_int(-1)
+        maxf = ctypes.c_int(1)
+        mnum = ctypes.c_int(1)
+        n = ctypes.c_int(1)
+        m = ctypes.c_int(1)
+        ptr = self.__ptr
+        verb = ctypes.c_int(0)
+        err = ctypes.c_long(0)
+        self.__mkl.pardiso(self.__handle, \
+            ctypes.byref(maxf), ctypes.byref(mnum), \
+            ctypes.byref(self.__mtype), \
+            ctypes.byref(step), ctypes.byref(n), ptr, ptr, ptr, \
+            ptr, ctypes.byref(m), self.__ptr_iparm, ctypes.byref(verb), \
+            ptr, ptr, ctypes.byref(err))
+        if err.value != 0: print(err.value)
+    def handle(self):
+        return self.__handle
+    def iparm(self):
+        return self.__iparm
+    def perm(self):
+        return self.__perm
+    def analyse(self, a, ia, ja):
+        #print('iparm[27]: %d' % self.__iparm[27])
+        self.__a = a
+        self.__ia = ia
+        self.__ja = ja
+        step = ctypes.c_int(11)
+        maxf = ctypes.c_int(1)
+        mnum = ctypes.c_int(1)
+        rows = ia.shape[0] - 1
+        n = ctypes.c_int(rows)
+        m = ctypes.c_int(1)
+        ptr_a = _array_ptr(self.__a)
+        ptr_ia = _array_ptr(self.__ia)
+        ptr_ja = _array_ptr(self.__ja)
+        self.__perm = numpy.ndarray((rows,), dtype = numpy.int32)
+        ptr_perm = _array_ptr(self.__perm)
+        ptr_iparm = _array_ptr(self.__iparm)
+        verb = ctypes.c_int(0)
+        err = ctypes.c_long(0)
+        mkl.pardiso(self.__handle, ctypes.byref(maxf), ctypes.byref(mnum), \
+                    ctypes.byref(self.__mtype), \
+                    ctypes.byref(step), ctypes.byref(n), ptr_a, ptr_ia, ptr_ja, \
+                    ptr_perm, ctypes.byref(m), ptr_iparm, ctypes.byref(verb), \
+                    self.__ptr, self.__ptr, ctypes.byref(err))
+        if err.value != 0: print(err.value)
+        #print(self.__perm)
+    def factorize(self):
+        #print('iparm[27]: %d' % self.__iparm[27])
+        step = ctypes.c_int(22)
+        maxf = ctypes.c_int(1)
+        mnum = ctypes.c_int(1)
+        rows = self.__ia.shape[0] - 1
+        n = ctypes.c_int(rows)
+        m = ctypes.c_int(1)
+        ptr_a = _array_ptr(self.__a)
+        ptr_ia = _array_ptr(self.__ia)
+        ptr_ja = _array_ptr(self.__ja)
+        ptr_perm = _array_ptr(self.__perm)
+        ptr_iparm = _array_ptr(self.__iparm)
+        verb = ctypes.c_int(0)
+        err = ctypes.c_long(0)
+        mkl.pardiso(self.__handle, ctypes.byref(maxf), ctypes.byref(mnum), \
+                    ctypes.byref(self.__mtype), \
+                    ctypes.byref(step), ctypes.byref(n), ptr_a, ptr_ia, ptr_ja, \
+                    ptr_perm, ctypes.byref(m), ptr_iparm, ctypes.byref(verb), \
+                    self.__ptr, self.__ptr, ctypes.byref(err))
+        if err.value != 0: print(err.value)
+##    def inertia(self):
+##        return self.__iparm[21:23]
+    def solve(self, b, x, part = None):
+        #print('iparm[27]: %d' % self.__iparm[27])
+        if len(b.shape) > 1:
+            nrhs = b.shape[0]
+        else:
+            nrhs = 1
+        if part == 'f':
+            step = ctypes.c_int(331)
+        elif part == 'd':
+            step = ctypes.c_int(332)
+        elif part == 'b':
+            step = ctypes.c_int(333)
+        else:
+            step = ctypes.c_int(33)
+        maxf = ctypes.c_int(1)
+        mnum = ctypes.c_int(1)
+        rows = self.__ia.shape[0] - 1
+        n = ctypes.c_int(rows)
+        m = ctypes.c_int(nrhs)
+        ptr_a = _array_ptr(self.__a)
+        ptr_ia = _array_ptr(self.__ia)
+        ptr_ja = _array_ptr(self.__ja)
+        ptr_perm = _array_ptr(self.__perm)
+        ptr_iparm = _array_ptr(self.__iparm)
+        verb = ctypes.c_int(0)
+        err = ctypes.c_long(0)
+        ptr_b = _array_ptr(b)
+        ptr_x = _array_ptr(x)
+        mkl.pardiso(self.__handle, ctypes.byref(maxf), ctypes.byref(mnum), \
+                    ctypes.byref(self.__mtype), \
+                    ctypes.byref(step), ctypes.byref(n), ptr_a, ptr_ia, ptr_ja, \
+                    ptr_perm, ctypes.byref(m), ptr_iparm, ctypes.byref(verb), \
+                    ptr_b, ptr_x, ctypes.byref(err))
+        if err.value != 0: print(err.value)
+    def diag(self):
+        rows = self.__ia.shape[0] - 1
+        f = numpy.zeros((4, rows), dtype = self.__dtype)
+        w = numpy.zeros((4, rows), dtype = self.__dtype)
+        perm = self.__perm - 1
+        for i in range(rows):
+            j = i%4
+            f[j, perm[i]] = 1
+        self.solve(f, w, part = 'd')
+        w = w[:,perm]
+        d = numpy.zeros((2, rows), dtype = self.__dtype)
+        i = 0
+        while i < rows:
+            if i > 0:
+                d[1, i - 1] = w[0, i - 1]
+            d[0, i] = w[0, i]
+            d[1, i] = w[1, i]
+            if i == rows - 1:
+                break
+            i += 1
+            d[0, i] = w[1, i]
+            d[1, i] = w[2, i]
+            if i == rows - 1:
+                break
+            i += 1
+            d[0, i] = w[2, i]
+            d[1, i] = w[3, i]
+            if i == rows - 1:
+                break
+            i += 1
+            d[0, i] = w[3, i]
+            i += 1
+        return d
+    def inertia(self):
+        rows = self.__ia.shape[0] - 1
+        diags = self.diag()
+        diag = numpy.real(diags[0, :])
+        offd = diags[1, :]
+        nneg = 0
+        npos = 0
+        i = 0
+        while i < rows:
+            a = diag[i]
+            c = offd[i]
+            if c == 0 or i == rows - 1:
+                if a < 0:
+                    nneg += 1
+                elif a > 0:
+                    npos += 1
+                i += 1
+                continue
+            else:
+                b = diag[i + 1]
+                det = a*b - abs(c)**2
+                s = a + b
+                if det == 0:
+                    if s < 0:
+                        nneg += 1
+                    elif s > 0:
+                        npos += 1
+                elif det < 0:
+                    nneg += 1
+                    npos += 1
+                elif s < 0:
+                    nneg += 2
+                i += 2
+        print(self.__iparm[21:23])
+        return nneg, npos
 
 class SparseSymmetricDirectSolver:
     def __init__(self, dtype = numpy.float64):
@@ -214,8 +415,6 @@ class SparseSymmetricDirectSolver:
         #import ctypes
         opt = ctypes.c_int(0)
         err = self.__dss_delete(ctypes.byref(self.__handle), ctypes.byref(opt))
-    def __array_ptr(self, array, shift = 0):
-        return ctypes.c_void_p(array.ctypes.data + shift)
     def handle(self):
         return self.__handle
     def define_structure(self, ia, ja):
@@ -223,8 +422,8 @@ class SparseSymmetricDirectSolver:
         nonzeros = ia[rows] - ia[0]
         n = ctypes.c_int(rows)
         nnz = ctypes.c_int(nonzeros)
-        ptr_ia = self.__array_ptr(ia)
-        ptr_ja = self.__array_ptr(ja)
+        ptr_ia = _array_ptr(ia)
+        ptr_ja = _array_ptr(ja)
         if self.__dtype == numpy.float32 or self.__dtype == numpy.float64:
             sym = ctypes.c_int(self.__MKL_DSS_SYMMETRIC)
         else:
@@ -243,7 +442,7 @@ class SparseSymmetricDirectSolver:
         if self.__n is None:
             raise RuntimeError('call to mkl.dss_define_structure missing')
         if order is None:
-            ptr_order = self.__array_ptr(self.__order)
+            ptr_order = _array_ptr(self.__order)
             get_order = ctypes.c_int(self.__MKL_DSS_GET_ORDER)
             err = self.__dss_reorder(ctypes.byref(self.__handle), \
                                      ctypes.byref(get_order), \
@@ -252,7 +451,7 @@ class SparseSymmetricDirectSolver:
             if order.size != n:
                 raise RuntimeError('mkl.dss_reorder given wrong order')
             self.__order = order.copy()
-            ptr_order = self.__array_ptr(order)
+            ptr_order = _array_ptr(order)
             my_order = ctypes.c_int(self.__MKL_DSS_MY_ORDER)
             err = self.__dss_reorder(ctypes.byref(self.__handle), \
                                      ctypes.byref(my_order), \
@@ -284,14 +483,14 @@ class SparseSymmetricDirectSolver:
         else:
             pd = ctypes.c_int(self.__MKL_DSS_INDEFINITE)
         if a.dtype.kind == 'c':
-            ptr_as = self.__array_ptr(a_s)
+            ptr_as = _array_ptr(a_s)
             err = self.__dss_factor_complex(ctypes.byref(self.__handle), \
                                             ctypes.byref(pd), ptr_as)
             if err is not self.__MKL_DSS_SUCCESS:
                 raise RuntimeError('mkl.dss_factor_complex failed')
             self.__real = False
         else:
-            ptr_as = self.__array_ptr(a_s)
+            ptr_as = _array_ptr(a_s)
             err = self.__dss_factor_real(ctypes.byref(self.__handle), \
                                          ctypes.byref(pd), ptr_as)
             if err is not self.__MKL_DSS_SUCCESS:
@@ -307,11 +506,11 @@ class SparseSymmetricDirectSolver:
             nrhs = 1
         m = ctypes.c_int(nrhs)
         if self.__scale is None:
-            ptr_b = self.__array_ptr(b)
+            ptr_b = _array_ptr(b)
         else:
             b_s = b/self.__scale
-            ptr_b = self.__array_ptr(b_s)
-        ptr_x = self.__array_ptr(x)
+            ptr_b = _array_ptr(b_s)
+        ptr_x = _array_ptr(x)
         if self.__real:
             err = self.__dss_solve_real(ctypes.byref(self.__handle), \
                                         ctypes.byref(opt), \
@@ -332,7 +531,7 @@ class SparseSymmetricDirectSolver:
         inertia = numpy.ndarray((3,))
         stat = "Inertia"
         ptr_stat = ctypes.c_char_p(stat.encode('utf-8'))
-        ptr_inertia = self.__array_ptr(inertia)
+        ptr_inertia = _array_ptr(inertia)
         err = self.__dss_statistics(ctypes.byref(self.__handle), \
                              ctypes.byref(opt), \
                              ptr_stat, ptr_inertia)
