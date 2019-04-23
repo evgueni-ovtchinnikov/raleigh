@@ -48,9 +48,9 @@ if raleigh_path not in sys.path:
 
 import raleigh.solver
 from raleigh.ndarray.cblas_algebra import Vectors
-from raleigh.ndarray.mkl import SparseSymmetricMatrix
+from raleigh.ndarray.cblas_algebra import SparseSymmetricMatrix
+from raleigh.ndarray.cblas_algebra import SparseSymmetricSolver
 from raleigh.ndarray.mkl import ParDiSo
-from raleigh.ndarray.mkl import SparseSymmetricDirectSolver
 
 class MyStoppingCriteria:
     def __init__(self, n):
@@ -123,6 +123,8 @@ else:
 if matrix == 'lap3d':
     print('generating %s matrix...' % matrix)
     a, ia, ja = lap3d_matrix(nx, nx, nx, dtype)
+    n = ia.shape[0] - 1
+    U = scs.csr_matrix((a, ja - 1, ia - 1), shape = (n, n))
 else:
     path = 'C:/Users/wps46139/Documents/Data/Matrices/'
     print('reading the matrix from %s...' % matrix)
@@ -134,27 +136,30 @@ else:
 
 n = ia.shape[0] - 1
 v = Vectors(n, data_type = dtype)
-A = SparseSymmetricMatrix(a, ia, ja)
-opA = lambda x, y: A.dot(x.data(), y.data())
+A = SparseSymmetricMatrix(U)
+opA = lambda x, y: A.apply(x, y)
 pardiso = ParDiSo(dtype)
-opAinv = lambda x, y: pardiso.solve(x.data(), y.data())
-#SSDS = SparseSymmetricDirectSolver(dtype)
-#opAinv = lambda x, y: SSDS.solve(x.data(), y.data())
+solver = SparseSymmetricSolver(dtype)
+opAinv = lambda x, y: solver.solve(x, y)
 
-print('setting up the solver...')
+print('setting up pardiso...')
 start = time.time()
 pardiso.analyse(a, ia, ja)
 pardiso.factorize()
 neg, pos = pardiso.inertia()
-#SSDS.define_structure(ia, ja)
-#SSDS.reorder()
-#SSDS.factorize(a, sigma = sigma)
 stop = time.time()
 setup_time = stop - start
 print('setup time: %.2e' % setup_time)
-#inertia = SSDS.inertia()
-#pos = int(inertia[0])
-#neg = int(inertia[1])
+print('positive eigenvalues: %d' % pos)
+print('negative eigenvalues: %d' % neg)
+print('setting up the solver...')
+start = time.time()
+solver.analyse(U, sigma)
+solver.factorize()
+neg, pos = solver.inertia()
+stop = time.time()
+setup_time = stop - start
+print('setup time: %.2e' % setup_time)
 print('positive eigenvalues: %d' % pos)
 print('negative eigenvalues: %d' % neg)
 left = min(left, neg)
@@ -170,25 +175,24 @@ if left < 0 and right < 0:
     opt.stopping_criteria = MyStoppingCriteria(-left)
 
 evp = raleigh.solver.Problem(v, opAinv)
-solver = raleigh.solver.Solver(evp)
-#solver.set_preconditioner(opAinv)
+evp_solver = raleigh.solver.Solver(evp)
+#evp_solver.set_preconditioner(opAinv)
 
 start = time.time()
-solver.solve(v, opt, which = (left, right))
+evp_solver.solve(v, opt, which = (left, right))
 stop = time.time()
 solve_time = stop - start
 print('after %d iterations, %d converged eigenvalues are:' \
-      % (solver.iteration, v.nvec()))
-print(numpy.sort(sigma + 1./solver.eigenvalues))
+      % (evp_solver.iteration, v.nvec()))
+print(numpy.sort(sigma + 1./evp_solver.eigenvalues))
 #print(numpy.sort(solver.eigenvalues))
 print('solve time: %.2e' % solve_time)
-nr = solver.eigenvalues.shape[0]
+nr = evp_solver.eigenvalues.shape[0]
 vecs_r = v.data().T
 
 def mv(x):
     y = x.copy()
     pardiso.solve(x, y)
-    #SSDS.solve(x, y)
     return y
 
 def vec_err(u, v):

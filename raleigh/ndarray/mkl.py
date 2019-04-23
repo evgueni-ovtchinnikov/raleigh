@@ -178,7 +178,7 @@ class SparseSymmetricMatrix:
 
 class ParDiSo:
     def __init__(self, dtype = numpy.float64, pos_def = False):
-        self.__mkl = mkl
+        self.__pardiso = mkl.pardiso
         self.__pt = numpy.ndarray((64,), dtype = numpy.int64)
         self.__iparm = numpy.ndarray((64,), dtype = numpy.int32)
         self.__handle = _array_ptr(self.__pt)
@@ -190,7 +190,7 @@ class ParDiSo:
             raise ValueError('ParDiSo constructor: wrong data type')
         if not pos_def:
             m = -m
-        print('matrix type: %d' % m)
+        #print('matrix type: %d' % m)
         mtype = ctypes.c_int(m)
         self.__dtype = dtype
         self.__mtype = mtype
@@ -215,7 +215,7 @@ class ParDiSo:
         ptr = self.__ptr
         verb = ctypes.c_int(0)
         err = ctypes.c_long(0)
-        self.__mkl.pardiso(self.__handle, \
+        self.__pardiso(self.__handle, \
             ctypes.byref(maxf), ctypes.byref(mnum), \
             ctypes.byref(self.__mtype), \
             ctypes.byref(step), ctypes.byref(n), ptr, ptr, ptr, \
@@ -247,7 +247,7 @@ class ParDiSo:
         ptr_iparm = _array_ptr(self.__iparm)
         verb = ctypes.c_int(0)
         err = ctypes.c_long(0)
-        mkl.pardiso(self.__handle, ctypes.byref(maxf), ctypes.byref(mnum), \
+        self.__pardiso(self.__handle, ctypes.byref(maxf), ctypes.byref(mnum), \
                     ctypes.byref(self.__mtype), \
                     ctypes.byref(step), ctypes.byref(n), ptr_a, ptr_ia, ptr_ja, \
                     ptr_perm, ctypes.byref(m), ptr_iparm, ctypes.byref(verb), \
@@ -269,7 +269,7 @@ class ParDiSo:
         ptr_iparm = _array_ptr(self.__iparm)
         verb = ctypes.c_int(0)
         err = ctypes.c_long(0)
-        mkl.pardiso(self.__handle, ctypes.byref(maxf), ctypes.byref(mnum), \
+        self.__pardiso(self.__handle, ctypes.byref(maxf), ctypes.byref(mnum), \
                     ctypes.byref(self.__mtype), \
                     ctypes.byref(step), ctypes.byref(n), ptr_a, ptr_ia, ptr_ja, \
                     ptr_perm, ctypes.byref(m), ptr_iparm, ctypes.byref(verb), \
@@ -305,7 +305,7 @@ class ParDiSo:
         err = ctypes.c_long(0)
         ptr_b = _array_ptr(b)
         ptr_x = _array_ptr(x)
-        mkl.pardiso(self.__handle, ctypes.byref(maxf), ctypes.byref(mnum), \
+        self.__pardiso(self.__handle, ctypes.byref(maxf), ctypes.byref(mnum), \
                     ctypes.byref(self.__mtype), \
                     ctypes.byref(step), ctypes.byref(n), ptr_a, ptr_ia, ptr_ja, \
                     ptr_perm, ctypes.byref(m), ptr_iparm, ctypes.byref(verb), \

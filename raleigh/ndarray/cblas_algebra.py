@@ -11,11 +11,14 @@ raleigh_path = '../..'
 
 import ctypes
 import numpy
+import scipy.sparse as scs
 import sys
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 from raleigh.ndarray.mkl import Cblas
+from raleigh.ndarray.mkl import SparseSymmetricMatrix as SSM
+from raleigh.ndarray.mkl import ParDiSo as SSS
 
 from raleigh.ndarray.algebra_bc import NDArrayVectors, NDArrayMatrix
 
@@ -317,3 +320,35 @@ class Matrix(NDArrayMatrix):
             mkl_m, mkl_k, mkl_n, \
             x.cblas().mkl_one, ptr_q, ldq, ptr_v, mkl_n, \
             x.cblas().mkl_zero, ptr_u, mkl_m)
+
+class SparseSymmetricMatrix:
+    def __init__(self, matrix):
+        csr = scs.triu(matrix, format = 'csr')
+        csr.sort_indices()
+        a = csr.data
+        ia = csr.indptr + 1
+        ja = csr.indices + 1
+        self.__csr = csr
+        self.__ssm = SSM(a, ia, ja)
+    def apply(self, x, y):
+        self.__ssm.apply(x.data(), y.data())
+
+class SparseSymmetricSolver:
+    def __init__(self, dtype = numpy.float64, pos_def = False):
+        self.__solver = SSS(dtype = dtype, pos_def = pos_def)
+        self.__matrix = None
+    def analyse(self, a, sigma = 0, b = None):
+        if sigma != 0:
+            if b is None:
+                b = scs.eye(a.shape[0], dtype = a.data.dtype, format = 'csr')
+            a_s = a - sigma * b
+            a_s.sort_indices()
+        else:
+            a_s = a
+        self.__solver.analyse(a_s.data, a_s.indptr + 1, a_s.indices + 1)
+    def factorize(self):
+        self.__solver.factorize()
+    def solve(self, b, x):
+        self.__solver.solve(b.data(), x.data())
+    def inertia(self):
+        return self.__solver.inertia()
