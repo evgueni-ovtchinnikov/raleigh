@@ -313,12 +313,43 @@ class ParDiSo:
         if err.value != 0: print(err.value)
     def diag(self):
         rows = self.__ia.shape[0] - 1
+        perm = self.__perm - 1
+
+##        ind = numpy.arange(rows)
+##        iperm = perm.copy()
+##        iperm[perm] = ind
+##        f0 = numpy.zeros((rows, rows), dtype = self.__dtype)
+##        f1 = numpy.zeros((rows, rows), dtype = self.__dtype)
+##        w0 = numpy.zeros((rows, rows), dtype = self.__dtype)
+##        for i in range(rows):
+##            f0[i, perm[i]] = 1
+##        f1[:,perm] = numpy.eye(rows, dtype = self.__dtype)
+##        self.solve(f0, w0, part = 'd')
+##        w0 = w0[:,perm]
+##        print('w0:')
+##        print(w0)
+
         f = numpy.zeros((4, rows), dtype = self.__dtype)
         w = numpy.zeros((4, rows), dtype = self.__dtype)
-        perm = self.__perm - 1
         for i in range(rows):
             j = i%4
             f[j, perm[i]] = 1
+
+##        print(perm)
+##        print('f:')
+##        print(f[0,:])
+##        print(f[0,perm])
+##        self.solve(f[0,:], w, part = 'd')
+##        print(w[0,:])
+##        f6 = numpy.zeros((rows,), dtype = self.__dtype)
+##        f6[3] = 1
+##        f6[4] = 1
+##        f6[6] = 1
+##        f6[13] = 1
+##        print(f6[iperm])
+##        self.solve(f6, w, part = 'd')
+##        print(w[0,:])
+
         self.solve(f, w, part = 'd')
         w = w[:,perm]
         d = numpy.zeros((2, rows), dtype = self.__dtype)
@@ -358,10 +389,10 @@ class ParDiSo:
             if c == 0 or i == rows - 1:
                 if a < 0:
                     nneg += 1
+                    #print(i, a)
                 elif a > 0:
                     npos += 1
                 i += 1
-                continue
             else:
                 b = diag[i + 1]
                 det = a*b - abs(c)**2
@@ -372,12 +403,14 @@ class ParDiSo:
                     elif s > 0:
                         npos += 1
                 elif det < 0:
+                    #print(i, a, b, c, det)
                     nneg += 1
                     npos += 1
                 elif s < 0:
+                    #print(i, a, b, c, det)
                     nneg += 2
                 i += 2
-        #print(self.__iparm[21:23])
+        print(self.__iparm[21:23])
         return nneg, npos
 
 class SparseSymmetricDirectSolver:
