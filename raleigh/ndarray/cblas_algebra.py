@@ -341,16 +341,17 @@ class SparseSymmetricSolver:
         data = a.data
         if sigma != 0:
             if b is None:
-                ia = a.indptr + 1
-                ja = a.indices + 1
-                data[ia[:-1] - 1] -= sigma
-                #b = scs.eye(a.shape[0], dtype = a.data.dtype, format = 'csr')
-            else:
-                a_s = a - sigma * b
-                a_s.sort_indices()
-                ia = a_s.indptr + 1
-                ja = a_s.indices + 1
-                data = a_s.data
+## # !!! only for rows with non-zero/explicit zero diagonal value
+##                ia = a.indptr + 1
+##                ja = a.indices + 1
+##                data[ia[:-1] - 1] -= sigma
+                b = scs.eye(a.shape[0], dtype = a.data.dtype, format = 'csr')
+##            else:
+            a_s = a - sigma * b
+            a_s.sort_indices()
+            ia = a_s.indptr + 1
+            ja = a_s.indices + 1
+            data = a_s.data
         self.__solver.analyse(data, ia, ja)
     def factorize(self):
         self.__solver.factorize()
