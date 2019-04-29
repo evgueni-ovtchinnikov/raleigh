@@ -206,7 +206,7 @@ if eigsh:
     print('solving with scipy eigsh...')
     start = time.time()
     # which = 'BE' did not converge in reasonable time for k = 5:
-    vals, vecs = scs.linalg.eigsh(opM, k, which='BE', tol=1e-12)
+    vals, vecs = scs.linalg.eigsh(opM, k, which='LM', tol=1e-12)
     # far too slow:
 #    vals, vecs = scs.linalg.eigsh(M, k, sigma=sigma, which='BE', tol=tol)
     stop = time.time()

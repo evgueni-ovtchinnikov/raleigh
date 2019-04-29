@@ -348,10 +348,12 @@ class SparseSymmetricSolver:
                 b = scs.eye(a.shape[0], dtype = a.data.dtype, format = 'csr')
 ##            else:
             a_s = a - sigma * b
-            a_s.sort_indices()
-            ia = a_s.indptr + 1
-            ja = a_s.indices + 1
-            data = a_s.data
+        else:
+            a_s = a
+        a_s.sort_indices()
+        ia = a_s.indptr + 1
+        ja = a_s.indices + 1
+        data = a_s.data
         self.__solver.analyse(data, ia, ja)
     def factorize(self):
         self.__solver.factorize()
