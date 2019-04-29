@@ -184,11 +184,13 @@ stop = time.time()
 solve_time = stop - start
 print('after %d iterations, %d converged eigenvalues are:' \
       % (evp_solver.iteration, v.nvec()))
-print(numpy.sort(sigma + 1./evp_solver.eigenvalues))
-#print(numpy.sort(solver.eigenvalues))
+lmd = sigma + 1./evp_solver.eigenvalues
+ind = numpy.argsort(lmd)
+lmd = lmd[ind]
+print(lmd)
 print('solve time: %.2e' % solve_time)
 nr = evp_solver.eigenvalues.shape[0]
-vecs_r = v.data().T
+vecs_r = v.data().T[:, ind]
 
 def mv(x):
     y = x.copy()
@@ -219,5 +221,4 @@ if eigsh:
     print(numpy.sort(sigma + 1./vals))
     print('eigsh time: %.2e' % eigsh_time)
     ns = vals.shape[0]
-    ne = int(min(nr, ns))
-    print(vec_err(vecs[:, :ne], vecs_r[:, :ne]))
+    print(vec_err(vecs[:, :ns], vecs_r[:, :nr]))
