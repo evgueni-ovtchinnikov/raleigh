@@ -50,7 +50,6 @@ import raleigh.solver
 from raleigh.ndarray.cblas_algebra import Vectors
 from raleigh.ndarray.cblas_algebra import SparseSymmetricMatrix
 from raleigh.ndarray.cblas_algebra import SparseSymmetricSolver
-from raleigh.ndarray.mkl import ParDiSo
 
 class MyStoppingCriteria:
     def __init__(self, n):
@@ -138,20 +137,9 @@ n = ia.shape[0] - 1
 v = Vectors(n, data_type = dtype)
 A = SparseSymmetricMatrix(U)
 opA = lambda x, y: A.apply(x, y)
-pardiso = ParDiSo(dtype)
 solver = SparseSymmetricSolver(dtype)
 opAinv = lambda x, y: solver.solve(x, y)
 
-print('setting up pardiso...')
-start = time.time()
-pardiso.analyse(a, ia, ja)
-pardiso.factorize()
-neg, pos = pardiso.inertia()
-stop = time.time()
-setup_time = stop - start
-print('setup time: %.2e' % setup_time)
-print('positive eigenvalues: %d' % pos)
-print('negative eigenvalues: %d' % neg)
 print('setting up the solver...')
 start = time.time()
 solver.analyse(U, sigma)
@@ -170,7 +158,7 @@ opt.block_size = block_size
 opt.convergence_criteria = raleigh.solver.DefaultConvergenceCriteria()
 opt.convergence_criteria.set_error_tolerance('k eigenvector error', tol)
 #opt.max_iter = 30
-#opt.verbosity = 2
+#opt.verbosity = 1
 if left < 0 and right < 0:
     opt.stopping_criteria = MyStoppingCriteria(-left)
 
@@ -193,8 +181,12 @@ nr = evp_solver.eigenvalues.shape[0]
 vecs_r = v.data().T[:, ind]
 
 def mv(x):
+    if len(x.shape) < 2:
+        x = numpy.reshape(x, ((1, x.shape[0])))
     y = x.copy()
-    pardiso.solve(x, y)
+    u = Vectors(x)
+    v = Vectors(y)
+    solver.solve(u, v)
     return y
 
 def vec_err(u, v):
@@ -205,19 +197,20 @@ def vec_err(u, v):
     return s
 
 if eigsh:
-    opM = LinearOperator(dtype = dtype, shape = (n, n), \
-                         matmat = mv, matvec = mv, rmatvec = mv)
+    opM = LinearOperator(dtype=dtype, shape = (n, n), \
+                         matmat=mv, matvec=mv, rmatvec=mv)
     if left < 0 and right < 0:
         k = -left
     else:
         k = left + right
     print('solving with scipy eigsh...')
     start = time.time()
-    vals, vecs = scs.linalg.eigsh(opM, k, tol = 1e-12)
-#    vals, vecs = scs.linalg.eigsh(M, k, sigma = sigma, tol = tol)
+    # which = 'BE' did not converge in reasonable time for k = 5:
+    vals, vecs = scs.linalg.eigsh(opM, k, which='BE', tol=1e-12)
+    # far too slow:
+#    vals, vecs = scs.linalg.eigsh(M, k, sigma=sigma, which='BE', tol=tol)
     stop = time.time()
     eigsh_time = stop - start
-    sigma = 0 # for now
     print(numpy.sort(sigma + 1./vals))
     print('eigsh time: %.2e' % eigsh_time)
     ns = vals.shape[0]
