@@ -131,7 +131,16 @@ class Solver:
 
         verb = options.verbosity
 
-        left = int(which[0])
+        try:
+            w = which[0].lower()
+            largest = (w == 'largest' or w == 'lm')
+        except:
+            largest = False
+
+        if largest:
+            left = 0
+        else:
+            left = int(which[0])
         right = int(which[1])
         if left == 0 and right == 0:
             if verb > -1:
@@ -140,9 +149,9 @@ class Solver:
 
         m = int(options.block_size)
         if m < 0:
-            m = _default_block_size(which, extra, init, options.threads)
+            m = _default_block_size(left, right, extra, init, options.threads)
         else:
-            if left == 0 or right == 0:
+            if (left == 0 or right == 0) and not largest:
                 if m < 3:
                     if verb > -1:
                         print('Block size %d too small, will use 3 instead' % m)
@@ -236,11 +245,19 @@ class Solver:
 
         verb = options.verbosity
 
-        left = int(which[0])
+        try:
+            w = which[0].lower()
+            largest = (w == 'largest' or w == 'lm')
+        except:
+            largest = False
+        if largest:
+            left = 0
+        else:
+            left = int(which[0])
         right = int(which[1])
 
         m = self.block_size
-        if left == 0:
+        if left == 0 and not largest:
             r = 0.0
             l = 1
         elif right == 0:
@@ -715,6 +732,26 @@ class Solver:
                 else:
                     break
 
+            if largest: # ensure the largest converge first
+                if lcon > 0:
+                    i = ix + lcon - 1
+                    j = ix + nx - rcon - 1
+                    #print(i, lmd[i], j, lmd[j])
+                    while abs(lmd[i]) < abs(lmd[j]) and lcon > 0:
+                        #print('dismissing...')
+                        self.cnv[i] = 0
+                        lcon -= 1
+                        i -= 1
+                if rcon > 0:
+                    i = ix + lcon
+                    j = ix + nx - rcon
+                    #print(i, lmd[i], j, lmd[j])
+                    while abs(lmd[i]) > abs(lmd[j]) and rcon > 0:
+                        #print('dismissing...')
+                        self.cnv[j] = 0
+                        rcon -= 1
+                        j += 1
+
             # move converged X to Xc, update Gram matrix for Xc
             ncon = Xc.nvec()
             if lcon > 0:
@@ -794,6 +831,8 @@ class Solver:
             if options.stopping_criteria is not None:
                 if options.stopping_criteria.satisfied(self):
                     return 0
+            if largest and right > 0 and self.lcon + self.rcon >= right:
+                return 0
             left_converged = left >= 0 and self.lcon >= left
             right_converged = right >= 0 and self.rcon >= right
             if left_converged and right_converged:
@@ -1192,9 +1231,9 @@ def _transform(A, U):
     A = sla.solve_triangular(_conjugate(U), _conjugate(B), lower=True)
     return A
 
-def _default_block_size(which, extra, init, threads):
-    left = int(which[0])
-    right = int(which[1])
+def _default_block_size(left, right, extra, init, threads):
+##    left = int(which[0])
+##    right = int(which[1])
     extra_left = int(extra[0])
     extra_right = int(extra[1])
     init_left = 0

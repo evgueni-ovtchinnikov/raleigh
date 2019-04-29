@@ -51,14 +51,6 @@ from raleigh.ndarray.cblas_algebra import Vectors
 from raleigh.ndarray.cblas_algebra import SparseSymmetricMatrix
 from raleigh.ndarray.cblas_algebra import SparseSymmetricSolver
 
-class MyStoppingCriteria:
-    def __init__(self, n):
-        self.__n = n
-    def satisfied(self, solver):
-        if solver.lcon + solver.rcon >= self.__n:
-            return True
-        return False
-
 def lap3d_matrix(nx, ny, nz, dtype = numpy.float64):
     hx = 1.0
     hy = 1.0
@@ -159,15 +151,16 @@ opt.convergence_criteria = raleigh.solver.DefaultConvergenceCriteria()
 opt.convergence_criteria.set_error_tolerance('k eigenvector error', tol)
 #opt.max_iter = 30
 #opt.verbosity = 1
-if left < 0 and right < 0:
-    opt.stopping_criteria = MyStoppingCriteria(-left)
 
 evp = raleigh.solver.Problem(v, opAinv)
 evp_solver = raleigh.solver.Solver(evp)
 #evp_solver.set_preconditioner(opAinv)
 
 start = time.time()
-evp_solver.solve(v, opt, which = (left, right))
+if left < 0 and right < 0:
+    evp_solver.solve(v, opt, which = ('largest', -right))
+else:
+    evp_solver.solve(v, opt, which = (left, right))
 stop = time.time()
 solve_time = stop - start
 print('after %d iterations, %d converged eigenvalues are:' \
@@ -200,7 +193,7 @@ if eigsh:
     opM = LinearOperator(dtype=dtype, shape = (n, n), \
                          matmat=mv, matvec=mv, rmatvec=mv)
     if left < 0 and right < 0:
-        k = -left
+        k = -right
     else:
         k = left + right
     print('solving with scipy eigsh...')
