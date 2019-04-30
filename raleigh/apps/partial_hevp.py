@@ -20,18 +20,15 @@ def partial_hevp(A, B=None, sigma=0, which=(0, 6), tol=1e-4, verb=0):
     if m != n:
         raise ValueError('the matrix must be square')
     dtype = A.data.dtype
-    U = scs.triu(A, format='csr')
-    A = SparseSymmetricMatrix(U)
     solver = SparseSymmetricSolver(dtype=dtype)
 
     eigenvectors = Vectors(n, data_type=dtype)
-    opA = lambda x, y: A.apply(x, y)
     opAinv = lambda x, y: solver.solve(x, y)
 
     if verb > -1:
         print('setting up the linear system solver...')
     start = time.time()
-    solver.analyse(U, sigma)
+    solver.analyse(A, sigma)
     solver.factorize()
     neg, pos = solver.inertia()
     stop = time.time()
