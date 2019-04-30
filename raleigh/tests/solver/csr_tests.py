@@ -151,7 +151,7 @@ opt.convergence_criteria = raleigh.solver.DefaultConvergenceCriteria()
 opt.convergence_criteria.set_error_tolerance('k eigenvector error', tol)
 opt.sigma = sigma
 #opt.max_iter = 30
-opt.verbosity = 2
+#opt.verbosity = 2
 
 evp = raleigh.solver.Problem(v, opAinv)
 evp_solver = raleigh.solver.Solver(evp)

@@ -184,8 +184,10 @@ class ParDiSo:
         self.__handle = _array_ptr(self.__pt)
         if (dtype == numpy.float32 or dtype == numpy.float64):
             m = 2
+            self.__real = True
         elif (dtype == numpy.complex64 or dtype == numpy.complex128):
             m = 4
+            self.__real = False
         else:
             raise ValueError('ParDiSo constructor: wrong data type')
         if not pos_def:
@@ -275,8 +277,6 @@ class ParDiSo:
                     ptr_perm, ctypes.byref(m), ptr_iparm, ctypes.byref(verb), \
                     self.__ptr, self.__ptr, ctypes.byref(err))
         if err.value != 0: print(err.value)
-##    def inertia(self):
-##        return self.__iparm[21:23]
     def solve(self, b, x, part = None):
         #print('iparm[27]: %d' % self.__iparm[27])
         if len(b.shape) > 1:
@@ -345,6 +345,8 @@ class ParDiSo:
             i += 1
         return d
     def inertia(self):
+        if self.__real:
+            return self.__iparm[22], self.__iparm[21]
         rows = self.__ia.shape[0] - 1
         diags = self.diag()
         diag = numpy.real(diags[0, :])
@@ -358,7 +360,6 @@ class ParDiSo:
             if c == 0 or i == rows - 1:
                 if a < 0:
                     nneg += 1
-                    #print(i, a)
                 elif a > 0:
                     npos += 1
                 i += 1
@@ -372,14 +373,11 @@ class ParDiSo:
                     elif s > 0:
                         npos += 1
                 elif det < 0:
-                    #print(i, a, b, c, det)
                     nneg += 1
                     npos += 1
                 elif s < 0:
-                    #print(i, a, b, c, det)
                     nneg += 2
                 i += 2
-        print(self.__iparm[21:23])
         return nneg, npos
 
 class SparseSymmetricDirectSolver:
