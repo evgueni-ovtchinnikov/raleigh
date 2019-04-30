@@ -6,9 +6,9 @@ Usage:
     scr_tests [--help | -h | options]
 
 Options:
-    -m <mat>, --matrix=<mat>  problem matrix [default: lap3d]
+    -a <mat>, --matrix=<mat>  problem matrix [default: lap3d]
+    -b <mss>, --mass=<mss>    mass matrix
     -n <dim>, --dim=<dim>     mesh sizes nx = ny = nz for lap3d [default: 10]
-    -b <blk>, --bsize=<blk>   block CG block size [default: -1]
     -d <dat>, --dtype=<dat>   data type (BLAS prefix s/d) [default: d]
     -s <sft>, --shift=<sft>   shift [default: 0]
     -l <lft>, --left=<lft>    number of eigenvalues left of shift [default: 0]
@@ -25,9 +25,10 @@ from docopt import docopt
 args = docopt(__doc__, version=__version__)
 
 matrix = args['--matrix']
+mass = args['--mass']
+print(mass is None)
 if matrix == 'lap3d':
     nx = int(args['--dim'])
-block_size = int(args['--bsize'])
 dt = args['--dtype']
 sigma = float(args['--shift'])
 left = int(args['--left'])
@@ -126,6 +127,8 @@ else:
     ia = U.indptr + 1
     ja = U.indices + 1
     n = ia.shape[0] - 1
+    nonzeros = ia[n] - ia[0]
+    print('size: %d, (upper) nonzeros: %d' % (n, nonzeros))
 
 if invop:
     from raleigh.ndarray.sparse_algebra import SparseSymmetricSolver

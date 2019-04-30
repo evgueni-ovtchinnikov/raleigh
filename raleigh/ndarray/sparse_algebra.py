@@ -36,6 +36,7 @@ class SparseSymmetricSolver:
             a_s = a - sigma * b
         else:
             a_s = a
+        a_s = scs.triu(a_s, format = 'csr')
         a_s.sort_indices()
         ia = a_s.indptr + 1
         ja = a_s.indices + 1
