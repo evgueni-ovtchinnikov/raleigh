@@ -36,6 +36,7 @@ class Options:
         self.min_iter = 0
         self.block_size = -1
         self.threads = -1
+        self.sigma = None
         self.convergence_criteria = None
         self.stopping_criteria = None
         self.detect_stagnation = True
@@ -244,6 +245,7 @@ class Solver:
     def _solve(self, eigenvectors, options, which, extra, init):
 
         verb = options.verbosity
+        sigma = options.sigma
 
         try:
             w = which[0].lower()
@@ -312,7 +314,7 @@ class Solver:
         self.lmd = numpy.zeros((m,), dtype=numpy.float64)
         self.res = -numpy.ones((m,), dtype=numpy.float32)
 ##        self.min_res = -numpy.ones((m,), dtype=numpy.float32)
-        self.err_lmd = -numpy.ones((2, m,), dtype=numpy.float32)
+        self.err_lmd = numpy.zeros((2, m,), dtype=numpy.float32)
         self.err_X = -numpy.ones((2, m,), dtype=numpy.float32)
 
         # convergence criteria
@@ -671,6 +673,8 @@ class Solver:
             for i in range(leftX - max(1, leftX//4)):
                 j = self.lcon + i
                 k = ix + i
+                if sigma is not None and lmd[k] > 0:
+                    break
                 it = iterations[k]
                 if it < min_iter:
                     break
@@ -704,6 +708,8 @@ class Solver:
             for i in range(rightX - max(1, rightX//4)):
                 j = self.rcon + i
                 k = ix + nx - i - 1
+                if sigma is not None and lmd[k] < 0:
+                    break
                 it = iterations[k]
                 if it < min_iter:
                     break
@@ -837,6 +843,19 @@ class Solver:
             right_converged = right >= 0 and self.rcon >= right
             if left_converged and right_converged:
                 return 0
+            if sigma is not None:
+                if right_converged:
+                    i = ix + lcon
+                    lmd_i = lmd[i]
+                    err_i = abs(err_lmd[0, i])
+                    if lmd_i > 0 and err_i > 0 and err_i < lmd_i/4:
+                        return 4
+                if left_converged:
+                    i = ix + nx - rcon - 1
+                    lmd_i = lmd[i]
+                    err_i = abs(err_lmd[0, i])
+                    if lmd_i < 0 and err_i > 0 and err_i < -lmd_i/4:
+                        return 5
             lim = options.max_quota * eigenvectors.dimension()
             if eigenvectors.nvec() > lim:
                 return 1
@@ -1283,7 +1302,7 @@ def _reset_cnv_data(i, cnv, res, acf, err_lmd, dlmd, err_X, dX, iterations):
     cnv[i] = 0
     res[i] = -1.0
     acf[:, i] = 1.0
-    err_lmd[:, i] = -1.0
+    err_lmd[:, i] = 0.0
     dlmd[i, :] = 0
     err_X[:, i] = -1.0
     dX[i] = 1.0

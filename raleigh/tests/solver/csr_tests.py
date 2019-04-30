@@ -142,15 +142,16 @@ setup_time = stop - start
 print('setup time: %.2e' % setup_time)
 print('positive eigenvalues: %d' % pos)
 print('negative eigenvalues: %d' % neg)
-left = min(left, neg)
-right = min(right, pos)
+#left = min(left, neg)
+#right = min(right, pos)
 
 opt = raleigh.solver.Options()
 opt.block_size = block_size
 opt.convergence_criteria = raleigh.solver.DefaultConvergenceCriteria()
 opt.convergence_criteria.set_error_tolerance('k eigenvector error', tol)
+opt.sigma = sigma
 #opt.max_iter = 30
-#opt.verbosity = 1
+opt.verbosity = 2
 
 evp = raleigh.solver.Problem(v, opAinv)
 evp_solver = raleigh.solver.Solver(evp)
@@ -158,11 +159,12 @@ evp_solver = raleigh.solver.Solver(evp)
 
 start = time.time()
 if left < 0 and right < 0:
-    evp_solver.solve(v, opt, which = ('largest', -right))
+    status = evp_solver.solve(v, opt, which = ('largest', -right))
 else:
-    evp_solver.solve(v, opt, which = (left, right))
+    status = evp_solver.solve(v, opt, which = (left, right))
 stop = time.time()
 solve_time = stop - start
+print(status)
 print('after %d iterations, %d converged eigenvalues are:' \
       % (evp_solver.iteration, v.nvec()))
 lmd = sigma + 1./evp_solver.eigenvalues
