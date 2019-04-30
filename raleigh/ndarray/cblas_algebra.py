@@ -7,29 +7,13 @@ Created on Thu Jun 14 12:34:53 2018
 @author: Evgueni Ovtchinnikov, UKRI-STFC
 """
 
-raleigh_path = '../..'
-
 import ctypes
 import numpy
 import scipy.sparse as scs
-import sys
-if raleigh_path not in sys.path:
-    sys.path.append(raleigh_path)
 
-from raleigh.ndarray.mkl import Cblas
-from raleigh.ndarray.mkl import SparseSymmetricMatrix as SSM
-from raleigh.ndarray.mkl import ParDiSo as SSS
+from .mkl import Cblas
+from .algebra_bc import NDArrayVectors, NDArrayMatrix
 
-from raleigh.ndarray.algebra_bc import NDArrayVectors, NDArrayMatrix
-
-def array_ptr(array, shift = 0):
-    return ctypes.c_void_p(array.ctypes.data + shift)
-
-def conjugate(a):
-    if a.dtype.kind == 'c':
-        return a.conj()
-    else:
-        return a
 
 class Vectors(NDArrayVectors):
     def __init__(self, arg, nvec = 0, data_type = None):
@@ -62,8 +46,6 @@ class Vectors(NDArrayVectors):
         if dim is None:
             dim = self.dimension()
         return Vectors(dim, nv, self.data_type())
-#    def new_vectors(self, nv = 0):
-#        return Vectors(self.dimension(), nv, self.data_type())
     def clone(self):
         return Vectors(self)
     def cblas(self):
@@ -78,15 +60,15 @@ class Vectors(NDArrayVectors):
         vsize = self.__cblas.dsize * vdim
         if ind is None:
             mkl_n = ctypes.c_int(n*vdim)
-            ptr_u = array_ptr(self.all_data(), i*vsize)
-            ptr_v = array_ptr(other.all_data(), j*vsize)
+            ptr_u = _array_ptr(self.all_data(), i*vsize)
+            ptr_v = _array_ptr(other.all_data(), j*vsize)
             self.__cblas.copy(mkl_n, ptr_u, mkl_inc, ptr_v, mkl_inc)
         else:
             mkl_n = ctypes.c_int(vdim)
             l = len(ind)
             for k in range(l):
-                ptr_u = array_ptr(self.all_data(), int(ind[k])*vsize)
-                ptr_v = array_ptr(other.all_data(), (j + k)*vsize)
+                ptr_u = _array_ptr(self.all_data(), int(ind[k])*vsize)
+                ptr_v = _array_ptr(other.all_data(), (j + k)*vsize)
                 self.__cblas.copy(mkl_n, ptr_u, mkl_inc, ptr_v, mkl_inc)
     def scale(self, s, multiply = False):
         f, n = self.selected()
@@ -96,13 +78,13 @@ class Vectors(NDArrayVectors):
         vsize = self.__cblas.dsize * vdim
         if multiply:
             for i in range(n):
-                ptr_u = array_ptr(self.all_data(), (f + i)*vsize)
+                ptr_u = _array_ptr(self.all_data(), (f + i)*vsize)
                 mkl_s = self.__to_float(s[i])
                 self.__cblas.scal(mkl_n, mkl_s, ptr_u, mkl_inc)
         else:
             for i in range(n):
                 if s[i] != 0.0:
-                    ptr_u = array_ptr(self.all_data(), (f + i)*vsize)
+                    ptr_u = _array_ptr(self.all_data(), (f + i)*vsize)
                     mkl_s = self.__to_float(1.0/s[i])
                     self.__cblas.scal(mkl_n, mkl_s, ptr_u, mkl_inc)
     def dots(self, other, transp = False):
@@ -117,34 +99,19 @@ class Vectors(NDArrayVectors):
             else:
                 for i in range(n):
                     w[i] = numpy.dot(v[:, i], u[:, i])
-#            for i in range(n):
-#                if other.is_complex():
-#                    s = numpy.dot(other.data(i, transp).conj(), self.data(i, transp))
-#                else:
-#                    s = numpy.dot(other.data(i, transp), self.data(i, transp))
-#                w[i] = s
             return w
         iu = self.selected()[0]
         iv = other.selected()[0]
         vdim = self.dimension()
         dsize = self.__cblas.dsize
         vsize = dsize * vdim
-#        if transp:
-#            n = vdim
-#            mkl_n = ctypes.c_int(self.nvec())
-#            mkl_inc = ctypes.c_int(n)
-#        else:
         n = self.nvec()
         mkl_n = ctypes.c_int(vdim)
         mkl_inc = ctypes.c_int(1)
         w = numpy.ndarray((n,), dtype = self.data_type())
         for i in range(n):
-#            if transp:
-#                ptr_u = array_ptr(self.all_data(), iu*vsize + i*dsize)
-#                ptr_v = array_ptr(other.all_data(), iv*vsize + i*dsize)
-#            else:
-            ptr_u = array_ptr(self.all_data(), (iu + i)*vsize)
-            ptr_v = array_ptr(other.all_data(), (iv + i)*vsize)
+            ptr_u = _array_ptr(self.all_data(), (iu + i)*vsize)
+            ptr_v = _array_ptr(other.all_data(), (iv + i)*vsize)
             if self.is_complex():
                 s = self.__complex()
                 self.__cblas.inner \
@@ -157,7 +124,6 @@ class Vectors(NDArrayVectors):
 
     # BLAS level 3
     def dot(self, other):
-##        m, n = self.all_data().shape
         n = self.dimension()
         m = self.nvec()
         k = other.nvec()
@@ -165,8 +131,8 @@ class Vectors(NDArrayVectors):
         mkl_n = ctypes.c_int(n)
         mkl_m = ctypes.c_int(m)
         mkl_k = ctypes.c_int(k)
-        ptr_u = array_ptr(other.data())
-        ptr_v = array_ptr(self.data())
+        ptr_u = _array_ptr(other.data())
+        ptr_v = _array_ptr(self.data())
         ptr_q = ctypes.c_void_p(q.ctypes.data)
         if self.is_complex():
             Trans = Cblas.ConjTrans
@@ -176,7 +142,7 @@ class Vectors(NDArrayVectors):
             mkl_m, mkl_k, mkl_n, \
             self.__cblas.mkl_one, ptr_v, mkl_n, ptr_u, mkl_n, \
             self.__cblas.mkl_zero, ptr_q, mkl_m)
-        return conjugate(q)
+        return _conjugate(q)
     def multiply(self, q, output):
         f, s = output.selected();
         m = q.shape[1]
@@ -184,8 +150,8 @@ class Vectors(NDArrayVectors):
         mkl_n = ctypes.c_int(n)
         mkl_m = ctypes.c_int(m)
         mkl_k = ctypes.c_int(self.nvec())
-        ptr_u = array_ptr(output.data())
-        ptr_v = array_ptr(self.data())
+        ptr_u = _array_ptr(output.data())
+        ptr_v = _array_ptr(self.data())
         ptr_q = ctypes.c_void_p(q.ctypes.data)
         if q.flags['C_CONTIGUOUS']:
             Trans = Cblas.Trans
@@ -194,7 +160,7 @@ class Vectors(NDArrayVectors):
             Trans = Cblas.NoTrans
             ldq = mkl_k
         else:
-            print('using non-optimized dot')
+            #print('using non-optimized dot')
             output.data()[:,:] = numpy.dot(q.T, self.data())
             return
         self.__cblas.gemm(Cblas.ColMajor, Cblas.NoTrans, Trans, \
@@ -228,11 +194,11 @@ class Vectors(NDArrayVectors):
             Trans = Cblas.NoTrans
             ldq = mkl_m
         else:
-            print('using non-optimized dot')
+            #print('using non-optimized dot')
             output.data()[:,:] = numpy.dot(self.data(), q.T)
             return
-        ptr_u = array_ptr(output.data())
-        ptr_v = array_ptr(self.data())
+        ptr_u = _array_ptr(output.data())
+        ptr_v = _array_ptr(self.data())
         ptr_q = ctypes.c_void_p(q.ctypes.data)
         self.__cblas.gemm(Cblas.ColMajor, Trans, Cblas.NoTrans, \
             mkl_m, mkl_k, mkl_n, \
@@ -245,8 +211,8 @@ class Vectors(NDArrayVectors):
         mkl_n = ctypes.c_int(n)
         mkl_m = ctypes.c_int(m)
         vsize = self.__cblas.dsize * n
-        ptr_u = array_ptr(other.data())
-        ptr_v = array_ptr(self.data())
+        ptr_u = _array_ptr(other.data())
+        ptr_v = _array_ptr(self.data())
         if numpy.isscalar(s):
             mkl_s = self.__to_float(s)
             if q is None:
@@ -264,7 +230,7 @@ class Vectors(NDArrayVectors):
                     Trans = Cblas.NoTrans
                     ldq = mkl_m
                 else:
-                    print('using non-optimized dot')
+                    #print('using non-optimized dot')
                     self.data()[:,:] += s*numpy.dot(q.T, other.data())
                     return
                 self.__cblas.gemm(Cblas.ColMajor, Cblas.NoTrans, Trans, \
@@ -273,8 +239,8 @@ class Vectors(NDArrayVectors):
                     self.__cblas.mkl_one, ptr_v, mkl_n)
         else:
             for i in range(m):
-                ptr_u = array_ptr(other.data(), i*vsize)
-                ptr_v = array_ptr(self.data(), i*vsize)
+                ptr_u = _array_ptr(other.data(), i*vsize)
+                ptr_v = _array_ptr(self.data(), i*vsize)
                 mkl_inc = ctypes.c_int(1)
                 mkl_s = self.__to_float(s[i])
                 self.__cblas.axpy \
@@ -310,54 +276,25 @@ class Matrix(NDArrayMatrix):
             Trans = Cblas.NoTrans
             ldq = mkl_m
         else:
-            print('using non-optimized dot')
+            #print('using non-optimized dot')
             y.data()[:,:] = numpy.dot(x.data(), q.T)
             return
-        ptr_u = array_ptr(y.data())
-        ptr_v = array_ptr(x.data())
+        ptr_u = _array_ptr(y.data())
+        ptr_v = _array_ptr(x.data())
         ptr_q = ctypes.c_void_p(q.ctypes.data)
         x.cblas().gemm(Cblas.ColMajor, Trans, Cblas.NoTrans, \
             mkl_m, mkl_k, mkl_n, \
             x.cblas().mkl_one, ptr_q, ldq, ptr_v, mkl_n, \
             x.cblas().mkl_zero, ptr_u, mkl_m)
 
-class SparseSymmetricMatrix:
-    def __init__(self, matrix):
-        csr = scs.triu(matrix, format = 'csr')
-        csr.sort_indices()
-        a = csr.data
-        ia = csr.indptr + 1
-        ja = csr.indices + 1
-        self.__csr = csr
-        self.__ssm = SSM(a, ia, ja)
-    def apply(self, x, y):
-        self.__ssm.apply(x.data(), y.data())
 
-class SparseSymmetricSolver:
-    def __init__(self, dtype = numpy.float64, pos_def = False):
-        self.__solver = SSS(dtype = dtype, pos_def = pos_def)
-        self.__matrix = None
-    def analyse(self, a, sigma = 0, b = None):
-        data = a.data
-        if sigma != 0:
-            if b is None:
-## # !!! only for rows with non-zero/explicit zero diagonal value
-##                ia = a.indptr + 1
-##                ja = a.indices + 1
-##                data[ia[:-1] - 1] -= sigma
-                b = scs.eye(a.shape[0], dtype = a.data.dtype, format = 'csr')
-##            else:
-            a_s = a - sigma * b
-        else:
-            a_s = a
-        a_s.sort_indices()
-        ia = a_s.indptr + 1
-        ja = a_s.indices + 1
-        data = a_s.data
-        self.__solver.analyse(data, ia, ja)
-    def factorize(self):
-        self.__solver.factorize()
-    def solve(self, b, x):
-        self.__solver.solve(b.data(), x.data())
-    def inertia(self):
-        return self.__solver.inertia()
+def _array_ptr(array, shift = 0):
+    return ctypes.c_void_p(array.ctypes.data + shift)
+
+
+def _conjugate(a):
+    if a.dtype.kind == 'c':
+        return a.conj()
+    else:
+        return a
+

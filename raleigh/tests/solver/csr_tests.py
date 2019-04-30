@@ -48,8 +48,8 @@ if raleigh_path not in sys.path:
 
 import raleigh.solver
 from raleigh.ndarray.cblas_algebra import Vectors
-from raleigh.ndarray.cblas_algebra import SparseSymmetricMatrix
-from raleigh.ndarray.cblas_algebra import SparseSymmetricSolver
+from raleigh.ndarray.sparse_algebra import SparseSymmetricMatrix
+from raleigh.ndarray.sparse_algebra import SparseSymmetricSolver
 
 def lap3d_matrix(nx, ny, nz, dtype = numpy.float64):
     hx = 1.0
