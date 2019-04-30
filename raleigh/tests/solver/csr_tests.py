@@ -14,7 +14,8 @@ Options:
     -l <lft>, --left=<lft>    number of eigenvalues left of shift [default: 0]
     -r <rgt>, --right=<rgt>   number of eigenvalues right of shift [default: 0]
     -t <tol>, --tol=<tol>     error/residual tolerance [default: 1e-10]
-    -S, --scipy  solve with SciPy eigsh
+    -I, --invop  first argument of partial_hevp is a SparseSymmetricSolver
+    -S, --scipy  solve also with SciPy eigsh
 
 @author: Evgueni Ovtchinnikov, UKRI-STFC
 """
@@ -33,6 +34,7 @@ left = int(args['--left'])
 right = int(args['--right'])
 tol = float(args['--tol'])
 eigsh = args['--scipy']
+invop = args['--invop']
 
 import numpy
 from scipy.io import mmread
@@ -125,35 +127,51 @@ else:
     ja = U.indices + 1
     n = ia.shape[0] - 1
 
+if invop:
+    from raleigh.ndarray.sparse_algebra import SparseSymmetricSolver
+    A = SparseSymmetricSolver(dtype=dtype)
+    print('setting up the linear system solver...')
+    start = time.time()
+    A.analyse(M, sigma)
+    A.factorize()
+    stop = time.time()
+    setup_time = stop - start
+    print('setup time: %.2e' % setup_time)
+else:
+    A = M
+
 if left < 0 and right < 0:
     which = ('largest', -right)
 else:
     which = (left, right)
-vals_r, vecs_r, status = raleighs(M, sigma=sigma, which=which, tol=tol)
+vals_r, vecs_r, status = raleighs(A, sigma=sigma, which=which, tol=tol)
 nr = vals_r.shape[0]
 print(status)
 print('converged eigenvalues are:')
 print(vals_r)
 
-if sigma != 0:
-    B = scs.eye(U.shape[0], dtype=dtype, format='csr')
-    U -= sigma*B
-    a = U.data.astype(dtype)
-    ia = U.indptr + 1
-    ja = U.indices + 1
-print('setting up pardiso...')
-start = time.time()
-pardiso = ParDiSo(dtype=dtype)
-pardiso.analyse(a, ia, ja)
-pardiso.factorize()
-neg, pos = pardiso.inertia()
-stop = time.time()
-setup_time = stop - start
-print('setup time: %.2e' % setup_time)
+if invop:
+    solver = A.solver()
+else:
+    if sigma != 0:
+        B = scs.eye(U.shape[0], dtype=dtype, format='csr')
+        U -= sigma*B
+        a = U.data.astype(dtype)
+        ia = U.indptr + 1
+        ja = U.indices + 1
+    print('setting up solver...')
+    start = time.time()
+    solver = ParDiSo(dtype=dtype)
+    solver.analyse(a, ia, ja)
+    solver.factorize()
+    neg, pos = solver.inertia()
+    stop = time.time()
+    setup_time = stop - start
+    print('setup time: %.2e' % setup_time)
 
 def mv(x):
     y = x.copy()
-    pardiso.solve(x, y)
+    solver.solve(x, y)
     return y
 
 def vec_err(u, v):

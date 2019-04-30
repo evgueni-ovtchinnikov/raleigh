@@ -16,25 +16,33 @@ from ..solver import Problem, Solver, Options, DefaultConvergenceCriteria
 
 def partial_hevp(A, B=None, sigma=0, which=(0, 6), tol=1e-4, verb=0):
 
-    m, n = A.shape
-    if m != n:
-        raise ValueError('the matrix must be square')
-    dtype = A.data.dtype
-    solver = SparseSymmetricSolver(dtype=dtype)
+    try:
+        n = A.size()
+        dtype = A.data_type()
+        sigma = A.sigma()
+        neg, pos = A.inertia()
+        solver = A
+    except:
+        m, n = A.shape
+        if m != n:
+            raise ValueError('the matrix must be square')
+        dtype = A.data.dtype
+        solver = SparseSymmetricSolver(dtype=dtype)
+        if verb > -1:
+            print('setting up the linear system solver...')
+        start = time.time()
+        solver.analyse(A, sigma)
+        solver.factorize()
+        stop = time.time()
+        setup_time = stop - start
+        if verb > -1:
+            print('setup time: %.2e' % setup_time)
 
     eigenvectors = Vectors(n, data_type=dtype)
     opAinv = lambda x, y: solver.solve(x, y)
 
-    if verb > -1:
-        print('setting up the linear system solver...')
-    start = time.time()
-    solver.analyse(A, sigma)
-    solver.factorize()
     neg, pos = solver.inertia()
-    stop = time.time()
-    setup_time = stop - start
     if verb > -1:
-        print('setup time: %.2e' % setup_time)
         print('positive eigenvalues: %d' % pos)
         print('negative eigenvalues: %d' % neg)
     try:
