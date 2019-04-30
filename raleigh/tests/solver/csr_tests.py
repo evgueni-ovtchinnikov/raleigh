@@ -49,9 +49,9 @@ from raleigh.apps.partial_hevp import partial_hevp as raleighs
 from raleigh.ndarray.mkl import ParDiSo
 
 def lap3d_matrix(nx, ny, nz, dtype = numpy.float64):
-    hx = 1.0
-    hy = 1.0
-    hz = 1.0
+    hx = 1.0/(nx + 1)
+    hy = 1.0/(ny + 1)
+    hz = 1.0/(nz + 1)
     xh = 1.0/(hx*hx)
     yh = 1.0/(hy*hy)
     zh = 1.0/(hz*hz)
