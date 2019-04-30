@@ -34,8 +34,6 @@ right = int(args['--right'])
 tol = float(args['--tol'])
 eigsh = args['--scipy']
 
-raleigh_path = '../../..'
-
 import numpy
 from scipy.io import mmread
 import scipy.sparse as scs
@@ -43,13 +41,12 @@ from scipy.sparse.linalg import LinearOperator
 import sys
 import time
 
+raleigh_path = '../../..'
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
-import raleigh.solver
-from raleigh.ndarray.cblas_algebra import Vectors
-from raleigh.ndarray.sparse_algebra import SparseSymmetricMatrix
-from raleigh.ndarray.sparse_algebra import SparseSymmetricSolver
+from raleigh.apps.partial_hevp import partial_hevp as raleighs
+from raleigh.ndarray.mkl import ParDiSo
 
 def lap3d_matrix(nx, ny, nz, dtype = numpy.float64):
     hx = 1.0
@@ -115,7 +112,9 @@ if matrix == 'lap3d':
     print('generating %s matrix...' % matrix)
     a, ia, ja = lap3d_matrix(nx, nx, nx, dtype)
     n = ia.shape[0] - 1
-    U = scs.csr_matrix((a, ja - 1, ia - 1), shape = (n, n))
+    M = scs.csr_matrix((a, ja - 1, ia - 1), shape = (n, n))
+    U = M
+#    U = scs.csr_matrix((a, ja - 1, ia - 1), shape = (n, n))
 else:
     path = 'C:/Users/wps46139/Documents/Data/Matrices/'
     print('reading the matrix from %s...' % matrix)
@@ -124,64 +123,37 @@ else:
     a = U.data.astype(dtype)
     ia = U.indptr + 1
     ja = U.indices + 1
+    n = ia.shape[0] - 1
 
-n = ia.shape[0] - 1
-v = Vectors(n, data_type = dtype)
-A = SparseSymmetricMatrix(U)
-opA = lambda x, y: A.apply(x, y)
-solver = SparseSymmetricSolver(dtype)
-opAinv = lambda x, y: solver.solve(x, y)
+if left < 0 and right < 0:
+    which = ('largest', -right)
+else:
+    which = (left, right)
+vals_r, vecs_r, status = raleighs(M, sigma=sigma, which=which, tol=tol)
+nr = vals_r.shape[0]
+print(status)
+print('converged eigenvalues are:')
+print(vals_r)
 
-print('setting up the solver...')
+if sigma != 0:
+    B = scs.eye(U.shape[0], dtype=dtype, format='csr')
+    U -= sigma*B
+    a = U.data.astype(dtype)
+    ia = U.indptr + 1
+    ja = U.indices + 1
+print('setting up pardiso...')
 start = time.time()
-solver.analyse(U, sigma)
-solver.factorize()
-neg, pos = solver.inertia()
+pardiso = ParDiSo(dtype=dtype)
+pardiso.analyse(a, ia, ja)
+pardiso.factorize()
+neg, pos = pardiso.inertia()
 stop = time.time()
 setup_time = stop - start
 print('setup time: %.2e' % setup_time)
-print('positive eigenvalues: %d' % pos)
-print('negative eigenvalues: %d' % neg)
-#left = min(left, neg)
-#right = min(right, pos)
-
-opt = raleigh.solver.Options()
-opt.block_size = block_size
-opt.convergence_criteria = raleigh.solver.DefaultConvergenceCriteria()
-opt.convergence_criteria.set_error_tolerance('k eigenvector error', tol)
-opt.sigma = sigma
-#opt.max_iter = 30
-#opt.verbosity = 2
-
-evp = raleigh.solver.Problem(v, opAinv)
-evp_solver = raleigh.solver.Solver(evp)
-#evp_solver.set_preconditioner(opAinv)
-
-start = time.time()
-if left < 0 and right < 0:
-    status = evp_solver.solve(v, opt, which = ('largest', -right))
-else:
-    status = evp_solver.solve(v, opt, which = (left, right))
-stop = time.time()
-solve_time = stop - start
-print(status)
-print('after %d iterations, %d converged eigenvalues are:' \
-      % (evp_solver.iteration, v.nvec()))
-lmd = sigma + 1./evp_solver.eigenvalues
-ind = numpy.argsort(lmd)
-lmd = lmd[ind]
-print(lmd)
-print('solve time: %.2e' % solve_time)
-nr = evp_solver.eigenvalues.shape[0]
-vecs_r = v.data().T[:, ind]
 
 def mv(x):
-    if len(x.shape) < 2:
-        x = numpy.reshape(x, ((1, x.shape[0])))
     y = x.copy()
-    u = Vectors(x)
-    v = Vectors(y)
-    solver.solve(u, v)
+    pardiso.solve(x, y)
     return y
 
 def vec_err(u, v):
@@ -192,7 +164,7 @@ def vec_err(u, v):
     return s
 
 if eigsh:
-    opM = LinearOperator(dtype=dtype, shape = (n, n), \
+    opM = LinearOperator(dtype=dtype, shape=(n, n), \
                          matmat=mv, matvec=mv, rmatvec=mv)
     if left < 0 and right < 0:
         k = -right
