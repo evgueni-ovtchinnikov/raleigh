@@ -20,8 +20,11 @@ class SparseSymmetricMatrix:
         ja = csr.indices + 1
         self.__csr = csr
         self.__ssm = SSM(a, ia, ja)
+        self.__a = a
+        self.__ia = ia
+        self.__ja = ja
     def apply(self, x, y):
-        self.__ssm.apply(x.data(), y.data())
+        self.__ssm.dot(x.data(), y.data())
 
 
 class SparseSymmetricSolver:

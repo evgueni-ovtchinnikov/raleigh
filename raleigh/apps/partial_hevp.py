@@ -31,7 +31,7 @@ def partial_hevp(A, B=None, sigma=0, which=(0, 6), tol=1e-4, verb=0):
         if verb > -1:
             print('setting up the linear system solver...')
         start = time.time()
-        solver.analyse(A, sigma)
+        solver.analyse(A, sigma, B)
         solver.factorize()
         stop = time.time()
         setup_time = stop - start
@@ -40,6 +40,11 @@ def partial_hevp(A, B=None, sigma=0, which=(0, 6), tol=1e-4, verb=0):
 
     eigenvectors = Vectors(n, data_type=dtype)
     opAinv = lambda x, y: solver.solve(x, y)
+    if B is not None:
+        B = SparseSymmetricMatrix(B)
+        opB = lambda x, y: B.apply(x, y)
+    else:
+        opB = None
 
     neg, pos = solver.inertia()
     if verb > -1:
@@ -59,7 +64,10 @@ def partial_hevp(A, B=None, sigma=0, which=(0, 6), tol=1e-4, verb=0):
     opt.sigma = sigma
     #opt.max_iter = 30
     opt.verbosity = verb
-    evp = Problem(eigenvectors, opAinv)
+    if B is None:
+        evp = Problem(eigenvectors, opAinv)
+    else:
+        evp = Problem(eigenvectors, opAinv, opB, 'pro')
     evp_solver = Solver(evp)
 
     start = time.time()

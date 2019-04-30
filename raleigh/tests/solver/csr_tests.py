@@ -117,6 +117,10 @@ if matrix == 'lap3d':
     n = ia.shape[0] - 1
     M = scs.csr_matrix((a, ja - 1, ia - 1), shape = (n, n))
     U = M
+    if mass is not None:
+        B = 2*scs.eye(n, dtype=dtype, format='csr')
+    else:
+        B = None
 #    U = scs.csr_matrix((a, ja - 1, ia - 1), shape = (n, n))
 else:
     path = 'C:/Users/wps46139/Documents/Data/Matrices/'
@@ -129,13 +133,22 @@ else:
     n = ia.shape[0] - 1
     nonzeros = ia[n] - ia[0]
     print('size: %d, (upper) nonzeros: %d' % (n, nonzeros))
+    if mass is not None:
+        print('reading the mass matrix from %s...' % mass)
+        B = mmread(path + mass).tocsr()
+        UM = scs.triu(B, format = 'csr')
+        b = UM.data.astype(dtype)
+        ib = UM.indptr + 1
+        jb = UM.indices + 1
+    else:
+        B = None
 
 if invop:
     from raleigh.ndarray.sparse_algebra import SparseSymmetricSolver
     A = SparseSymmetricSolver(dtype=dtype)
     print('setting up the linear system solver...')
     start = time.time()
-    A.analyse(M, sigma)
+    A.analyse(M, sigma, B)
     A.factorize()
     stop = time.time()
     setup_time = stop - start
@@ -147,7 +160,7 @@ if left < 0 and right < 0:
     which = ('largest', -right)
 else:
     which = (left, right)
-vals_r, vecs_r, status = raleighs(A, sigma=sigma, which=which, tol=tol)
+vals_r, vecs_r, status = raleighs(A, B, sigma=sigma, which=which, tol=tol)
 nr = vals_r.shape[0]
 print(status)
 print('converged eigenvalues are:')
