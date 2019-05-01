@@ -176,6 +176,65 @@ class SparseSymmetricMatrix:
             self.__one, self.__d, self.__a, self.__ja, self.__ib, self.__ie, \
             ptr_x, ptr_n, self.__zero, ptr_y, ptr_n)
 
+class ILUT:
+    def __init__(self, a, ia, ja):
+        self.__a = _array_ptr(a)
+        self.__ia = _array_ptr(ia)
+        self.__ja = _array_ptr(ja)
+        n = ctypes.c_int(ia.shape[0] - 1)
+        nnz = ia[n] - ia[0]
+        self.__n = n
+        self.__nnz = nnz
+        self.__ipar = numpy.zeros((128,), dtype = numpy.int32)
+        self.__dpar = numpy.zeros((128,))
+        self.__w = numpy.zeros((n,))
+        self.__ipar[0] = n
+        self.__b = None
+        self.__ib = None
+        self.__jb = None
+        U = 'U'
+        L = 'L'
+        N = 'N'
+        self.__U = ctypes.c_char_p(U.encode('utf-8'))
+        self.__L = ctypes.c_char_p(L.encode('utf-8'))
+        self.__N = ctypes.c_char_p(N.encode('utf-8'))
+    def factorize(self, tol, max_fill_rel):
+        max_fill_abs = self.__nnz * max_fill_rel
+        n = self.__n
+        nnz = (2*max_fill_abs + 1)*n
+        self.__b = numpy.ndarray((nnz,)) 
+        self.__ib = numpy.ndarray((n + 1,)) 
+        self.__jb = numpy.ndarray((nnz,), dtype = numpy.int32)
+        n_c = ctypes.c_int(n)
+        mf_c = ctypes.c_int(max_fill_abs)
+        ierr_c = ctypes.c_int()
+        tol_c = ctypes.c_double(tol)
+        ptr_a = _array_ptr(self.__a)
+        ptr_ia = _array_ptr(self.__ia)
+        ptr_ja = _array_ptr(self.__ja)
+        ptr_b = _array_ptr(self.__b)
+        ptr_ib = _array_ptr(self.__ib)
+        ptr_jb = _array_ptr(self.__jb)
+        ptr_ipar = _array_ptr(self.__ipar)
+        ptr_dpar = _array_ptr(self.__dpar)
+        mkl.dcsrilut(ctypes.byref(n_c), \
+                     ptr_a, ptr_ia, ptr_ja, ptr_b, ptr_ib, ptr_jb, \
+                     ctypes.byref(tol_c), ctypes.byref(mf_c), \
+                     ptr_ipar, ptr_dpar, ctypes.byref(ierr_c))
+        if ierr_c.value != 0: print(ierr_c.value)
+    def solve(self, f, x):
+        ptr_f = _array_ptr(f)
+        ptr_x = _array_ptr(x)
+        n_c = ctypes.c_int(self.__n)
+        ptr_b = _array_ptr(self.__b)
+        ptr_ib = _array_ptr(self.__ib)
+        ptr_jb = _array_ptr(self.__jb)
+        ptr_w = _array_ptr(self.__w)
+        mkl.mkl_dcsrtrsv(self.__L, self.__N, self.__U, ctypes.byref(n_c), \
+                         ptr_b, ptr_ib, ptr_jb, ptr_f, ptr_w)
+        mkl.mkl_dcsrtrsv(self.__U, self.__N, self.__N, ctypes.byref(n_c), \
+                         ptr_b, ptr_ib, ptr_jb, ptr_w, ptr_x)
+
 class ParDiSo:
     def __init__(self, dtype = numpy.float64, pos_def = False):
         self.__pardiso = mkl.pardiso
