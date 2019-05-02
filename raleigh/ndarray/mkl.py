@@ -125,29 +125,29 @@ class SparseSymmetricMatrix:
         if a.dtype == numpy.float32:
             self.__csrmm = mkl.mkl_scsrmm
             self.__csrsymv = mkl.mkl_scsrsymv
-            descr = 'SUNF  '
+            self.__descr = 'SUNF  '
         elif a.dtype == numpy.float64:
             self.__csrmm = mkl.mkl_dcsrmm
             self.__csrsymv = mkl.mkl_dcsrsymv
-            descr = 'SUNF  '
+            self.__descr = 'SUNF  '
         elif a.dtype == numpy.complex64:
             self.__csrmm = mkl.mkl_ccsrmm
             self.__csrsymv = mkl.mkl_ccsrsymv
-            descr = 'HUNF  '
+            self.__descr = 'HUNF  '
             self.__complex = True
         elif a.dtype == numpy.complex128:
             self.__csrmm = mkl.mkl_zcsrmm
             self.__csrsymv = mkl.mkl_zcsrsymv
-            descr = 'HUNF  '
+            self.__descr = 'HUNF  '
             self.__complex = True
         else:
             raise ValueError('unsupported data type')
         self.__csrmm.restype = None
-        uplo = 'U'
-        trans = 'N'
-        self.__u = ctypes.c_char_p(uplo.encode('utf-8'))
-        self.__t = ctypes.c_char_p(trans.encode('utf-8'))
-        self.__d = ctypes.c_char_p(descr.encode('utf-8'))
+        self.__uplo = 'U'
+        self.__trans = 'N'
+        self.__u = ctypes.c_char_p(self.__uplo.encode('utf-8'))
+        self.__t = ctypes.c_char_p(self.__trans.encode('utf-8'))
+        self.__d = ctypes.c_char_p(self.__descr.encode('utf-8'))
     def dot(self, x, y):
         ptr_x = _array_ptr(x)
         ptr_y = _array_ptr(y)
@@ -183,7 +183,7 @@ class ILUT:
         self.__ja = _array_ptr(ja)
         n = ctypes.c_int(ia.shape[0] - 1)
         nnz = ia[n] - ia[0]
-        self.__n = n
+        self.__rows = n
         self.__nnz = nnz
         self.__ipar = numpy.zeros((128,), dtype = numpy.int32)
         self.__dpar = numpy.zeros((128,))
@@ -192,15 +192,15 @@ class ILUT:
         self.__b = None
         self.__ib = None
         self.__jb = None
-        U = 'U'
-        L = 'L'
-        N = 'N'
-        self.__U = ctypes.c_char_p(U.encode('utf-8'))
-        self.__L = ctypes.c_char_p(L.encode('utf-8'))
-        self.__N = ctypes.c_char_p(N.encode('utf-8'))
+        self.__u = 'U'
+        self.__l = 'L'
+        self.__n = 'N'
+        self.__U = ctypes.c_char_p(self.__u.encode('utf-8'))
+        self.__L = ctypes.c_char_p(self.__l.encode('utf-8'))
+        self.__N = ctypes.c_char_p(self.__n.encode('utf-8'))
     def factorize(self, tol, max_fill_rel):
         max_fill_abs = self.__nnz * max_fill_rel
-        n = self.__n
+        n = self.__rows
         nnz = (2*max_fill_abs + 1)*n
         self.__b = numpy.ndarray((nnz,)) 
         self.__ib = numpy.ndarray((n + 1,)) 
@@ -225,14 +225,14 @@ class ILUT:
     def solve(self, f, x):
         ptr_f = _array_ptr(f)
         ptr_x = _array_ptr(x)
-        n_c = ctypes.c_int(self.__n)
+        n = ctypes.c_int(self.__rows)
         ptr_b = _array_ptr(self.__b)
         ptr_ib = _array_ptr(self.__ib)
         ptr_jb = _array_ptr(self.__jb)
         ptr_w = _array_ptr(self.__w)
-        mkl.mkl_dcsrtrsv(self.__L, self.__N, self.__U, ctypes.byref(n_c), \
+        mkl.mkl_dcsrtrsv(self.__L, self.__N, self.__U, ctypes.byref(n), \
                          ptr_b, ptr_ib, ptr_jb, ptr_f, ptr_w)
-        mkl.mkl_dcsrtrsv(self.__U, self.__N, self.__N, ctypes.byref(n_c), \
+        mkl.mkl_dcsrtrsv(self.__U, self.__N, self.__N, ctypes.byref(n), \
                          ptr_b, ptr_ib, ptr_jb, ptr_w, ptr_x)
 
 class ParDiSo:
