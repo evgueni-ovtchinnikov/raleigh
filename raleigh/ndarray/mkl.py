@@ -112,10 +112,10 @@ class Cblas:
 
 class SparseSymmetricMatrix:
     def __init__(self, a, ia, ja):
-        self.__a = _array_ptr(a)
-        self.__ib = _array_ptr(ia)
-        self.__ie = _array_ptr(ia[1:])
-        self.__ja = _array_ptr(ja)
+        self.__a = a
+        self.__ib = ia
+        self.__ie = ia[1:]
+        self.__ja = ja
         self.__n = ctypes.c_int(ia.shape[0] - 1)
         self.__dtype = a.dtype
         self.__oz = numpy.array([1.0, 0.0]).astype(a.dtype)
@@ -151,6 +151,10 @@ class SparseSymmetricMatrix:
     def dot(self, x, y):
         ptr_x = _array_ptr(x)
         ptr_y = _array_ptr(y)
+        ptr_a = _array_ptr(self.__a)
+        ptr_ib = _array_ptr(self.__ib)
+        ptr_ie = _array_ptr(self.__ie)
+        ptr_ja = _array_ptr(self.__ja)
         s = x.shape
         if (len(s) == 1 or s[0] == 1) and not self.__complex:
             #print('using *csrsymv...')
@@ -160,7 +164,7 @@ class SparseSymmetricMatrix:
                 n = numpy.prod(s[1:])
             n = ctypes.c_int(n)
             self.__csrsymv(self.__u, ctypes.byref(n), \
-                           self.__a, self.__ib, self.__ja, ptr_x, ptr_y)
+                           ptr_a, ptr_ib, ptr_ja, ptr_x, ptr_y)
             return
         #print('using *csrmm...')
         if len(s) > 1:
@@ -173,18 +177,18 @@ class SparseSymmetricMatrix:
         ptr_n = _array_ptr(mn[1:])
         n = self.__n
         self.__csrmm(self.__t, ctypes.byref(n), ptr_m, ctypes.byref(n), \
-            self.__one, self.__d, self.__a, self.__ja, self.__ib, self.__ie, \
+            self.__one, self.__d, ptr_a, ptr_ja, ptr_ib, ptr_ie, \
             ptr_x, ptr_n, self.__zero, ptr_y, ptr_n)
 
 class ILUT:
     def __init__(self, a, ia, ja):
-        self.__a = _array_ptr(a)
-        self.__ia = _array_ptr(ia)
-        self.__ja = _array_ptr(ja)
-        n = ctypes.c_int(ia.shape[0] - 1)
+        self.__a = a
+        self.__ia = ia
+        self.__ja = ja
+        n = ia.shape[0] - 1
         nnz = ia[n] - ia[0]
         self.__rows = n
-        self.__nnz = nnz
+        self.__nnz = nnz//n
         self.__ipar = numpy.zeros((128,), dtype = numpy.int32)
         self.__dpar = numpy.zeros((128,))
         self.__w = numpy.zeros((n,))
@@ -198,8 +202,9 @@ class ILUT:
         self.__U = ctypes.c_char_p(self.__u.encode('utf-8'))
         self.__L = ctypes.c_char_p(self.__l.encode('utf-8'))
         self.__N = ctypes.c_char_p(self.__n.encode('utf-8'))
-    def factorize(self, tol, max_fill_rel):
+    def factorize(self, tol = 1e-2, max_fill_rel = 10):
         max_fill_abs = self.__nnz * max_fill_rel
+        self.__dpar[30] = tol
         n = self.__rows
         nnz = (2*max_fill_abs + 1)*n
         self.__b = numpy.ndarray((nnz,)) 
