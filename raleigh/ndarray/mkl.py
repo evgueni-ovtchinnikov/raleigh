@@ -203,10 +203,11 @@ class ILUT:
         self.__L = ctypes.c_char_p(self.__l.encode('utf-8'))
         self.__N = ctypes.c_char_p(self.__n.encode('utf-8'))
     def factorize(self, tol = 1e-2, max_fill_rel = 10):
-        max_fill_abs = self.__nnz * max_fill_rel
+        max_fill_abs = min(self.__rows - 1, self.__nnz * max_fill_rel)
         self.__dpar[30] = tol
         n = self.__rows
         nnz = (2*max_fill_abs + 1)*n
+        print(n, nnz)
         self.__b = numpy.ndarray((nnz,)) 
         self.__ib = numpy.ndarray((n + 1,)) 
         self.__jb = numpy.ndarray((nnz,), dtype = numpy.int32)
@@ -228,17 +229,20 @@ class ILUT:
                      ptr_ipar, ptr_dpar, ctypes.byref(ierr_c))
         if ierr_c.value != 0: print(ierr_c.value)
     def solve(self, f, x):
-        ptr_f = _array_ptr(f)
-        ptr_x = _array_ptr(x)
+        m, n = f.shape
         n = ctypes.c_int(self.__rows)
+        print(n)
         ptr_b = _array_ptr(self.__b)
         ptr_ib = _array_ptr(self.__ib)
         ptr_jb = _array_ptr(self.__jb)
         ptr_w = _array_ptr(self.__w)
-        mkl.mkl_dcsrtrsv(self.__L, self.__N, self.__U, ctypes.byref(n), \
-                         ptr_b, ptr_ib, ptr_jb, ptr_f, ptr_w)
-        mkl.mkl_dcsrtrsv(self.__U, self.__N, self.__N, ctypes.byref(n), \
-                         ptr_b, ptr_ib, ptr_jb, ptr_w, ptr_x)
+        for i in range(m):
+            ptr_f = _array_ptr(f[i,:])
+            ptr_x = _array_ptr(x[i,:])
+            mkl.mkl_dcsrtrsv(self.__L, self.__N, self.__U, ctypes.byref(n), \
+                             ptr_b, ptr_ib, ptr_jb, ptr_f, ptr_w)
+            mkl.mkl_dcsrtrsv(self.__U, self.__N, self.__N, ctypes.byref(n), \
+                             ptr_b, ptr_ib, ptr_jb, ptr_w, ptr_x)
 
 class ParDiSo:
     def __init__(self, dtype = numpy.float64, pos_def = False):
