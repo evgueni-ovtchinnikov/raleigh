@@ -14,7 +14,7 @@ from ..ndarray.sparse_algebra import SparseSymmetricSolver
 from ..solver import Problem, Solver, Options, DefaultConvergenceCriteria
 
 
-def partial_hevp(A, B=None, T=None, sigma=0, which=(0, 6), tol=1e-4, verb=0):
+def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
 
     if B is not None:
         B = SparseSymmetricMatrix(B)
@@ -52,6 +52,8 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=(0, 6), tol=1e-4, verb=0):
         try:
             which[0].upper()
         except:
+            if len(which) < 2:
+                which = ('largest', which)
             left = min(which[0], neg)
             right = min(which[1], pos)
             which = (left, right)
@@ -75,6 +77,7 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=(0, 6), tol=1e-4, verb=0):
         evp_solver = Solver(evp)
         evp_solver.set_preconditioner(opT)
         sigma = None
+        which = (which, 0)
 
     opt = Options()
     #opt.block_size = block_size

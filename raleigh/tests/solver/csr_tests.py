@@ -26,7 +26,6 @@ args = docopt(__doc__, version=__version__)
 
 matrix = args['--matrix']
 mass = args['--mass']
-print(mass is None)
 if matrix == 'lap3d':
     nx = int(args['--dim'])
 dt = args['--dtype']
@@ -48,8 +47,9 @@ raleigh_path = '../../..'
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
+from raleigh.ndarray.sparse_algebra import SparseSymmetricMatrix
+from raleigh.ndarray.sparse_algebra import SparseSymmetricSolver
 from raleigh.apps.partial_hevp import partial_hevp as raleighs
-from raleigh.ndarray.mkl import ParDiSo
 
 def lap3d_matrix(nx, ny, nz, dtype = numpy.float64):
     hx = 1.0/(nx + 1)
@@ -148,7 +148,6 @@ else:
         B = None
 
 if invop:
-    from raleigh.ndarray.sparse_algebra import SparseSymmetricSolver
     A = SparseSymmetricSolver(dtype=dtype)
     print('setting up the linear system solver...')
     start = time.time()
@@ -159,15 +158,17 @@ if invop:
     print('setup time: %.2e' % setup_time)
     T = None
 else:
-    from raleigh.ndarray.sparse_algebra import SparseSymmetricMatrix
     A = M
     I = scs.eye(n, dtype=dtype)
     T = SparseSymmetricMatrix(I)
 
-if left < 0 and right < 0:
+if T is not None:
+    which = left
+elif left < 0 and right < 0:
     which = ('largest', -right)
 else:
     which = (left, right)
+
 vals_r, vecs_r, status = raleighs(A, B, T, sigma=sigma, which=which, tol=tol)
 nr = vals_r.shape[0]
 if status != 0:
