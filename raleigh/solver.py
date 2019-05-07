@@ -139,10 +139,12 @@ class Solver:
             largest = False
 
         if largest:
-            left = 0
+            total = int(which[1])
+            left = total//2
+            right = total - left
         else:
             left = int(which[0])
-        right = int(which[1])
+            right = int(which[1])
         if left == 0 and right == 0:
             if verb > -1:
                 print('No eigenpairs requested, quit')
@@ -253,7 +255,7 @@ class Solver:
         except:
             largest = False
         if largest:
-            left = 0
+            left = int(which[1])
         else:
             left = int(which[0])
         right = int(which[1])
@@ -314,7 +316,7 @@ class Solver:
         self.lmd = numpy.zeros((m,), dtype=numpy.float64)
         self.res = -numpy.ones((m,), dtype=numpy.float32)
 ##        self.min_res = -numpy.ones((m,), dtype=numpy.float32)
-        self.err_lmd = numpy.zeros((2, m,), dtype=numpy.float32)
+        self.err_lmd = -numpy.ones((2, m,), dtype=numpy.float32)
         self.err_X = -numpy.ones((2, m,), dtype=numpy.float32)
 
         # convergence criteria
@@ -604,7 +606,7 @@ class Solver:
                     # esimate error based on a.c.f.
                     theta = qi/(1 - qi)
                     d = theta*dlmd[ix + i, rec - 1]
-                    err_lmd[0, ix + i] = d
+                    err_lmd[0, ix + i] = abs(d)
                     qx = math.sqrt(qi)
                     err_X[0, ix + i] = dX[ix + i]*qx/(1 - qx)
 
@@ -641,7 +643,7 @@ class Solver:
                 if l > 0:
                     i = ix + nx - l - 1
                     t = lmd[i]
-                    if verb > 1:
+                    if verb > 2:
                         print('using right pole at lmd[%d] = %e' % (i, t))
                     m = block_size
                     for k in range(l):
@@ -651,14 +653,17 @@ class Solver:
                         err_X[1, i] = s/(lmd[i] - t)
 
             if verb > 1:
-                msg = 'eigenvalue     residual  ' + \
+                msg = '  eigenvalue   residual   ' + \
                 'estimated errors (kinematic/residual)' + \
-                '   a.c.f.'
+                '      a.c.f.'
+                print(msg)
+                msg = '                          ' + \
+                '   eigenvalue            eigenvector '
                 print(msg)
                 for i in range(block_size):
-                    print('%14e %8.1e  %.1e / %.1e    %.1e / %.1e  %.3e  %d' % \
+                    print('%14e %8.1e  %8.1e / %8.1e    %.1e / %.1e  %.3e  %d' % \
                           (lmd[i], res[i], \
-                          abs(err_lmd[0, i]), abs(err_lmd[1, i]), \
+                          err_lmd[0, i], err_lmd[1, i], \
                           abs(err_X[0, i]), abs(err_X[1, i]), \
                           acf[0, i], self.cnv[i]))
 
@@ -670,7 +675,7 @@ class Solver:
 ##                q = 100
 
             lcon = 0
-            for i in range(leftX - max(1, leftX//4)):
+            for i in range(leftX - leftX//4):
                 j = self.lcon + i
                 k = ix + i
                 if sigma is not None and lmd[k] > 0:
@@ -705,7 +710,7 @@ class Solver:
                     break
 
             rcon = 0
-            for i in range(rightX - max(1, rightX//4)):
+            for i in range(rightX - rightX//4):
                 j = self.rcon + i
                 k = ix + nx - i - 1
                 if sigma is not None and lmd[k] < 0:
@@ -743,8 +748,8 @@ class Solver:
                     i = ix + lcon - 1
                     j = ix + nx - rcon - 1
                     #print(i, lmd[i], j, lmd[j])
-                    while abs(lmd[i]) < abs(lmd[j]) and lcon > 0:
-                        #print('dismissing...')
+                    while lcon > 0 and abs(lmd[i]) < abs(lmd[j]):
+                        #print('dismissing %d...' % i)
                         self.cnv[i] = 0
                         lcon -= 1
                         i -= 1
@@ -752,7 +757,7 @@ class Solver:
                     i = ix + lcon
                     j = ix + nx - rcon
                     #print(i, lmd[i], j, lmd[j])
-                    while abs(lmd[i]) > abs(lmd[j]) and rcon > 0:
+                    while rcon > 0 and abs(lmd[i]) > abs(lmd[j]):
                         #print('dismissing...')
                         self.cnv[j] = 0
                         rcon -= 1
@@ -847,14 +852,14 @@ class Solver:
                 if right_converged:
                     i = ix + lcon
                     lmd_i = lmd[i]
-                    err_i = abs(err_lmd[0, i])
-                    if lmd_i > 0 and err_i > 0 and err_i < lmd_i/4:
+                    err_i = err_lmd[0, i]
+                    if lmd_i > 0 and err_i != -1.0 and err_i < lmd_i/4:
                         return 4
                 if left_converged:
                     i = ix + nx - rcon - 1
                     lmd_i = lmd[i]
-                    err_i = abs(err_lmd[0, i])
-                    if lmd_i < 0 and err_i > 0 and err_i < -lmd_i/4:
+                    err_i = err_lmd[0, i]
+                    if lmd_i < 0 and err_i != -1.0 and err_i < -lmd_i/4:
                         return 5
             lim = options.max_quota * eigenvectors.dimension()
             if eigenvectors.nvec() > lim:
@@ -1302,7 +1307,7 @@ def _reset_cnv_data(i, cnv, res, acf, err_lmd, dlmd, err_X, dX, iterations):
     cnv[i] = 0
     res[i] = -1.0
     acf[:, i] = 1.0
-    err_lmd[:, i] = 0.0
+    err_lmd[:, i] = -1.0
     dlmd[i, :] = 0
     err_X[:, i] = -1.0
     dX[i] = 1.0
