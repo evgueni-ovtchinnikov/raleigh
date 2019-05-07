@@ -129,9 +129,9 @@ if matrix == 'lap3d':
 else:
     path = 'C:/Users/wps46139/Documents/Data/Matrices/'
     print('reading the matrix from %s...' % matrix)
-    M = mmread(path + matrix).tocsr()
+    M = mmread(path + matrix).tocsr().astype(dtype)
     U = scs.triu(M, format = 'csr')
-    a = U.data.astype(dtype)
+    a = U.data
     ia = U.indptr + 1
     ja = U.indices + 1
     n = ia.shape[0] - 1
