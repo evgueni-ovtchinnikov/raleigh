@@ -157,19 +157,25 @@ if invop:
     stop = time.time()
     setup_time = stop - start
     print('setup time: %.2e' % setup_time)
+    T = None
 else:
+    from raleigh.ndarray.sparse_algebra import SparseSymmetricMatrix
     A = M
+    I = scs.eye(n, dtype=dtype)
+    T = SparseSymmetricMatrix(I)
 
 if left < 0 and right < 0:
     which = ('largest', -right)
 else:
     which = (left, right)
-vals_r, vecs_r, status = raleighs(A, B, sigma=sigma, which=which, tol=tol)
+vals_r, vecs_r, status = raleighs(A, B, T, sigma=sigma, which=which, tol=tol)
 nr = vals_r.shape[0]
 if status != 0:
     print('raleighs execution status: %d' % status)
 print('converged eigenvalues are:')
 print(vals_r)
+
+if not eigsh: exit()
 
 if invop:
     solver = A.solver()
@@ -202,22 +208,21 @@ def vec_err(u, v):
     s = numpy.linalg.norm(w, axis = 0)
     return s
 
-if eigsh:
-    opM = LinearOperator(dtype=dtype, shape=(n, n), \
-                         matmat=mv, matvec=mv, rmatvec=mv)
-    if left < 0 and right < 0:
-        k = -right
-    else:
-        k = left + right
-    print('solving with scipy eigsh...')
-    start = time.time()
-    # which = 'BE' did not converge in reasonable time for k = 5:
-    vals, vecs = scs.linalg.eigsh(opM, k, which='LM', tol=1e-12)
-    # far too slow:
+opM = LinearOperator(dtype=dtype, shape=(n, n), \
+                     matmat=mv, matvec=mv, rmatvec=mv)
+if left < 0 and right < 0:
+    k = -right
+else:
+    k = left + right
+print('solving with scipy eigsh...')
+start = time.time()
+# which = 'BE' did not converge in reasonable time for k = 5:
+vals, vecs = scs.linalg.eigsh(opM, k, which='LM', tol=1e-12)
+# far too slow:
 #    vals, vecs = scs.linalg.eigsh(M, k, sigma=sigma, which='BE', tol=tol)
-    stop = time.time()
-    eigsh_time = stop - start
-    print(numpy.sort(sigma + 1./vals))
-    print('eigsh time: %.2e' % eigsh_time)
-    ns = vals.shape[0]
-    print(vec_err(vecs[:, :ns], vecs_r[:, :nr]))
+stop = time.time()
+eigsh_time = stop - start
+print(numpy.sort(sigma + 1./vals))
+print('eigsh time: %.2e' % eigsh_time)
+ns = vals.shape[0]
+print(vec_err(vecs[:, :ns], vecs_r[:, :nr]))

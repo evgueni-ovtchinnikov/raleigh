@@ -13,8 +13,11 @@ from .mkl import ParDiSo as SSS
 
 class SparseSymmetricMatrix:
     def __init__(self, matrix):
-        csr = scs.triu(matrix, format = 'csr')
-        csr.sort_indices()
+        try:
+            csr = matrix.csr()
+        except:
+            csr = scs.triu(matrix, format = 'csr')
+            csr.sort_indices()
         a = csr.data
         ia = csr.indptr + 1
         ja = csr.indices + 1
@@ -23,6 +26,12 @@ class SparseSymmetricMatrix:
         self.__a = a
         self.__ia = ia
         self.__ja = ja
+    def size(self):
+        return self.__csr.shape[0]
+    def data_type(self):
+        return self.__a.dtype
+    def csr(self):
+        return self.__csr
     def apply(self, x, y):
         self.__ssm.dot(x.data(), y.data())
 
@@ -61,3 +70,8 @@ class SparseSymmetricSolver:
         return self.__sigma
     def solver(self):
         return self.__solver
+
+
+class IncompleteLU:
+    def __init__(self, matrix):
+        pass

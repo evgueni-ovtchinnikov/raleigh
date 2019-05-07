@@ -14,48 +14,67 @@ from ..ndarray.sparse_algebra import SparseSymmetricSolver
 from ..solver import Problem, Solver, Options, DefaultConvergenceCriteria
 
 
-def partial_hevp(A, B=None, sigma=0, which=(0, 6), tol=1e-4, verb=0):
+def partial_hevp(A, B=None, T=None, sigma=0, which=(0, 6), tol=1e-4, verb=0):
 
-    try:
-        n = A.size()
-        dtype = A.data_type()
-        sigma = A.sigma()
-        neg, pos = A.inertia()
-        solver = A
-    except:
-        m, n = A.shape
-        if m != n:
-            raise ValueError('the matrix must be square')
-        dtype = A.data.dtype
-        solver = SparseSymmetricSolver(dtype=dtype)
-        if verb > -1:
-            print('setting up the linear system solver...')
-        start = time.time()
-        solver.analyse(A, sigma, B)
-        solver.factorize()
-        stop = time.time()
-        setup_time = stop - start
-        if verb > -1:
-            print('setup time: %.2e' % setup_time)
-
-    eigenvectors = Vectors(n, data_type=dtype)
-    opAinv = lambda x, y: solver.solve(x, y)
     if B is not None:
         B = SparseSymmetricMatrix(B)
         opB = lambda x, y: B.apply(x, y)
     else:
         opB = None
 
-    neg, pos = solver.inertia()
-    if verb > -1:
-        print('positive eigenvalues: %d' % pos)
-        print('negative eigenvalues: %d' % neg)
-    try:
-        which[0].upper()
-    except:
-        left = min(which[0], neg)
-        right = min(which[1], pos)
-        which = (left, right)
+    if T is None:
+        try:
+            n = A.size()
+            dtype = A.data_type()
+            sigma = A.sigma()
+            neg, pos = A.inertia()
+            solver = A
+        except:
+            m, n = A.shape
+            if m != n:
+                raise ValueError('the matrix must be square')
+            dtype = A.data.dtype
+            solver = SparseSymmetricSolver(dtype=dtype)
+            if verb > -1:
+                print('setting up the linear system solver...')
+            start = time.time()
+            solver.analyse(A, sigma, B)
+            solver.factorize()
+            stop = time.time()
+            setup_time = stop - start
+            if verb > -1:
+                print('setup time: %.2e' % setup_time)
+        opAinv = lambda x, y: solver.solve(x, y)
+        neg, pos = solver.inertia()
+        if verb > -1:
+            print('positive eigenvalues: %d' % pos)
+            print('negative eigenvalues: %d' % neg)
+        try:
+            which[0].upper()
+        except:
+            left = min(which[0], neg)
+            right = min(which[1], pos)
+            which = (left, right)
+        eigenvectors = Vectors(n, data_type=dtype)
+        if B is None:
+            evp = Problem(eigenvectors, opAinv)
+        else:
+            evp = Problem(eigenvectors, opAinv, opB, 'pro')
+        evp_solver = Solver(evp)
+    else:
+        A = SparseSymmetricMatrix(A)
+        n = A.size()
+        dtype = A.data_type()
+        eigenvectors = Vectors(n, data_type=dtype)
+        opA = lambda x, y: A.apply(x, y)
+        opT = lambda x, y: T.apply(x, y)
+        if B is None:
+            evp = Problem(eigenvectors, opA)
+        else:
+            evp = Problem(eigenvectors, opA, opB, 'gen')
+        evp_solver = Solver(evp)
+        evp_solver.set_preconditioner(opT)
+        sigma = None
 
     opt = Options()
     #opt.block_size = block_size
@@ -64,17 +83,15 @@ def partial_hevp(A, B=None, sigma=0, which=(0, 6), tol=1e-4, verb=0):
     opt.sigma = sigma
     #opt.max_iter = 30
     opt.verbosity = verb
-    if B is None:
-        evp = Problem(eigenvectors, opAinv)
-    else:
-        evp = Problem(eigenvectors, opAinv, opB, 'pro')
-    evp_solver = Solver(evp)
 
     start = time.time()
     status = evp_solver.solve(eigenvectors, opt, which=which)
     stop = time.time()
     solve_time = stop - start
-    lmd = sigma + 1./evp_solver.eigenvalues
+    if T is None:
+        lmd = sigma + 1./evp_solver.eigenvalues
+    else:
+        lmd = evp_solver.eigenvalues
     ind = numpy.argsort(lmd)
     lmd = lmd[ind]
     ne = eigenvectors.nvec()
