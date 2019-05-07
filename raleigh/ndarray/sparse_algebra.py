@@ -9,6 +9,7 @@ import scipy.sparse as scs
 
 from .mkl import SparseSymmetricMatrix as SSM
 from .mkl import ParDiSo as SSS
+from .mkl import ILUT
 
 
 class SparseSymmetricMatrix:
@@ -74,4 +75,12 @@ class SparseSymmetricSolver:
 
 class IncompleteLU:
     def __init__(self, matrix):
-        pass
+        matrix = matrix.tocsr().sorted_indices()
+        a = matrix.data
+        ia = matrix.indptr + 1
+        ja = matrix.indices + 1
+        self.__ilut = ILUT(a, ia, ja)
+    def factorize(self):
+        self.__ilut.factorize(tol = 1e-2, max_fill_rel = 10)
+    def apply(self, x, y):
+        self.__ilut.solve(x, y)
