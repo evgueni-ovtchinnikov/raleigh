@@ -52,11 +52,12 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
         try:
             which[0].upper()
         except:
-            if len(which) < 2:
+            try:
+                left = min(which[0], neg)
+                right = min(which[1], pos)
+                which = (left, right)
+            except:
                 which = ('largest', which)
-            left = min(which[0], neg)
-            right = min(which[1], pos)
-            which = (left, right)
         eigenvectors = Vectors(n, data_type=dtype)
         if B is None:
             evp = Problem(eigenvectors, opAinv)

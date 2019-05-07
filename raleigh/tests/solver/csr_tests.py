@@ -120,30 +120,17 @@ if matrix == 'lap3d':
     a, ia, ja = lap3d_matrix(nx, nx, nx, dtype)
     n = ia.shape[0] - 1
     M = scs.csr_matrix((a, ja - 1, ia - 1), shape = (n, n))
-    U = M
     if mass is not None:
         B = 2*scs.eye(n, dtype=dtype, format='csr')
     else:
         B = None
-#    U = scs.csr_matrix((a, ja - 1, ia - 1), shape = (n, n))
 else:
     path = 'C:/Users/wps46139/Documents/Data/Matrices/'
     print('reading the matrix from %s...' % matrix)
     M = mmread(path + matrix).tocsr().astype(dtype)
-    U = scs.triu(M, format = 'csr')
-    a = U.data
-    ia = U.indptr + 1
-    ja = U.indices + 1
-    n = ia.shape[0] - 1
-    nonzeros = ia[n] - ia[0]
-    print('size: %d, (upper) nonzeros: %d' % (n, nonzeros))
     if mass is not None:
         print('reading the mass matrix from %s...' % mass)
         B = mmread(path + mass).tocsr()
-        UM = scs.triu(B, format = 'csr')
-        b = UM.data.astype(dtype)
-        ib = UM.indptr + 1
-        jb = UM.indices + 1
     else:
         B = None
 
@@ -165,7 +152,7 @@ else:
 if T is not None:
     which = left
 elif left < 0 and right < 0:
-    which = ('largest', -right)
+    which = -right
 else:
     which = (left, right)
 
@@ -178,24 +165,16 @@ print(vals_r)
 
 if not eigsh: exit()
 
-if invop:
-    solver = A.solver()
-else:
-    if sigma != 0:
-        B = scs.eye(U.shape[0], dtype=dtype, format='csr')
-        U -= sigma*B
-        a = U.data.astype(dtype)
-        ia = U.indptr + 1
-        ja = U.indices + 1
-    print('setting up solver...')
+if not invop:
+    A = SparseSymmetricSolver(dtype=dtype)
+    print('setting up the linear system solver...')
     start = time.time()
-    solver = ParDiSo(dtype=dtype)
-    solver.analyse(a, ia, ja)
-    solver.factorize()
-    neg, pos = solver.inertia()
+    A.analyse(M, sigma, B)
+    A.factorize()
     stop = time.time()
     setup_time = stop - start
     print('setup time: %.2e' % setup_time)
+solver = A.solver()
 
 def mv(x):
     y = x.copy()
