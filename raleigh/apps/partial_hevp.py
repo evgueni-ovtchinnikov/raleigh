@@ -53,9 +53,11 @@ def partial_hevp(A, B=None, sigma=0, which=(0, 6), tol=1e-4, verb=0):
     try:
         which[0].upper()
     except:
-        left = min(which[0], neg)
-        right = min(which[1], pos)
-        which = (left, right)
+        numpy_dtype = numpy.dtype(dtype)
+        if numpy_dtype.kind != 'c':
+            left = min(which[0], neg)
+            right = min(which[1], pos)
+            which = (left, right)
 
     opt = Options()
     #opt.block_size = block_size

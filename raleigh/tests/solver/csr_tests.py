@@ -108,6 +108,10 @@ if dt == 's':
     dtype = numpy.float32
 elif dt == 'd':
     dtype = numpy.float64
+elif dt == 'c':
+    dtype = numpy.complex64
+elif dt == 'z':
+    dtype = numpy.complex128
 else:
     raise ValueError('data type %s not supported' % dt)
 
@@ -162,7 +166,8 @@ else:
     which = (left, right)
 vals_r, vecs_r, status = raleighs(A, B, sigma=sigma, which=which, tol=tol)
 nr = vals_r.shape[0]
-print(status)
+if status != 0:
+    print('raleighs execution status: %d' % status)
 print('converged eigenvalues are:')
 print(vals_r)
 
