@@ -32,7 +32,7 @@ def fill_ndarray_with_orthogonal_vectors(a):
     a[k : m,   : j] = a[:(m - k), : j]
     a[k : m, j : i] = -a[:(m - k), j : i]
 
-class NDArrayVectors:
+class NDArrayVectors(object):
     def __init__(self, arg, nvec = 0, data_type = None):
         if isinstance(arg, NDArrayVectors):
             #print('in copy constructor')

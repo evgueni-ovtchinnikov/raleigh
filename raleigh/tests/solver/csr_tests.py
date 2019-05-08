@@ -201,7 +201,8 @@ def vec_err(u, v):
     w = v.copy()
     q = numpy.dot(u.T, v)
     w = numpy.dot(u, q) - v
-    s = numpy.linalg.norm(w, axis = 0)
+    s = numpy.apply_along_axis(numpy.linalg.norm, 0, w)
+    #s = numpy.linalg.norm(w, axis = 0)
     return s
 
 opM = LinearOperator(dtype=dtype, shape=(n, n), \

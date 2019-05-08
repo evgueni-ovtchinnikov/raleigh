@@ -513,7 +513,8 @@ class Solver:
             Lmd = numpy.zeros((nx, nx))
             Lmd[range(nx), range(nx)] = lmdx #new_lmd
             RX = XAX - numpy.dot(XBX, Lmd)
-            delta_R = nla.norm(RX, axis=0)
+            delta_R = _norm(RX, 0)
+            #delta_R = nla.norm(RX, axis=0)
             if gen:
                 s = numpy.sqrt(abs(X.dots(X)))
                 delta_R /= s
@@ -1052,7 +1053,8 @@ class Solver:
             lmdX[0, :] = lmdx
             lmdY[:, 0] = lmdy
             Delta = (lmdY - lmdX)*QYX*QYX
-            dX[ix : ix + nx] = nla.norm(QYX, axis=0)
+            dX[ix : ix + nx] = _norm(QYX, 0)
+            #dX[ix : ix + nx] = nla.norm(QYX, axis=0)
             if rec == RECORDS:
                 for i in range(rec - 1):
                     dlmd[:, i] = dlmd[:, i + 1]
@@ -1313,6 +1315,9 @@ def _reset_cnv_data(i, cnv, res, acf, err_lmd, dlmd, err_X, dX, iterations):
     dX[i] = 1.0
     iterations[i] = 0
 
+def _norm(a, axis):
+    return numpy.apply_along_axis(nla.norm, axis, a)
+
 def _piv_chol(A, k, eps, blk=64, verb=0):
     n = A.shape[0]
     buff = A[0, :].copy()
@@ -1331,7 +1336,9 @@ def _piv_chol(A, k, eps, blk=64, verb=0):
     for i in range(k, n):
         s = numpy.diag(A[i : n, i : n]).copy()
         if i > l:
-            t = nla.norm(A[l : i, i : n], axis=0)
+            t = _norm(A[l : i, i : n], 0)
+            #t = numpy.apply_along_axis(nla.norm, 0, A[l : i, i : n])
+            #t = nla.norm(A[l : i, i : n], axis=0)
             s -= t*t
         j = i + numpy.argmax(s)
         if i != j:
