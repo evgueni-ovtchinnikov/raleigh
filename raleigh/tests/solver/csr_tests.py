@@ -15,6 +15,7 @@ Options:
     -r <rgt>, --right=<rgt>   number of eigenvalues right of shift [default: 0]
     -t <tol>, --tol=<tol>     error/residual tolerance [default: 1e-10]
     -I, --invop  first argument of partial_hevp is a SparseSymmetricSolver
+    -P, --ilutp  use mkl dcsrilut (incomplete ILU) as a preconditioner
     -S, --scipy  solve also with SciPy eigsh
 
 @author: Evgueni Ovtchinnikov, UKRI-STFC
@@ -33,8 +34,9 @@ sigma = float(args['--shift'])
 left = int(args['--left'])
 right = int(args['--right'])
 tol = float(args['--tol'])
-eigsh = args['--scipy']
 invop = args['--invop']
+ilutp = args['--ilutp']
+eigsh = args['--scipy']
 
 import numpy
 from scipy.io import mmread
@@ -138,6 +140,8 @@ else:
     else:
         B = None
 
+T = None
+
 if invop:
     print('setting up the linear system solver...')
     start = time.time()
@@ -147,18 +151,19 @@ if invop:
     stop = time.time()
     setup_time = stop - start
     print('setup time: %.2e' % setup_time)
-    T = None
 else:
     A = M
-    print('setting up the preconditioner...')
-    start = time.time()
-    T = IncompleteLU(M)
-    T.factorize(tol=1e-4, max_fill=10)
-    stop = time.time()
-    setup_time = stop - start
-    print('setup time: %.2e' % setup_time)
-    #I = scs.eye(n, dtype=dtype)
-    #T = SparseSymmetricMatrix(I)
+    if ilutp:
+        if dtype != numpy.float64:
+            raise ValueError('ILU preconditioner cannot handle data type %s' \
+                             % repr(dtype))
+        print('setting up the preconditioner...')
+        start = time.time()
+        T = IncompleteLU(M)
+        T.factorize(tol=1e-4, max_fill=10)
+        stop = time.time()
+        setup_time = stop - start
+        print('setup time: %.2e' % setup_time)
 
 if T is not None:
     which = left
