@@ -204,10 +204,11 @@ class ILUT:
         self.__N = ctypes.c_char_p(self.__n.encode('utf-8'))
     def factorize(self, tol = 1e-2, max_fill_rel = 10):
         max_fill_abs = min(self.__rows - 1, self.__nnz * max_fill_rel)
+        self.__ipar[30] = 1
         self.__dpar[30] = tol
         n = self.__rows
         nnz = (2*max_fill_abs + 1)*n
-        print(n, nnz)
+        #print(n, nnz)
         self.__b = numpy.ndarray((nnz,)) 
         self.__ib = numpy.ndarray((n + 1,)) 
         self.__jb = numpy.ndarray((nnz,), dtype = numpy.int32)
@@ -231,7 +232,7 @@ class ILUT:
     def solve(self, f, x):
         m, n = f.shape
         n = ctypes.c_int(self.__rows)
-        print(n)
+        #print(n)
         ptr_b = _array_ptr(self.__b)
         ptr_ib = _array_ptr(self.__ib)
         ptr_jb = _array_ptr(self.__jb)

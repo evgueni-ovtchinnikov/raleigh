@@ -49,6 +49,7 @@ if raleigh_path not in sys.path:
 
 from raleigh.ndarray.sparse_algebra import SparseSymmetricMatrix
 from raleigh.ndarray.sparse_algebra import SparseSymmetricSolver
+from raleigh.ndarray.sparse_algebra import IncompleteLU
 from raleigh.apps.partial_hevp import partial_hevp as raleighs
 
 def lap3d_matrix(nx, ny, nz, dtype = numpy.float64):
@@ -120,6 +121,8 @@ if matrix == 'lap3d':
     a, ia, ja = lap3d_matrix(nx, nx, nx, dtype)
     n = ia.shape[0] - 1
     M = scs.csr_matrix((a, ja - 1, ia - 1), shape = (n, n))
+    D = scs.spdiags(M.diagonal(), [0], n, n)
+    M = M + M.T - D
     if mass is not None:
         B = 2*scs.eye(n, dtype=dtype, format='csr')
     else:
@@ -128,6 +131,7 @@ else:
     path = 'C:/Users/wps46139/Documents/Data/Matrices/'
     print('reading the matrix from %s...' % matrix)
     M = mmread(path + matrix).tocsr().astype(dtype)
+    n = M.shape[0]
     if mass is not None:
         print('reading the mass matrix from %s...' % mass)
         B = mmread(path + mass).tocsr()
@@ -135,9 +139,9 @@ else:
         B = None
 
 if invop:
-    A = SparseSymmetricSolver(dtype=dtype)
     print('setting up the linear system solver...')
     start = time.time()
+    A = SparseSymmetricSolver(dtype=dtype)
     A.analyse(M, sigma, B)
     A.factorize()
     stop = time.time()
@@ -146,8 +150,15 @@ if invop:
     T = None
 else:
     A = M
-    I = scs.eye(n, dtype=dtype)
-    T = SparseSymmetricMatrix(I)
+    print('setting up the preconditioner...')
+    start = time.time()
+    T = IncompleteLU(M)
+    T.factorize(tol=1e-4, max_fill=10)
+    stop = time.time()
+    setup_time = stop - start
+    print('setup time: %.2e' % setup_time)
+    #I = scs.eye(n, dtype=dtype)
+    #T = SparseSymmetricMatrix(I)
 
 if T is not None:
     which = left

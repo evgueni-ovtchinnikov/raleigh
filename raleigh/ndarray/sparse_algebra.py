@@ -34,7 +34,13 @@ class SparseSymmetricMatrix:
     def csr(self):
         return self.__csr
     def apply(self, x, y):
-        self.__ssm.dot(x.data(), y.data())
+        try:
+            x = x.data()
+            y = y.data()
+        except:
+            pass
+        self.__ssm.dot(x, y)
+        #self.__ssm.dot(x.data(), y.data())
 
 
 class SparseSymmetricSolver:
@@ -60,7 +66,15 @@ class SparseSymmetricSolver:
     def factorize(self):
         self.__solver.factorize()
     def solve(self, b, x):
-        self.__solver.solve(b.data(), x.data())
+        try:
+            b = b.data()
+            x = x.data()
+        except:
+            pass
+        self.__solver.solve(b, x)
+        #self.__solver.solve(b.data(), x.data())
+    def apply(self, b, x):
+        self.solve(b, x)
     def inertia(self):
         return self.__solver.inertia()
     def size(self):
@@ -80,7 +94,13 @@ class IncompleteLU:
         ia = matrix.indptr + 1
         ja = matrix.indices + 1
         self.__ilut = ILUT(a, ia, ja)
-    def factorize(self):
-        self.__ilut.factorize(tol = 1e-2, max_fill_rel = 10)
+    def factorize(self, tol=1e-4, max_fill=10):
+        self.__ilut.factorize(tol=tol, max_fill_rel=max_fill)
     def apply(self, x, y):
+        try:
+            x = x.data()
+            y = y.data()
+        except:
+            pass
         self.__ilut.solve(x, y)
+        #self.__ilut.solve(x.data(), y.data())
