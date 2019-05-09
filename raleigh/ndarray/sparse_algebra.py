@@ -104,3 +104,17 @@ class IncompleteLU:
             pass
         self.__ilut.solve(x, y)
         #self.__ilut.solve(x.data(), y.data())
+
+
+class Operator:
+    def __init__(self, op):
+        self.__op = op
+    def apply(self, x, y):
+        try:
+            x = x.data()
+            y = y.data()
+        except:
+            pass
+        self.__op.apply(x, y)
+
+        

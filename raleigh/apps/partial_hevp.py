@@ -11,6 +11,7 @@ import time
 from ..ndarray.cblas_algebra import Vectors
 from ..ndarray.sparse_algebra import SparseSymmetricMatrix
 from ..ndarray.sparse_algebra import SparseSymmetricSolver
+from ..ndarray.sparse_algebra import Operator
 from ..solver import Problem, Solver, Options, DefaultConvergenceCriteria
 
 
@@ -70,7 +71,9 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
         dtype = A.data_type()
         eigenvectors = Vectors(n, data_type=dtype)
         opA = lambda x, y: A.apply(x, y)
-        opT = lambda x, y: T.apply(x, y)
+        op = Operator(T)
+        opT = lambda x, y: op.apply(x, y)
+##        opT = lambda x, y: T.apply(x.data(), y.data())
         if B is None:
             evp = Problem(eigenvectors, opA)
         else:
