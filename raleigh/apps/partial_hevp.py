@@ -102,5 +102,9 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
     if verb > -1:
         print('iterations: %d, solve time: %.2e' % \
               (evp_solver.iteration, solve_time))
-    return lmd, eigenvectors.data().T[:,ind], status
+    x = eigenvectors.data().T
+    if ne > 0:
+        x = x[:, ind]
+    return lmd, x, status
+    #return lmd, eigenvectors.data().T[:,ind], status
 
