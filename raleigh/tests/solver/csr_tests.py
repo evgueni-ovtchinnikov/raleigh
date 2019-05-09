@@ -130,9 +130,8 @@ if matrix == 'lap3d':
     else:
         B = None
 else:
-    path = 'C:/Users/wps46139/Documents/Data/Matrices/'
     print('reading the matrix from %s...' % matrix)
-    M = mmread(path + matrix).tocsr().astype(dtype)
+    M = mmread(matrix).tocsr().astype(dtype)
     n = M.shape[0]
     if mass is not None:
         print('reading the mass matrix from %s...' % mass)
