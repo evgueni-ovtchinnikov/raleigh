@@ -6,6 +6,7 @@ Created on Tue Feb 19 13:58:54 2019
 @author: Evgueni Ovtchinnikov, UKRI
 """
 
+import copy
 import math
 import numpy
 import numpy.linalg as nla
@@ -15,6 +16,31 @@ import time
 from ..solver import Problem, Solver
 
 
+def truncated_svd(A, opt, rank=-1, tol=-1, norm='s', max_rank=-1, rtol=1e-3, \
+                  arch='cpu'):
+    m, n = A.shape
+    opt = copy.deepcopy(opt)
+    if opt.block_size < 1:
+        opt.block_size = 128
+##    if opt.max_iter < 0:
+##        opt.max_iter = max(100, min(m, n))
+    if opt.convergence_criteria is None:
+        opt.convergence_criteria = _DefaultConvergenceCriteria(rtol)
+    if opt.stopping_criteria is None and rank < 0:
+        opt.stopping_criteria = \
+            DefaultStoppingCriteria(A, tol, norm, max_rank)
+    psvd = PartialSVD()
+    psvd.compute(A, opt, (0, rank), (None, None), False, False, arch)
+    u = psvd.u
+    v = psvd.v
+    sigma = psvd.sigma
+    if max_rank > 0 and u.shape[1] > max_rank:
+        u = u[:, : max_rank]
+        v = v[:, : max_rank]
+        sigma = sigma[: max_rank]
+    return u, sigma, v.T
+
+
 class PartialSVD:
     def __init__(self):
         self.sigma = None
@@ -22,8 +48,8 @@ class PartialSVD:
         self.v = None
         self.mean = None
         self.iterations = -1
-    def compute(self, a, opt, nsv = (-1, -1), isv = (None, None), \
-                shift = False, refine = False, arch = 'cpu'):
+    def compute(self, a, opt, nsv=(-1, -1), isv=(None, None), \
+                shift=False, refine=False, arch='cpu'):
     
         if arch[:3] == 'gpu':
             try:
@@ -62,14 +88,14 @@ class PartialSVD:
             isvec = ()
             for i in range(2):
                 if isv[i] is not None:
-                    tmp = Vectors(n, l, data_type = dt)
+                    tmp = Vectors(n, l, data_type=dt)
                     op.apply(isv[i], tmp)
                     isvec += (tmp,)
                 else:
                     isvec += (None,)
             isv = isvec
     
-        v = Vectors(n, data_type = dt)
+        v = Vectors(n, data_type=dt)
         opSVD = _OperatorSVD(op, v, gpu, transp, shift)
         problem = Problem(v, lambda x, y: opSVD.apply(x, y))
         solver = Solver(problem)
@@ -83,7 +109,7 @@ class PartialSVD:
                 print('partial SVD error calculation not requested')
             pass
     
-        solver.solve(v, opt, which = nsv, init = isv)
+        solver.solve(v, opt, which=nsv, init=isv)
         if opt.verbosity > 0:
             print('operator application time: %.2e' % opSVD.time)
     
@@ -94,11 +120,11 @@ class PartialSVD:
             if shift:
                 m, n = a.shape
                 dt = op.data_type()
-                ones = numpy.ones((1, m), dtype = dt)
-                e = Vectors(m, 1, data_type = dt)
+                ones = numpy.ones((1, m), dtype=dt)
+                e = Vectors(m, 1, data_type=dt)
                 e.fill(ones)
-                w = Vectors(n, 1, data_type = dt)
-                op.apply(e, w, transp = True)
+                w = Vectors(n, 1, data_type=dt)
+                op.apply(e, w, transp=True)
                 w.scale(m*ones[0,:1])
                 if not transp:
                     s = v.dot(w)
@@ -112,7 +138,7 @@ class PartialSVD:
                     uu = -u.dot(u)
                 else:
                     uu = u.dot(u)
-                lmd, x = scipy.linalg.eigh(uu, vv) #, turbo = False)
+                lmd, x = scipy.linalg.eigh(uu, vv) #, turbo=False)
                 w = v.new_vectors(nv)
                 v.multiply(x, w)
                 w.copy(v)
@@ -130,7 +156,7 @@ class PartialSVD:
                 u = u.data().T[:, ind]
                 v = v.data().T[:, ind]
         else:
-            sigma = numpy.ndarray((0,), dtype = v.data_type())
+            sigma = numpy.ndarray((0,), dtype=v.data_type())
             u = None
             v = None
         self.sigma = sigma
@@ -160,17 +186,17 @@ class PSVDErrorCalculator:
         self.norms = nla.norm(a, axis = 1).reshape((m, 1))
         self.err = self.norms.copy()
         self.aves = None
-    def set_up(self, op, solver, eigenvectors, shift = False):
+    def set_up(self, op, solver, eigenvectors, shift=False):
         self.op = op
         self.solver = solver
         self.eigenvectors = eigenvectors
         self.shift = shift
         if shift:
             self.ones = eigenvectors.new_vectors(1, self.m)
-            ones = numpy.ones((1, self.m), dtype = self.dt)
+            ones = numpy.ones((1, self.m), dtype=self.dt)
             self.ones.fill(ones)
             self.aves = eigenvectors.new_vectors(1, self.n)
-            self.op.apply(self.ones, self.aves, transp = True)
+            self.op.apply(self.ones, self.aves, transp=True)
             self.aves.scale(self.m*numpy.ones((1,)))
             s = self.aves.dots(self.aves)
             vb = eigenvectors.new_vectors(1, self.m)
@@ -190,7 +216,7 @@ class PSVDErrorCalculator:
             n = self.n
             if m < n:
                 z = x.new_vectors(new, n)
-                self.op.apply(x, z, transp = True)
+                self.op.apply(x, z, transp=True)
                 if self.shift:
                     s = x.dot(self.ones)
                     z.add(self.aves, -1, s)
@@ -199,7 +225,7 @@ class PSVDErrorCalculator:
                 if self.shift:
                     s = z.dot(self.aves)
                     y.add(self.ones, -1, s)
-                q = x.dots(y, transp = True)
+                q = x.dots(y, transp=True)
             else:
                 y = x.new_vectors(new, m)
                 self.op.apply(x, y)
@@ -209,7 +235,7 @@ class PSVDErrorCalculator:
                     # accurate orthogonalization needed!
                     s = y.dot(self.ones)
                     y.add(self.ones, -1.0/m, s)
-                q = y.dots(y, transp = True)
+                q = y.dots(y, transp=True)
             s = self.err*self.err - q.reshape((m, 1))
             s[s < 0] = 0
             self.err = numpy.sqrt(s)
@@ -217,8 +243,9 @@ class PSVDErrorCalculator:
             self.ncon = ncon
         return self.err
 
+
 class DefaultStoppingCriteria:
-    def __init__(self, a, err_tol = 0, norm = 'f', max_nsv = 0):
+    def __init__(self, a, err_tol=0, norm='f', max_nsv=0):
         self.ncon = 0
         self.sigma = 1
         self.iteration = 0
@@ -274,7 +301,7 @@ class DefaultStoppingCriteria:
 
 
 class _OperatorSVD:
-    def __init__(self, op, v, gpu, transp = False, shift = False):
+    def __init__(self, op, v, gpu, transp=False, shift=False):
         self.op = op
         self.gpu = gpu
         self.transp = transp
@@ -287,11 +314,11 @@ class _OperatorSVD:
             self.w = v.new_vectors(0, m)
         if shift:
             dt = op.data_type()
-            ones = numpy.ones((1, m), dtype = dt)
+            ones = numpy.ones((1, m), dtype=dt)
             self.ones = v.new_vectors(1, m)
             self.ones.fill(ones)
             self.aves = v.new_vectors(1, n)
-            self.op.apply(self.ones, self.aves, transp = True)
+            self.op.apply(self.ones, self.aves, transp=True)
             self.aves.scale(m*ones[0,:1])
     def apply(self, x, y):
         m, n = self.op.shape()
@@ -302,7 +329,7 @@ class _OperatorSVD:
                 self.w = x.new_vectors(k, n)
             z = self.w
             z.select(k)
-            self.op.apply(x, z, transp = True)
+            self.op.apply(x, z, transp=True)
             if self.shift:
                 s = x.dot(self.ones)
                 z.add(self.aves, -1, s)
@@ -322,7 +349,7 @@ class _OperatorSVD:
                 # accurate orthogonalization needed!
                 s = z.dot(self.ones)
                 z.add(self.ones, -1.0/m, s)
-            self.op.apply(z, y, transp = True)
+            self.op.apply(z, y, transp=True)
         if self.gpu is not None:
             self.gpu.synchronize()
         stop = time.time()
@@ -332,6 +359,16 @@ class _OperatorSVD:
             return self.aves.data()
         else:
             return None
+
+
+class _DefaultConvergenceCriteria:
+    def __init__(self, tol):
+        self.tolerance = tol
+    def set_tolerance(self, tolerance):
+        self.tolerance = tolerance
+    def satisfied(self, solver, i):
+        err = solver.convergence_data('res', i)
+        return err >= 0 and err <= self.tolerance
 
 
 def _conj(a):

@@ -682,6 +682,8 @@ class Solver:
 
             lcon = 0
             for i in range(leftX - leftX//4):
+                if left == 0:
+                    break
                 j = self.lcon + i
                 k = ix + i
                 if sigma is not None and lmd[k] > 0:
@@ -717,6 +719,8 @@ class Solver:
 
             rcon = 0
             for i in range(rightX - rightX//4):
+                if right == 0:
+                    break
                 j = self.rcon + i
                 k = ix + nx - i - 1
                 if sigma is not None and lmd[k] < 0:

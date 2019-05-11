@@ -1,0 +1,137 @@
+# -*- coding: utf-8 -*-
+"""Comparisons of lra.LowerRankApproximation with sklearn.TruncatedSVD 
+   and scipy.linalg.svd on a randomly generated matrix.
+
+Usage:
+  tsvd_random [--help | -h | options] <m> <n> <k>
+
+Arguments:
+  m  number of rows
+  n  number of rows
+  k  number of non-zero singular values
+
+Options:
+  -a <arch>, --arch=<arch>   architecture [default: cpu]
+  -b <blk> , --bsize=<blk>   block CG block size [default: -1]
+  -n <rank>, --rank=<rank>   truncated svd rank (negative: unknown a priori, 
+                             thsh > 0 will be used as a criterion,
+                             if thsh == 0, will run in interactive mode)
+                             [default: -1]
+  -r <alph>, --alpha=<alph>  singular values decay rate [default: 100]
+  -s <thsh>, --thres=<thsh>  singular values threshold [default: 0.01]
+  -t <rtol>, --rtol=<rtol>   residual tolerance [default: 1e-3]
+  -v <verb>, --verb=<verb>   verbosity level [default: 0]
+  -d, --double   use double precision
+  -p, --ptb      add random perturbation to make the matrix full rank
+
+@author: Evgueni Ovtchinnikov, UKRI
+"""
+
+from docopt import docopt
+
+import numpy
+import numpy.linalg as nla
+import scipy.linalg as sla
+import sys
+import time
+
+raleigh_path = '../..'
+if raleigh_path not in sys.path:
+    sys.path.append(raleigh_path)
+
+from raleigh.solver import Options
+from raleigh.apps.partial_svd import truncated_svd
+
+
+def random_singular_values(k, sigma, dt):
+    s = numpy.random.rand(k).astype(dt)
+    s = numpy.sort(s)
+    t = numpy.ones(k)*s[0]
+    return sigma(s - t)
+
+
+def random_singular_vectors(m, n, k, dt):
+    u = numpy.random.randn(m, k).astype(dt)
+    v = numpy.random.randn(n, k).astype(dt)
+    u, r = numpy.linalg.qr(u)
+    v, r = numpy.linalg.qr(v)
+    return u, v
+
+
+def random_matrix_for_svd(m, n, k, sigma, dt):
+    s = random_singular_values(min(m, n), sigma, dt)[:k]
+    u, v = random_singular_vectors(m, n, k, dt)
+    a = numpy.dot(u*s, v.transpose())
+    return s, u, v, a
+
+
+def vec_err(u, v):
+    w = v.copy()
+    q = numpy.dot(u.T, v)
+    w = numpy.dot(u, q) - v
+    s = numpy.linalg.norm(w, axis = 0)
+    return s
+
+
+__version__ = '0.1.0'
+args = docopt(__doc__, version=__version__)
+
+m = int(args['<m>'])
+n = int(args['<n>'])
+k = int(args['<k>'])
+alpha = float(args['--alpha'])
+arch = args['--arch']
+block_size = int(args['--bsize'])
+rank = int(args['--rank'])
+th = float(args['--thres'])
+tol = float(args['--rtol'])
+verb = int(args['--verb'])
+dble = args['--double']
+ptb = args['--ptb']
+
+numpy.random.seed(1) # make results reproducible
+
+if dble:
+    dtype = numpy.float64
+else:
+    dtype = numpy.float32
+
+print('\n--- generating the matrix...')
+f_sigma = lambda t: 2**(-alpha*t).astype(dtype)
+sigma0, u0, v0, A = random_matrix_for_svd(m, n, k, f_sigma, dtype)
+if ptb:
+    a = 2*numpy.random.rand(m, n).astype(dtype) - 1
+    s = numpy.linalg.norm(a, axis = 0)
+    A += a*(sigma0[-1]/s)
+
+print('\n--- solving with raleigh.svd...')
+
+# set raleigh solver options
+opt = Options()
+opt.block_size = block_size
+#opt.max_iter = 1000
+opt.verbosity = verb
+
+start = time.time()
+u, sigma, vt = truncated_svd(A, opt, tol=th, rtol=tol, arch=arch)
+stop = time.time()
+time_r = stop - start
+print('\ntruncated svd time: %.1e' % time_r)
+
+n_r = sigma.shape[0]
+print('\n%d singular vectors computed' % n_r)
+n_r = numpy.sum(sigma > th)
+print('\n%d singular values above threshold' % n_r)
+if not ptb and n_r > 0:
+    n_r = min(n_r, sigma0.shape[0])
+    err_vec = vec_err(v0[:,:n_r], vt.transpose()[:,:n_r])
+    err_val = abs(sigma[:n_r] - sigma0[:n_r])
+    #print(err_vec)
+    #print(err_vec*sigma_r[:n_r])
+    print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
+    print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
+D = A - numpy.dot(sigma[:n_r]*u[:, :n_r], vt[:n_r, :])
+err = nla.norm(D, axis = 1)/nla.norm(A, axis = 1)
+print('\ntruncation error %.1e' % numpy.amax(err))
+
+print('\ndone')
