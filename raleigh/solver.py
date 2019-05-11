@@ -133,13 +133,16 @@ class Solver:
         verb = options.verbosity
 
         try:
-            w = which[0].lower()
-            largest = (w == 'largest' or w == 'lm')
-        except:
+            l = len(which)
+            if l != 2:
+                raise ValueError\
+                      ('which must be either integer or tuple of 2 integers')
             largest = False
+        except:
+            largest = True
 
         if largest:
-            total = int(which[1])
+            total = which
             left = total//2
             right = total - left
         else:
@@ -250,15 +253,17 @@ class Solver:
         sigma = options.sigma
 
         try:
-            w = which[0].lower()
-            largest = (w == 'largest' or w == 'lm')
-        except:
+            l = len(which)
+            if l != 2:
+                raise ValueError\
+                      ('which must be either integer or tuple of 2 integers')
             largest = False
-        if largest:
-            left = int(which[1])
-        else:
             left = int(which[0])
-        right = int(which[1])
+            right = int(which[1])
+        except:
+            largest = True
+            left = which
+            right = which
 
         m = self.block_size
         if left == 0 and not largest:

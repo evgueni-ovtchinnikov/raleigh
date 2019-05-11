@@ -51,14 +51,15 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
             print('positive eigenvalues: %d' % pos)
             print('negative eigenvalues: %d' % neg)
         try:
-            which[0].upper()
+            l = len(which)
+            if l != 2:
+                raise ValueError\
+                      ('which must be either integer or tuple of 2 integers')
+            left = min(which[0], neg)
+            right = min(which[1], pos)
+            which = (left, right)
         except:
-            try:
-                left = min(which[0], neg)
-                right = min(which[1], pos)
-                which = (left, right)
-            except:
-                which = ('largest', which)
+            pass
         eigenvectors = Vectors(n, data_type=dtype)
         if B is None:
             evp = Problem(eigenvectors, opAinv)
