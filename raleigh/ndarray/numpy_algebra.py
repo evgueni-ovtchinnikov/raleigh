@@ -7,19 +7,15 @@ Created on Thu Jun 14 11:52:38 2018
 @author: Evgueni Ovtchinnikov, UKRI-STFC
 """
 
-raleigh_path = '../..'
-
 import numpy
-import sys
-if raleigh_path not in sys.path:
-    sys.path.append(raleigh_path)
 
-from raleigh.ndarray.algebra_bc import NDArrayVectors, NDArrayMatrix
+from .algebra_base import NDArrayVectors, NDArrayMatrix
+
 
 class Vectors(NDArrayVectors):
-    def __init__(self, arg, nvec = 0, data_type = None):
+    def __init__(self, arg, nvec=0, data_type=None):
         super(Vectors, self).__init__(arg, nvec, data_type)
-    def new_vectors(self, nv = 0, dim = None):
+    def new_vectors(self, nv=0, dim=None):
         if dim is None:
             dim = self.dimension()
         return Vectors(dim, nv, self.data_type())
@@ -27,7 +23,7 @@ class Vectors(NDArrayVectors):
         return Vectors(self)
 
     # BLAS level 1
-    def copy(self, other, ind = None):
+    def copy(self, other, ind=None):
         i, n = self.selected()
         j, m = other.selected()
         if ind is None:
@@ -35,7 +31,7 @@ class Vectors(NDArrayVectors):
             other.data()[:,:] = self.data()
         else:
             other.all_data()[j : j + len(ind), :] = self.all_data()[ind, :]
-    def scale(self, s, multiply = False):
+    def scale(self, s, multiply=False):
         f, n = self.selected();
         if multiply:
             for i in range(n):
@@ -44,12 +40,12 @@ class Vectors(NDArrayVectors):
             for i in range(n):
                 if s[i] != 0.0:
                     self.data(i)[:] /= s[i]
-    def dots(self, other, transp = False):
+    def dots(self, other, transp=False):
         if transp:
             u = self.data()
             v = other.data()
             n = self.dimension()
-            w = numpy.ndarray((n,), dtype = self.data_type())
+            w = numpy.ndarray((n,), dtype=self.data_type())
             if other.is_complex():
                 for i in range(n):
                     w[i] = numpy.dot(v[:, i].conj(), u[:, i])
@@ -57,23 +53,14 @@ class Vectors(NDArrayVectors):
                 for i in range(n):
                     w[i] = numpy.dot(v[:, i], u[:, i])
             return w
-#            if other.is_complex():
-#                for i in range(n):
-#                    w[i] = numpy.dot(other.data_slice(i).conj(), self.data_slice(i))
-#            else:
-#                for i in range(n):
-#                    w[i] = numpy.dot(other.data_slice(i), self.data_slice(i))
-            return w
         else:
             n = self.nvec()
-        v = numpy.ndarray((n,), dtype = self.data_type())
+        v = numpy.ndarray((n,), dtype=self.data_type())
         for i in range(n):
             if other.is_complex():
                 s = numpy.dot(other.data(i).conj(), self.data(i))
-#                s = numpy.dot(other.data(i, transp).conj(), self.data(i, transp))
             else:
                 s = numpy.dot(other.data(i), self.data(i))
-#                s = numpy.dot(other.data(i, transp), self.data(i, transp))
             v[i] = s
         return v
 
@@ -89,22 +76,20 @@ class Vectors(NDArrayVectors):
         assert(s == m)
         if output.data().flags['C_CONTIGUOUS']:
             #print('using optimized dot')
-            numpy.dot(q.T, self.data(), out = output.data())
+            numpy.dot(q.T, self.data(), out=output.data())
             return
         print('using non-optimized dot')
         output.data()[:,:] = numpy.dot(q.T, self.data())
-    def apply(self, A, output, transp = False):
+    def apply(self, A, output, transp=False):
         a = A.data()
         if transp:
-#            is_complex = isinstance(a[0,0], complex) # wrong
-#            is_complex = numpy.iscomplex(a).any() # too slow
             is_complex = A.is_complex()
             if is_complex:
-                numpy.conj(self.data(), out = self.data())
+                numpy.conj(self.data(), out=self.data())
             self.__apply(a.T, output)
             if is_complex:
-                numpy.conj(output.data(), out = output.data())
-                numpy.conj(self.data(), out = self.data())
+                numpy.conj(output.data(), out=output.data())
+                numpy.conj(self.data(), out=self.data())
         else:
             self.__apply(a, output)
     def __apply(self, q, output):
@@ -126,26 +111,27 @@ class Vectors(NDArrayVectors):
             for i in range(m):
                 self.data(i)[:] += s[i]*other.data(i)
 
+
 class Matrix(NDArrayMatrix):
-    def apply(self, x, y, transp = False):
+    def apply(self, x, y, transp=False):
         if transp:
             is_complex = self.is_complex()
             if is_complex:
-                numpy.conj(x.data(), out = x.data())
+                numpy.conj(x.data(), out=x.data())
             self.__apply(x, y, transp)
             if is_complex:
-                numpy.conj(x.data(), out = x.data())
-                numpy.conj(y.data(), out = y.data())
+                numpy.conj(x.data(), out=x.data())
+                numpy.conj(y.data(), out=y.data())
         else:
             self.__apply(x, y)
-    def __apply(self, x, y, transp = False):
+    def __apply(self, x, y, transp=False):
         if transp:
             a = self.data().T
         else:
             a = self.data()
         if y.data().flags['C_CONTIGUOUS']:
             #print('using optimized dot')
-            numpy.dot(x.data(), a.T, out = y.data())
+            numpy.dot(x.data(), a.T, out=y.data())
         else:
             print('using non-optimized dot')
             y.data()[:,:] = numpy.dot(x.data(), a.T)

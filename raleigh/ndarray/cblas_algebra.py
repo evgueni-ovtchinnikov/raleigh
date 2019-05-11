@@ -12,11 +12,11 @@ import numpy
 import scipy.sparse as scs
 
 from .mkl import Cblas
-from .algebra_bc import NDArrayVectors, NDArrayMatrix
+from .algebra_base import NDArrayVectors, NDArrayMatrix
 
 
 class Vectors(NDArrayVectors):
-    def __init__(self, arg, nvec = 0, data_type = None):
+    def __init__(self, arg, nvec=0, data_type=None):
         super(Vectors, self).__init__(arg, nvec, data_type)
         dt = self.data_type()
         self.__cblas = Cblas(dt)
@@ -42,7 +42,7 @@ class Vectors(NDArrayVectors):
         else:
             raise ValueError('data type %s not supported' % repr(dt))
         return s
-    def new_vectors(self, nv = 0, dim = None):
+    def new_vectors(self, nv=0, dim=None):
         if dim is None:
             dim = self.dimension()
         return Vectors(dim, nv, self.data_type())
@@ -52,7 +52,7 @@ class Vectors(NDArrayVectors):
         return self.__cblas
 
     # BLAS level 1
-    def copy(self, other, ind = None):
+    def copy(self, other, ind=None):
         i, n = self.selected()
         j, m = other.selected()
         vdim = self.dimension()
@@ -70,7 +70,7 @@ class Vectors(NDArrayVectors):
                 ptr_u = _array_ptr(self.all_data(), int(ind[k])*vsize)
                 ptr_v = _array_ptr(other.all_data(), (j + k)*vsize)
                 self.__cblas.copy(mkl_n, ptr_u, mkl_inc, ptr_v, mkl_inc)
-    def scale(self, s, multiply = False):
+    def scale(self, s, multiply=False):
         f, n = self.selected()
         vdim = self.dimension()
         mkl_n = ctypes.c_int(vdim)
@@ -87,12 +87,12 @@ class Vectors(NDArrayVectors):
                     ptr_u = _array_ptr(self.all_data(), (f + i)*vsize)
                     mkl_s = self.__to_float(1.0/s[i])
                     self.__cblas.scal(mkl_n, mkl_s, ptr_u, mkl_inc)
-    def dots(self, other, transp = False):
+    def dots(self, other, transp=False):
         if transp:
             u = self.data()
             v = other.data()
             n = self.dimension()
-            w = numpy.ndarray((n,), dtype = self.data_type())
+            w = numpy.ndarray((n,), dtype=self.data_type())
             if other.is_complex():
                 for i in range(n):
                     w[i] = numpy.dot(v[:, i].conj(), u[:, i])
@@ -108,7 +108,7 @@ class Vectors(NDArrayVectors):
         n = self.nvec()
         mkl_n = ctypes.c_int(vdim)
         mkl_inc = ctypes.c_int(1)
-        w = numpy.ndarray((n,), dtype = self.data_type())
+        w = numpy.ndarray((n,), dtype=self.data_type())
         for i in range(n):
             ptr_u = _array_ptr(self.all_data(), (iu + i)*vsize)
             ptr_v = _array_ptr(other.all_data(), (iv + i)*vsize)
@@ -127,7 +127,7 @@ class Vectors(NDArrayVectors):
         n = self.dimension()
         m = self.nvec()
         k = other.nvec()
-        q = numpy.ndarray((k, m), dtype = self.data_type())
+        q = numpy.ndarray((k, m), dtype=self.data_type())
         mkl_n = ctypes.c_int(n)
         mkl_m = ctypes.c_int(m)
         mkl_k = ctypes.c_int(k)
@@ -167,16 +167,16 @@ class Vectors(NDArrayVectors):
             mkl_n, mkl_m, mkl_k, \
             self.__cblas.mkl_one, ptr_v, mkl_n, ptr_q, ldq, \
             self.__cblas.mkl_zero, ptr_u, mkl_n)
-    def apply(self, A, output, transp = False):
+    def apply(self, A, output, transp=False):
         a = A.data()
         if transp:
             is_complex = (a.dtype.kind == 'c')
             if is_complex:
-                numpy.conj(self.data(), out = self.data())
+                numpy.conj(self.data(), out=self.data())
             self.__apply(a.T, output)
             if is_complex:
-                numpy.conj(output.data(), out = output.data())
-                numpy.conj(self.data(), out = self.data())
+                numpy.conj(output.data(), out=output.data())
+                numpy.conj(self.data(), out=self.data())
         else:
             self.__apply(a, output)
     def __apply(self, q, output):
@@ -204,7 +204,7 @@ class Vectors(NDArrayVectors):
             mkl_m, mkl_k, mkl_n, \
             self.__cblas.mkl_one, ptr_q, ldq, ptr_v, mkl_n, \
             self.__cblas.mkl_zero, ptr_u, mkl_m)
-    def add(self, other, s, q = None):
+    def add(self, other, s, q=None):
         f, m = self.selected();
         n = self.dimension()
         m = other.nvec()
@@ -247,18 +247,18 @@ class Vectors(NDArrayVectors):
                     (mkl_n, mkl_s, ptr_u, mkl_inc, ptr_v, mkl_inc)
 
 class Matrix(NDArrayMatrix):
-    def apply(self, x, y, transp = False):
+    def apply(self, x, y, transp=False):
         if transp:
             is_complex = self.is_complex()
             if is_complex:
-                numpy.conj(x.data(), out = x.data())
+                numpy.conj(x.data(), out=x.data())
             self.__apply(x, y, transp)
             if is_complex:
-                numpy.conj(x.data(), out = x.data())
-                numpy.conj(y.data(), out = y.data())
+                numpy.conj(x.data(), out=x.data())
+                numpy.conj(y.data(), out=y.data())
         else:
             self.__apply(x, y)
-    def __apply(self, x, y, transp = False):
+    def __apply(self, x, y, transp=False):
         if transp:
             q = self.data().T
         else:
@@ -288,7 +288,7 @@ class Matrix(NDArrayMatrix):
             x.cblas().mkl_zero, ptr_u, mkl_m)
 
 
-def _array_ptr(array, shift = 0):
+def _array_ptr(array, shift=0):
     return ctypes.c_void_p(array.ctypes.data + shift)
 
 
