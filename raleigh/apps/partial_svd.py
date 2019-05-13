@@ -367,7 +367,7 @@ class _DefaultConvergenceCriteria:
     def set_tolerance(self, tolerance):
         self.tolerance = tolerance
     def satisfied(self, solver, i):
-        err = solver.convergence_data('res', i)
+        err = solver.convergence_data('kinematic vector err est', i)
         return err >= 0 and err <= self.tolerance
 
 
