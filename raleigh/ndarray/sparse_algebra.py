@@ -17,7 +17,7 @@ class SparseSymmetricMatrix:
         try:
             csr = matrix.csr()
         except:
-            csr = scs.triu(matrix, format = 'csr')
+            csr = scs.triu(matrix, format='csr')
             csr.sort_indices()
         a = csr.data
         ia = csr.indptr + 1
@@ -40,22 +40,21 @@ class SparseSymmetricMatrix:
         except:
             pass
         self.__ssm.dot(x, y)
-        #self.__ssm.dot(x.data(), y.data())
 
 
 class SparseSymmetricSolver:
-    def __init__(self, dtype = numpy.float64, pos_def = False):
-        self.__solver = SSS(dtype = dtype, pos_def = pos_def)
+    def __init__(self, dtype=numpy.float64, pos_def=False):
+        self.__solver = SSS(dtype=dtype, pos_def=pos_def)
         self.__dtype = dtype
-    def analyse(self, a, sigma = 0, b = None):
+    def analyse(self, a, sigma=0, b=None):
         data = a.data
         if sigma != 0:
             if b is None:
-                b = scs.eye(a.shape[0], dtype = a.data.dtype, format = 'csr')
+                b = scs.eye(a.shape[0], dtype=a.data.dtype, format='csr')
             a_s = a - sigma * b
         else:
             a_s = a
-        a_s = scs.triu(a_s, format = 'csr')
+        a_s = scs.triu(a_s, format='csr')
         a_s.sort_indices()
         ia = a_s.indptr + 1
         ja = a_s.indices + 1
@@ -72,7 +71,6 @@ class SparseSymmetricSolver:
         except:
             pass
         self.__solver.solve(b, x)
-        #self.__solver.solve(b.data(), x.data())
     def apply(self, b, x):
         self.solve(b, x)
     def inertia(self):
@@ -103,7 +101,6 @@ class IncompleteLU:
         except:
             pass
         self.__ilut.solve(x, y)
-        #self.__ilut.solve(x.data(), y.data())
 
 
 class Operator:
