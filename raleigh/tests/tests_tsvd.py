@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Comparisons of lra.LowerRankApproximation with sklearn.TruncatedSVD 
-   and scipy.linalg.svd on a randomly generated matrix.
+"""Truncated SVD of a a randomly generated matrix.
 
 Usage:
-  tsvd_random [--help | -h | options] <m> <n> <k>
+  tests_tsvd [--help | -h | options] <m> <n> <k>
 
 Arguments:
   m  number of rows
