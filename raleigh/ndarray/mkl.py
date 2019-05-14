@@ -16,16 +16,16 @@ def _array_ptr(array, shift = 0):
     return ctypes.c_void_p(array.ctypes.data + shift)
 
 def mkl_version(mkl):
-    str_v = numpy.ndarray((128,), dtype = numpy.uint8)
+    str_v = numpy.ndarray((128,), dtype=numpy.uint8)
     ptr_v = _array_ptr(str_v)
     len_v = ctypes.c_int(128)
     mkl.mkl_get_version_string(ptr_v, len_v)
     return str_v.tostring().decode('ascii')
 
 if platform == 'win32':
-    mkl = ctypes.CDLL('mkl_rt.dll', mode = ctypes.RTLD_GLOBAL)
+    mkl = ctypes.CDLL('mkl_rt.dll', mode=ctypes.RTLD_GLOBAL)
 else:
-    mkl = ctypes.CDLL('libmkl_rt.so', mode = ctypes.RTLD_GLOBAL)
+    mkl = ctypes.CDLL('libmkl_rt.so', mode=ctypes.RTLD_GLOBAL)
 print('Loaded %s' % mkl_version(mkl))
 
 # find the total number of threads    
@@ -86,10 +86,10 @@ class Cblas:
             self.norm = mkl.cblas_scnrm2
             self.norm.restype = ctypes.c_float
             self.inner = mkl.cblas_cdotc_sub
-            self.cmplx_val = numpy.zeros((2,), dtype = numpy.float32)
-            self.cmplx_one = numpy.zeros((2,), dtype = numpy.float32)
+            self.cmplx_val = numpy.zeros((2,), dtype=numpy.float32)
+            self.cmplx_one = numpy.zeros((2,), dtype=numpy.float32)
             self.cmplx_one[0] = 1.0
-            self.cmplx_zero = numpy.zeros((2,), dtype = numpy.float32)
+            self.cmplx_zero = numpy.zeros((2,), dtype=numpy.float32)
             self.mkl_one = ctypes.c_void_p(self.cmplx_one.ctypes.data)
             self.mkl_zero = ctypes.c_void_p(self.cmplx_zero.ctypes.data)
         elif dt == numpy.complex128:
@@ -101,10 +101,10 @@ class Cblas:
             self.norm = mkl.cblas_dznrm2
             self.norm.restype = ctypes.c_double
             self.inner = mkl.cblas_zdotc_sub
-            self.cmplx_val = numpy.zeros((2,), dtype = numpy.float64)
-            self.cmplx_one = numpy.zeros((2,), dtype = numpy.float64)
+            self.cmplx_val = numpy.zeros((2,), dtype=numpy.float64)
+            self.cmplx_one = numpy.zeros((2,), dtype=numpy.float64)
             self.cmplx_one[0] = 1.0
-            self.cmplx_zero = numpy.zeros((2,), dtype = numpy.float64)
+            self.cmplx_zero = numpy.zeros((2,), dtype=numpy.float64)
             self.mkl_one = ctypes.c_void_p(self.cmplx_one.ctypes.data)
             self.mkl_zero = ctypes.c_void_p(self.cmplx_zero.ctypes.data)
         else:
@@ -189,7 +189,7 @@ class ILUT:
         nnz = ia[n] - ia[0]
         self.__rows = n
         self.__nnz = nnz//n
-        self.__ipar = numpy.zeros((128,), dtype = numpy.int32)
+        self.__ipar = numpy.zeros((128,), dtype=numpy.int32)
         self.__dpar = numpy.zeros((128,))
         self.__w = numpy.zeros((n,))
         self.__ipar[0] = n
@@ -202,7 +202,7 @@ class ILUT:
         self.__U = ctypes.c_char_p(self.__u.encode('utf-8'))
         self.__L = ctypes.c_char_p(self.__l.encode('utf-8'))
         self.__N = ctypes.c_char_p(self.__n.encode('utf-8'))
-    def factorize(self, tol = 1e-2, max_fill_rel = 10):
+    def factorize(self, tol=1e-2, max_fill_rel=10):
         max_fill_abs = min(self.__rows - 1, self.__nnz * max_fill_rel)
         self.__ipar[30] = 1
         self.__dpar[30] = tol
@@ -211,7 +211,7 @@ class ILUT:
         #print(n, nnz)
         self.__b = numpy.ndarray((nnz,)) 
         self.__ib = numpy.ndarray((n + 1,)) 
-        self.__jb = numpy.ndarray((nnz,), dtype = numpy.int32)
+        self.__jb = numpy.ndarray((nnz,), dtype=numpy.int32)
         n_c = ctypes.c_int(n)
         mf_c = ctypes.c_int(max_fill_abs)
         ierr_c = ctypes.c_int()
@@ -246,10 +246,10 @@ class ILUT:
                              ptr_b, ptr_ib, ptr_jb, ptr_w, ptr_x)
 
 class ParDiSo:
-    def __init__(self, dtype = numpy.float64, pos_def = False):
+    def __init__(self, dtype=numpy.float64, pos_def=False):
         self.__pardiso = mkl.pardiso
-        self.__pt = numpy.ndarray((64,), dtype = numpy.int64)
-        self.__iparm = numpy.ndarray((64,), dtype = numpy.int32)
+        self.__pt = numpy.ndarray((64,), dtype=numpy.int64)
+        self.__iparm = numpy.ndarray((64,), dtype=numpy.int32)
         self.__handle = _array_ptr(self.__pt)
         if (dtype == numpy.float32 or dtype == numpy.float64):
             m = 2
@@ -275,7 +275,6 @@ class ParDiSo:
         mkl.pardisoinit(self.__handle, ctypes.byref(mtype), self.__ptr_iparm)
         self.__iparm[4] = 2
         if dtype == numpy.float32 or dtype == numpy.complex64:
-            #print('single precision')
             self.__iparm[27] = 1
     def __del__(self):
         step = ctypes.c_int(-1)
@@ -300,7 +299,6 @@ class ParDiSo:
     def perm(self):
         return self.__perm
     def analyse(self, a, ia, ja):
-        #print('iparm[27]: %d' % self.__iparm[27])
         self.__a = a
         self.__ia = ia
         self.__ja = ja
@@ -313,7 +311,7 @@ class ParDiSo:
         ptr_a = _array_ptr(self.__a)
         ptr_ia = _array_ptr(self.__ia)
         ptr_ja = _array_ptr(self.__ja)
-        self.__perm = numpy.ndarray((rows,), dtype = numpy.int32)
+        self.__perm = numpy.ndarray((rows,), dtype=numpy.int32)
         ptr_perm = _array_ptr(self.__perm)
         ptr_iparm = _array_ptr(self.__iparm)
         verb = ctypes.c_int(0)
@@ -324,9 +322,7 @@ class ParDiSo:
                     ptr_perm, ctypes.byref(m), ptr_iparm, ctypes.byref(verb), \
                     self.__ptr, self.__ptr, ctypes.byref(err))
         if err.value != 0: print(err.value)
-        #print(self.__perm)
     def factorize(self):
-        #print('iparm[27]: %d' % self.__iparm[27])
         step = ctypes.c_int(22)
         maxf = ctypes.c_int(1)
         mnum = ctypes.c_int(1)
@@ -347,7 +343,6 @@ class ParDiSo:
                     self.__ptr, self.__ptr, ctypes.byref(err))
         if err.value != 0: print(err.value)
     def solve(self, b, x, part = None):
-        #print('iparm[27]: %d' % self.__iparm[27])
         if len(b.shape) > 1:
             nrhs = b.shape[0]
         else:
@@ -383,14 +378,14 @@ class ParDiSo:
     def diag(self):
         rows = self.__ia.shape[0] - 1
         perm = self.__perm - 1
-        f = numpy.zeros((4, rows), dtype = self.__dtype)
-        w = numpy.zeros((4, rows), dtype = self.__dtype)
+        f = numpy.zeros((4, rows), dtype=self.__dtype)
+        w = numpy.zeros((4, rows), dtype=self.__dtype)
         for i in range(rows):
             j = i%4
             f[j, perm[i]] = 1
         self.solve(f, w, part = 'd')
         w = w[:,perm]
-        d = numpy.zeros((2, rows), dtype = self.__dtype)
+        d = numpy.zeros((2, rows), dtype=self.__dtype)
         i = 0
         while i < rows:
             if i > 0:
@@ -535,7 +530,7 @@ class SparseSymmetricDirectSolver:
                                      ptr_order)
         if err is not self.__MKL_DSS_SUCCESS:
             raise RuntimeError('mkl.dss_reorder failed')
-    def factorize(self, a, sigma = 0, pos_def = False): #, scale = True):
+    def factorize(self, a, sigma=0, pos_def=False): #, scale=True):
         if sigma == 0.0: # and not scale:
             a_s = a
 ##            self.__scale = None
