@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-SCR matrix solver tests.
+Real symmetric/Hermitian SCR matrix test.
 
 Usage:
-    scr_tests [--help | -h | options]
+    tests_hevp [--help | -h | options]
 
 Options:
     -a <mat>, --matrix=<mat>  problem matrix [default: lap3d]
@@ -14,7 +14,7 @@ Options:
     -l <lft>, --left=<lft>    number of eigenvalues left of shift (shift-invert
                               mode) [default: 0]
     -r <rgt>, --right=<rgt>   number of eigenvalues right of shift (shift-ivert
-                              mode) [default: 6]
+                              mode) [default: 0]
     -e <nev>, --nev=<nev>     number of eigenvalues wanted: largest if left and
                               right are set to 0 in shift-invert mode
                               or smallest if preconditioning is used
