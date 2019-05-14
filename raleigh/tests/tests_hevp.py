@@ -14,7 +14,7 @@ Options:
     -l <lft>, --left=<lft>    number of eigenvalues left of shift (shift-invert
                               mode) [default: 0]
     -r <rgt>, --right=<rgt>   number of eigenvalues right of shift (shift-ivert
-                              mode) [default: 0]
+                              mode) [default: 6]
     -e <nev>, --nev=<nev>     number of eigenvalues wanted: largest if left and
                               right are set to 0 in shift-invert mode
                               or smallest if preconditioning is used
@@ -140,7 +140,7 @@ else:
         setup_time = stop - start
         print('setup time: %.2e' % setup_time)
 
-if T is not None or left == 0 and right == 0:
+if T is not None:
     which = nev
 else:
     which = (left, right)
