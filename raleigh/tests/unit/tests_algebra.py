@@ -12,16 +12,7 @@ Options:
   -c, --complex
 '''
 
-__version__ = '0.1.0'
 from docopt import docopt
-args = docopt(__doc__, version=__version__)
-
-n = int(args['<dim>'])
-m = int(args['<nv>'])
-dble = args['--double']
-cmplx = args['--complex']
-
-#import math
 import numpy
 import numpy.linalg as nla
 import sys
@@ -44,7 +35,6 @@ try:
 except:
     have_cublas = False
 
-numpy.random.seed(1) # make results reproducible
 
 def test(u, v):
 
@@ -52,30 +42,24 @@ def test(u, v):
     v_numpy = numpyVectors(v)
     n = u_numpy.dimension()
     dt = u_numpy.data_type()
-    w_numpy = numpyVectors(n, data_type = dt)
 
     if have_cblas:
         u_cblas = cblasVectors(u.copy())
         v_cblas = cblasVectors(v.copy())
-##    w_cblas = cblasVectors(n, data_type = dt)
 
     if have_cublas:
         u_cublas = cublasVectors(u)
         v_cublas = cublasVectors(v)
         w_cublas = cublasVectors(v)
-
         print('----\n testing cublasVectors.zero...')
         w_cublas.zero()
         t = nla.norm(w_cublas.data())
         print('error: %e' % t)
-
         print('----\n testing cublasVectors.fill_random...')
         w_cublas.fill_random()
         w_data = w_cublas.data()
         print(numpy.mean(w_data))
         print(numpy.var(w_data))
-##    print(w_data[0,:10])
-##    print(w_data[5,:10])
 
     print('----\n testing numpy copy...')
     start = time.time()
@@ -202,37 +186,30 @@ def test(u, v):
 
     print('----\n testing numpy transposed dots...')
     start = time.time()
-    p = u_numpy.dots(v_numpy, transp = True)
+    p = u_numpy.dots(v_numpy, transp=True)
     stop = time.time()
     elapsed = stop - start
     s = nla.norm(p)
     print('time: %.2e' % elapsed)
-#    print(p)
-#    q = u_numpy.dots(v_numpy, transp = True)
-#    print(q)
 
     if have_cblas:
         print('----\n testing cblas transposed dots...')
         start = time.time()
-        q = u_cblas.dots(v_cblas, transp = True)
+        q = u_cblas.dots(v_cblas, transp=True)
         stop = time.time()
         elapsed = stop - start
         print('error: %e' % (nla.norm(q - p)/s))
         print('time: %.2e' % elapsed)
-#    q = u_cblas.dots(v_cblas, transp = True)
-#    print(q)
 
     if have_cublas:
         print('----\n testing cublas transposed dots...')
         start = time.time()
-        q = u_cublas.dots(v_cublas, transp = True)
+        q = u_cublas.dots(v_cublas, transp=True)
         cuda.synchronize()
         stop = time.time()
         elapsed = stop - start
         print('error: %e' % (nla.norm(q - p)/s))
         print('time: %.2e' % elapsed)
-#    q = u_cublas.dots(v_cublas, transp = True)
-#    print(q)
 
     print('----\n testing numpy dot...')
     start = time.time()
@@ -319,6 +296,17 @@ def test(u, v):
         t = nla.norm(v_cublas.data())/s
         print('error: %e' % t)
 
+
+__version__ = '0.1.0'
+args = docopt(__doc__, version=__version__)
+
+n = int(args['<dim>'])
+m = int(args['<nv>'])
+dble = args['--double']
+cmplx = args['--complex']
+
+numpy.random.seed(1) # make results reproducible
+
 try:
     if dble:
         print('running in double precision...')
@@ -326,10 +314,10 @@ try:
     else:
         print('running in single precision...')
         dt = numpy.float32
-    u = numpy.ones((m, n), dtype = dt)
-    v = numpy.ones((m, n), dtype = dt)
-#    u = numpy.random.randn(m, n).astype(dt)
-#    v = numpy.random.randn(m, n).astype(dt)
+#    u = numpy.ones((m, n), dtype = dt)
+#    v = numpy.ones((m, n), dtype = dt)
+    u = numpy.random.randn(m, n).astype(dt)
+    v = numpy.random.randn(m, n).astype(dt)
 
     if cmplx:
         print('testing on complex data...')
