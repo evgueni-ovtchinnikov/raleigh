@@ -32,9 +32,17 @@ if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 from raleigh.ndarray.numpy_algebra import Vectors as numpyVectors
-from raleigh.ndarray.cblas_algebra import Vectors as cblasVectors
-from raleigh.cuda.cublas_algebra import Vectors as cublasVectors
-import raleigh.cuda.cuda as cuda
+try:
+    from raleigh.ndarray.cblas_algebra import Vectors as cblasVectors
+    have_cblas = True
+except:
+    have_cblas = False
+try:
+    import raleigh.cuda.cuda as cuda
+    from raleigh.cuda.cublas_algebra import Vectors as cublasVectors
+    have_cublas = True
+except:
+    have_cublas = False
 
 numpy.random.seed(1) # make results reproducible
 
@@ -46,25 +54,26 @@ def test(u, v):
     dt = u_numpy.data_type()
     w_numpy = numpyVectors(n, data_type = dt)
 
-    u_cblas = cblasVectors(u.copy())
-    v_cblas = cblasVectors(v.copy())
+    if have_cblas:
+        u_cblas = cblasVectors(u.copy())
+        v_cblas = cblasVectors(v.copy())
 ##    w_cblas = cblasVectors(n, data_type = dt)
 
-    u_cublas = cublasVectors(u)
-    v_cublas = cublasVectors(v)
-    w_cublas = cublasVectors(v)
+    if have_cublas:
+        u_cublas = cublasVectors(u)
+        v_cublas = cublasVectors(v)
+        w_cublas = cublasVectors(v)
 
-    print('----\n testing cublasVectors.zero...')
-    w_cublas.zero()
-    t = nla.norm(w_cublas.data())
-    print('error: %e' % t)
-#    return
+        print('----\n testing cublasVectors.zero...')
+        w_cublas.zero()
+        t = nla.norm(w_cublas.data())
+        print('error: %e' % t)
 
-    print('----\n testing cublasVectors.fill_random...')
-    w_cublas.fill_random()
-    w_data = w_cublas.data()
-    print(numpy.mean(w_data))
-    print(numpy.var(w_data))
+        print('----\n testing cublasVectors.fill_random...')
+        w_cublas.fill_random()
+        w_data = w_cublas.data()
+        print(numpy.mean(w_data))
+        print(numpy.var(w_data))
 ##    print(w_data[0,:10])
 ##    print(w_data[5,:10])
 
@@ -76,24 +85,26 @@ def test(u, v):
     s = nla.norm(v_numpy.data())
     print('time: %.2e' % elapsed)
 
-    print('----\n testing cblas copy...')
-    start = time.time()
-    u_cblas.copy(v_cblas)
-    stop = time.time()
-    elapsed = stop - start
-    t = nla.norm(v_cblas.data() - v_numpy.data())/s
-    print('error: %e' % t)
-    print('time: %.2e' % elapsed)
+    if have_cblas:
+        print('----\n testing cblas copy...')
+        start = time.time()
+        u_cblas.copy(v_cblas)
+        stop = time.time()
+        elapsed = stop - start
+        t = nla.norm(v_cblas.data() - v_numpy.data())/s
+        print('error: %e' % t)
+        print('time: %.2e' % elapsed)
 
-    print('----\n testing cublas copy...')
-    start = time.time()
-    u_cublas.copy(v_cublas)
-    cuda.synchronize()
-    stop = time.time()
-    elapsed = stop - start
-    t = nla.norm(v_cublas.data() - v_numpy.data())/s
-    print('error: %e' % t)
-    print('time: %.2e' % elapsed)
+    if have_cublas:
+        print('----\n testing cublas copy...')
+        start = time.time()
+        u_cublas.copy(v_cublas)
+        cuda.synchronize()
+        stop = time.time()
+        elapsed = stop - start
+        t = nla.norm(v_cublas.data() - v_numpy.data())/s
+        print('error: %e' % t)
+        print('time: %.2e' % elapsed)
 
     m = u_numpy.nvec()
     ind = numpy.arange(m)
@@ -109,24 +120,26 @@ def test(u, v):
     s = nla.norm(v_numpy.data())
     print('time: %.2e' % elapsed)
 
-    print('----\n testing cblas indexed copy...')
-    start = time.time()
-    u_cblas.copy(v_cblas, ind)
-    stop = time.time()
-    elapsed = stop - start
-    t = nla.norm(v_cblas.data() - v_numpy.data())/s
-    print('error: %e' % t)
-    print('time: %.2e' % elapsed)
+    if have_cblas:
+        print('----\n testing cblas indexed copy...')
+        start = time.time()
+        u_cblas.copy(v_cblas, ind)
+        stop = time.time()
+        elapsed = stop - start
+        t = nla.norm(v_cblas.data() - v_numpy.data())/s
+        print('error: %e' % t)
+        print('time: %.2e' % elapsed)
 
-    print('----\n testing cublas indexed copy...')
-    start = time.time()
-    u_cublas.copy(v_cublas, ind)
-    cuda.synchronize()
-    stop = time.time()
-    elapsed = stop - start
-    t = nla.norm(v_cublas.data() - v_numpy.data())/s
-    print('error: %e' % t)
-    print('time: %.2e' % elapsed)
+    if have_cublas:
+        print('----\n testing cublas indexed copy...')
+        start = time.time()
+        u_cublas.copy(v_cublas, ind)
+        cuda.synchronize()
+        stop = time.time()
+        elapsed = stop - start
+        t = nla.norm(v_cublas.data() - v_numpy.data())/s
+        print('error: %e' % t)
+        print('time: %.2e' % elapsed)
 
     scale = numpy.ones(m)*2.0
     multiply = True
@@ -139,24 +152,26 @@ def test(u, v):
     s = nla.norm(u_numpy.data())
     print('time: %.2e' % elapsed)
 
-    print('----\n testing cblas scale...')
-    start = time.time()
-    u_cblas.scale(scale, multiply)
-    stop = time.time()
-    elapsed = stop - start
-    t = nla.norm(u_cblas.data() - u_numpy.data())/s
-    print('error: %e' % t)
-    print('time: %.2e' % elapsed)
+    if have_cblas:
+        print('----\n testing cblas scale...')
+        start = time.time()
+        u_cblas.scale(scale, multiply)
+        stop = time.time()
+        elapsed = stop - start
+        t = nla.norm(u_cblas.data() - u_numpy.data())/s
+        print('error: %e' % t)
+        print('time: %.2e' % elapsed)
 
-    print('----\n testing cublas scale...')
-    start = time.time()
-    u_cublas.scale(scale, multiply)
-    cuda.synchronize()
-    stop = time.time()
-    elapsed = stop - start
-    t = nla.norm(u_cublas.data() - u_numpy.data())/s
-    print('error: %e' % t)
-    print('time: %.2e' % elapsed)
+    if have_cublas:
+        print('----\n testing cublas scale...')
+        start = time.time()
+        u_cublas.scale(scale, multiply)
+        cuda.synchronize()
+        stop = time.time()
+        elapsed = stop - start
+        t = nla.norm(u_cublas.data() - u_numpy.data())/s
+        print('error: %e' % t)
+        print('time: %.2e' % elapsed)
 
     print('----\n testing numpy dots...')
     start = time.time()
@@ -166,22 +181,24 @@ def test(u, v):
     s = nla.norm(p)
     print('time: %.2e' % elapsed)
 
-    print('----\n testing cblas dots...')
-    start = time.time()
-    q = u_cblas.dots(v_cblas)
-    stop = time.time()
-    elapsed = stop - start
-    print('error: %e' % (nla.norm(q - p)/s))
-    print('time: %.2e' % elapsed)
+    if have_cblas:
+        print('----\n testing cblas dots...')
+        start = time.time()
+        q = u_cblas.dots(v_cblas)
+        stop = time.time()
+        elapsed = stop - start
+        print('error: %e' % (nla.norm(q - p)/s))
+        print('time: %.2e' % elapsed)
 
-    print('----\n testing cublas dots...')
-    start = time.time()
-    q = u_cublas.dots(v_cublas)
-    cuda.synchronize()
-    stop = time.time()
-    elapsed = stop - start
-    print('error: %e' % (nla.norm(q - p)/s))
-    print('time: %.2e' % elapsed)
+    if have_cublas:
+        print('----\n testing cublas dots...')
+        start = time.time()
+        q = u_cublas.dots(v_cublas)
+        cuda.synchronize()
+        stop = time.time()
+        elapsed = stop - start
+        print('error: %e' % (nla.norm(q - p)/s))
+        print('time: %.2e' % elapsed)
 
     print('----\n testing numpy transposed dots...')
     start = time.time()
@@ -194,24 +211,26 @@ def test(u, v):
 #    q = u_numpy.dots(v_numpy, transp = True)
 #    print(q)
 
-    print('----\n testing cblas transposed dots...')
-    start = time.time()
-    q = u_cblas.dots(v_cblas, transp = True)
-    stop = time.time()
-    elapsed = stop - start
-    print('error: %e' % (nla.norm(q - p)/s))
-    print('time: %.2e' % elapsed)
+    if have_cblas:
+        print('----\n testing cblas transposed dots...')
+        start = time.time()
+        q = u_cblas.dots(v_cblas, transp = True)
+        stop = time.time()
+        elapsed = stop - start
+        print('error: %e' % (nla.norm(q - p)/s))
+        print('time: %.2e' % elapsed)
 #    q = u_cblas.dots(v_cblas, transp = True)
 #    print(q)
 
-    print('----\n testing cublas transposed dots...')
-    start = time.time()
-    q = u_cublas.dots(v_cublas, transp = True)
-    cuda.synchronize()
-    stop = time.time()
-    elapsed = stop - start
-    print('error: %e' % (nla.norm(q - p)/s))
-    print('time: %.2e' % elapsed)
+    if have_cublas:
+        print('----\n testing cublas transposed dots...')
+        start = time.time()
+        q = u_cublas.dots(v_cublas, transp = True)
+        cuda.synchronize()
+        stop = time.time()
+        elapsed = stop - start
+        print('error: %e' % (nla.norm(q - p)/s))
+        print('time: %.2e' % elapsed)
 #    q = u_cublas.dots(v_cublas, transp = True)
 #    print(q)
 
@@ -223,22 +242,24 @@ def test(u, v):
     s = nla.norm(p)
     print('time: %.2e' % elapsed)
 
-    print('----\n testing cblas dot...')
-    start = time.time()
-    q = u_cblas.dot(v_cblas)
-    stop = time.time()
-    elapsed = stop - start
-    print('error: %e' % (nla.norm(q - p)/s))
-    print('time: %.2e' % elapsed)
+    if have_cblas:
+        print('----\n testing cblas dot...')
+        start = time.time()
+        q = u_cblas.dot(v_cblas)
+        stop = time.time()
+        elapsed = stop - start
+        print('error: %e' % (nla.norm(q - p)/s))
+        print('time: %.2e' % elapsed)
 
-    print('----\n testing cublas dot...')
-    start = time.time()
-    q = u_cublas.dot(v_cublas)
-    cuda.synchronize()
-    stop = time.time()
-    elapsed = stop - start
-    print('error: %e' % (nla.norm(q - p)/s))
-    print('time: %.2e' % elapsed)
+    if have_cublas:
+        print('----\n testing cublas dot...')
+        start = time.time()
+        q = u_cublas.dot(v_cublas)
+        cuda.synchronize()
+        stop = time.time()
+        elapsed = stop - start
+        print('error: %e' % (nla.norm(q - p)/s))
+        print('time: %.2e' % elapsed)
 
     print('----\n testing numpy multiply...')
     start = time.time()
@@ -248,24 +269,26 @@ def test(u, v):
     print('time: %.2e' % elapsed)
     s = nla.norm(v_numpy.data())
 
-    print('----\n testing cblas multiply...')
-    start = time.time()
-    u_cblas.multiply(p, v_cblas)
-    stop = time.time()
-    elapsed = stop - start
-    print('time: %.2e' % elapsed)
-    t = nla.norm(v_cblas.data() - v_numpy.data())/s
-    print('error: %e' % t)
+    if have_cblas:
+        print('----\n testing cblas multiply...')
+        start = time.time()
+        u_cblas.multiply(p, v_cblas)
+        stop = time.time()
+        elapsed = stop - start
+        print('time: %.2e' % elapsed)
+        t = nla.norm(v_cblas.data() - v_numpy.data())/s
+        print('error: %e' % t)
 
-    print('----\n testing cublas multiply...')
-    start = time.time()
-    u_cublas.multiply(p, v_cublas)
-    cuda.synchronize()
-    stop = time.time()
-    elapsed = stop - start
-    print('time: %.2e' % elapsed)
-    t = nla.norm(v_cublas.data() - v_numpy.data())/s
-    print('error: %e' % t)
+    if have_cublas:
+        print('----\n testing cublas multiply...')
+        start = time.time()
+        u_cublas.multiply(p, v_cublas)
+        cuda.synchronize()
+        stop = time.time()
+        elapsed = stop - start
+        print('time: %.2e' % elapsed)
+        t = nla.norm(v_cublas.data() - v_numpy.data())/s
+        print('error: %e' % t)
 
     print('----\n testing numpy add...')
     start = time.time()
@@ -276,23 +299,25 @@ def test(u, v):
     t = nla.norm(v_numpy.data())/s
     print('error: %e' % t)
 
-    print('----\n testing cblas add...')
-    start = time.time()
-    v_cblas.add(u_cblas, -1.0, p)
-    stop = time.time()
-    elapsed = stop - start
-    print('time: %.2e' % elapsed)
-    t = nla.norm(v_cblas.data())/s
-    print('error: %e' % t)
+    if have_cblas:
+        print('----\n testing cblas add...')
+        start = time.time()
+        v_cblas.add(u_cblas, -1.0, p)
+        stop = time.time()
+        elapsed = stop - start
+        print('time: %.2e' % elapsed)
+        t = nla.norm(v_cblas.data())/s
+        print('error: %e' % t)
 
-    print('----\n testing cublas add...')
-    start = time.time()
-    v_cublas.add(u_cublas, -1.0, p)
-    stop = time.time()
-    elapsed = stop - start
-    print('time: %.2e' % elapsed)
-    t = nla.norm(v_cublas.data())/s
-    print('error: %e' % t)
+    if have_cublas:
+        print('----\n testing cublas add...')
+        start = time.time()
+        v_cublas.add(u_cublas, -1.0, p)
+        stop = time.time()
+        elapsed = stop - start
+        print('time: %.2e' % elapsed)
+        t = nla.norm(v_cublas.data())/s
+        print('error: %e' % t)
 
 try:
     if dble:

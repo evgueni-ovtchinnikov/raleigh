@@ -39,12 +39,19 @@ import time
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
-import raleigh.cuda.cuda as cuda
-#from raleigh.cuda.cublas_algebra import Vectors, Matrix
-from raleigh.ndarray.cblas_algebra import Vectors as cblasVectors
-from raleigh.ndarray.cblas_algebra import Matrix as cblasMatrix
-from raleigh.cuda.cublas_algebra import Vectors as cublasVectors
-from raleigh.cuda.cublas_algebra import Matrix as cublasMatrix
+try:
+    from raleigh.ndarray.cblas_algebra import Vectors as cblasVectors
+    from raleigh.ndarray.cblas_algebra import Matrix as cblasMatrix
+    have_cblas = True
+except:
+    have_cblas = False
+try:
+    import raleigh.cuda.cuda as cuda
+    from raleigh.cuda.cublas_algebra import Vectors as cublasVectors
+    from raleigh.cuda.cublas_algebra import Matrix as cublasMatrix
+    have_cublas = True
+except:
+    have_cublas = False
 
 class cblasOperatorSVD:
     def __init__(self, op):
@@ -80,116 +87,138 @@ class cublasOperatorSVD:
 #n = 2
 
 def test(u, v):
+
+    n = u.shape[1]
+    m = v.shape[1]
+    ones = numpy.ones((m, n), dtype = u.dtype)
     
-    u_cblas = cblasVectors(u)
-    v_cblas = cblasVectors(v)
-    x_cblas = cblasVectors(u_cblas)
-    y_cblas = cblasVectors(v_cblas)
+    if have_cblas:
+        u_cblas = cblasVectors(u)
+        v_cblas = cblasVectors(v)
+        x_cblas = cblasVectors(u_cblas)
+        y_cblas = cblasVectors(v_cblas)
 
-    mu, nu = u.shape
-    mv, nv = v.shape
-    u_cublas = cublasVectors(nu, mu, u.dtype)
-    v_cublas = cublasVectors(nv, mv, v.dtype)
+    if have_cublas:
+        mu, nu = u.shape
+        mv, nv = v.shape
+        u_cublas = cublasVectors(nu, mu, u.dtype)
+        v_cublas = cublasVectors(nv, mv, v.dtype)
+#        n = u_cublas.dimension()
+#        m = v_cublas.dimension()
+#        k = u_cublas.nvec()
+#        ones = numpy.ones((m, n), dtype = u_cblas.data_type())
+        a_cublas = cublasMatrix(ones)
 
-    n = u_cublas.dimension()
-    m = v_cublas.dimension()
-#    k = u_cublas.nvec()
-    ones = numpy.ones((m, n), dtype = u_cblas.data_type())
-    a_cublas = cublasMatrix(ones)
-
-    start = time.time()
-    u_cublas.fill(u)
-    v_cublas.fill(v)
+        start = time.time()
+        u_cublas.fill(u)
+        v_cublas.fill(v)
 #    u_cublas = cublasVectors(u)
 #    v_cublas = cublasVectors(v)
-    cuda.synchronize()
-    stop = time.time()
-    elapsed = stop - start
-    print('    cublas vectors uploading time: %.2e' % elapsed)    
-    x_cublas = cublasVectors(u_cublas)
-    y_cublas = cublasVectors(v_cublas)
+        cuda.synchronize()
+        stop = time.time()
+        elapsed = stop - start
+        print('    cublas vectors uploading time: %.2e' % elapsed)    
+        x_cublas = cublasVectors(u_cublas)
+        y_cublas = cublasVectors(v_cublas)
     
 
+    if have_cblas:
 #    a_cblas = cblasMatrix(numpy.ones((m, n), dtype = u_cblas.data_type()))
-    a_cblas = cblasMatrix(ones)
+        a_cblas = cblasMatrix(ones)
+    if have_cublas:
 #    a_cublas = cublasMatrix(ones)
-    cuda.synchronize()
-    start = time.time()
-    a_cublas.fill(ones)
+        cuda.synchronize()
+        start = time.time()
+        a_cublas.fill(ones)
 #    a_cublas.fill(numpy.ones((m, n), dtype = u_cublas.data_type()))
-    cuda.synchronize()
-    stop = time.time()
-    elapsed = stop - start
-    print('    cublas matrix uploading time: %.2e' % elapsed)    
+        cuda.synchronize()
+        stop = time.time()
+        elapsed = stop - start
+        print('    cublas matrix uploading time: %.2e' % elapsed)    
 
     print('\n--- testing multiplication by a...')    
-    start = time.time()
-    a_cblas.apply(u_cblas, v_cblas)
-    stop = time.time()
-    elapsed = stop - start
-    print('    cblas time: %.2e' % elapsed)
-    start = time.time()
-    a_cublas.apply(u_cublas, v_cublas)
-    cuda.synchronize()
-    stop = time.time()
-    elapsed = stop - start
-    print('    cublas time: %.2e' % elapsed)    
-    diff = v_cblas.data() - v_cublas.data()
-    print('    error: %.1e' % (nla.norm(diff)/nla.norm(v_cblas.data())))
+    if have_cblas:
+        start = time.time()
+        a_cblas.apply(u_cblas, v_cblas)
+        stop = time.time()
+        elapsed = stop - start
+        print('    cblas time: %.2e' % elapsed)
+    if have_cublas:
+        start = time.time()
+        a_cublas.apply(u_cublas, v_cublas)
+        cuda.synchronize()
+        stop = time.time()
+        elapsed = stop - start
+        print('    cublas time: %.2e' % elapsed)    
+        if have_cblas:
+            diff = v_cblas.data() - v_cublas.data()
+            print('    error: %.1e' % (nla.norm(diff)/nla.norm(v_cblas.data())))
 #    print(v_cublas.data())
  
     print('\n--- testing multiplication by a.T...')    
-    start = time.time()
-    a_cblas.apply(v_cblas, u_cblas, transp = True)
-    stop = time.time()
-    elapsed = stop - start
-    print('    cblas time: %.2e' % elapsed)
-    start = time.time()
-    a_cublas.apply(v_cublas, u_cublas, transp = True)
-    cuda.synchronize()
-    stop = time.time()
-    elapsed = stop - start
-    print('    cublas time: %.2e' % elapsed)        
-    diff = u_cblas.data() - u_cublas.data()
-    print('    error: %.1e' % (nla.norm(diff)/nla.norm(u_cblas.data())))
+    if have_cblas:
+        start = time.time()
+        a_cblas.apply(v_cblas, u_cblas, transp = True)
+        stop = time.time()
+        elapsed = stop - start
+        print('    cblas time: %.2e' % elapsed)
+    if have_cublas:
+        start = time.time()
+        a_cublas.apply(v_cublas, u_cublas, transp = True)
+        cuda.synchronize()
+        stop = time.time()
+        elapsed = stop - start
+        print('    cublas time: %.2e' % elapsed)        
+        diff = u_cblas.data() - u_cublas.data()
+        print('    error: %.1e' % (nla.norm(diff)/nla.norm(u_cblas.data())))
 #    print(u_cublas.data())
     
-    b_cblas = cblasOperatorSVD(a_cblas)
-    b_cublas = cublasOperatorSVD(a_cublas)
+    if have_cblas:
+        b_cblas = cblasOperatorSVD(a_cblas)
+    if have_cublas:
+        b_cublas = cublasOperatorSVD(a_cublas)
     
     print('\n--- testing multiplication by a.T*a...')    
-    start = time.time()
-    b_cblas.apply(u_cblas, x_cblas)
-    stop = time.time()
-    elapsed = stop - start
-    print('    cblas time: %.2e' % elapsed)
-    start = time.time()
-    b_cublas.apply(u_cublas, x_cublas)
-    cuda.synchronize()
-    stop = time.time()
-    elapsed = stop - start
-    print('    cublas time: %.2e' % elapsed)    
-    diff = x_cblas.data() - x_cublas.data()
-    print('    error: %.1e' % (nla.norm(diff)/nla.norm(x_cblas.data())))
+    if have_cblas:
+        start = time.time()
+        b_cblas.apply(u_cblas, x_cblas)
+        stop = time.time()
+        elapsed = stop - start
+        print('    cblas time: %.2e' % elapsed)
+    if have_cublas:
+        start = time.time()
+        b_cublas.apply(u_cublas, x_cublas)
+        cuda.synchronize()
+        stop = time.time()
+        elapsed = stop - start
+        print('    cublas time: %.2e' % elapsed)    
+        if have_cblas:
+            diff = x_cblas.data() - x_cublas.data()
+            print('    error: %.1e' % (nla.norm(diff)/nla.norm(x_cblas.data())))
 #    print(x_cublas.data())
     
     print('\n--- testing multiplication by a*a.T...')    
-    start = time.time()
-    b_cblas.apply(v_cblas, y_cblas, transp = True)
-    stop = time.time()
-    elapsed = stop - start
-    print('    cblas time: %.2e' % elapsed)
-    start = time.time()
-    b_cublas.apply(v_cublas, y_cublas, transp = True)
-    cuda.synchronize()
-    stop = time.time()
-    elapsed = stop - start
-    print('    cublas time: %.2e' % elapsed)    
-    diff = y_cblas.data() - y_cublas.data()
-    print('    error: %.1e' % (nla.norm(diff)/nla.norm(y_cblas.data())))
+    if have_cblas:
+        start = time.time()
+        b_cblas.apply(v_cblas, y_cblas, transp = True)
+        stop = time.time()
+        elapsed = stop - start
+        print('    cblas time: %.2e' % elapsed)
+    if have_cublas:
+        start = time.time()
+        b_cublas.apply(v_cublas, y_cublas, transp = True)
+        cuda.synchronize()
+        stop = time.time()
+        elapsed = stop - start
+        print('    cublas time: %.2e' % elapsed)    
+        if have_cblas:
+            diff = y_cblas.data() - y_cublas.data()
+            print('    error: %.1e' % (nla.norm(diff)/nla.norm(y_cblas.data())))
 #    print(y_cublas.data())
 
 try:
+    if not have_cblas and not have_cublas:
+        exit()
     if dble:
         print('running in double precision...')
         dt = numpy.float64
