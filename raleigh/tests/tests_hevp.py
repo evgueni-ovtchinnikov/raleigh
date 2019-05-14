@@ -14,7 +14,7 @@ Options:
     -l <lft>, --left=<lft>    number of eigenvalues left of shift (shift-invert
                               mode) [default: 0]
     -r <rgt>, --right=<rgt>   number of eigenvalues right of shift (shift-ivert
-                              mode) [default: 0]
+                              mode) [default: 6]
     -e <nev>, --nev=<nev>     number of eigenvalues wanted: largest if left and
                               right are set to 0 in shift-invert mode
                               or smallest if preconditioning is used
@@ -22,7 +22,6 @@ Options:
     -t <tol>, --tol=<tol>     error/residual tolerance [default: 1e-10]
     -I, --invop  first argument of partial_hevp is a SparseSymmetricSolver
     -P, --ilutp  use mkl dcsrilut (incomplete ILU) as a preconditioner
-    -S, --scipy  solve also with SciPy eigsh
 
 @author: Evgueni Ovtchinnikov, UKRI-STFC
 """
@@ -83,7 +82,6 @@ nev = int(args['--nev'])
 tol = float(args['--tol'])
 invop = args['--invop']
 ilutp = args['--ilutp']
-eigsh = args['--scipy']
 
 numpy.random.seed(1) # makes the results reproducible
 
