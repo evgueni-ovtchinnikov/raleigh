@@ -9,30 +9,15 @@ import ctypes
 import numbers
 import numpy
 import sys
-sys.path.append('..')
 
-import raleigh.cuda.cuda as cuda
-
-from raleigh.cuda.cublas import Cublas
-
-def try_calling(err):
-    if err != 0:
-        raise RuntimeError('cuda error')
-
-def shifted_ptr(dev_ptr, shift = 0):
-#    print(type(dev_ptr), type(shift))
-    ptr = ctypes.cast(dev_ptr, ctypes.c_void_p)
-    return ctypes.cast(ptr.value + shift, ctypes.POINTER(ctypes.c_ubyte))
-
-def conjugate(a):
-    if a.dtype.kind == 'c':
-        return a.conj()
-    else:
-        return a
+from ..cuda import cuda
+#from .cuda import malloc, free, memset, memcpy
+#from .cuda import memcpyH2H, memcpyH2D, memcpyD2H, memcpyD2D
+from .cublas import Cublas
 
 class Vectors:
     MIN_INC = 16
-    def __init__(self, arg, nvec = 0, data_type = None):
+    def __init__(self, arg, nvec=0, data_type=None):
         self.__data = ctypes.POINTER(ctypes.c_ubyte)()
         if isinstance(arg, Vectors):
             n = arg.dimension()
@@ -41,20 +26,24 @@ class Vectors:
             dtype = arg.__dtype
             dsize = arg.__dsize
             size = n*m*dsize
-            try_calling(cuda.malloc(ctypes.byref(self.__data), size))
-            try_calling(cuda.memcpy(self.__data, arg.data_ptr(), size, \
+##            _try_calling(malloc(ctypes.byref(self.__data), size))
+##            _try_calling(memcpy(self.__data, arg.data_ptr(), size, \
+##                memcpyD2D))
+            _try_calling(cuda.malloc(ctypes.byref(self.__data), size))
+            _try_calling(cuda.memcpy(self.__data, arg.data_ptr(), size, \
                 cuda.memcpyD2D))
         elif isinstance(arg, numpy.ndarray):
             m, n = arg.shape
             dtype = arg.dtype.type
             dsize = arg.itemsize
             size = n*m*dsize
-            try_calling(cuda.malloc(ctypes.byref(self.__data), size))
+##            _try_calling(malloc(ctypes.byref(self.__data), size))
+            _try_calling(cuda.malloc(ctypes.byref(self.__data), size))
             ptr = ctypes.c_void_p(arg.ctypes.data)
-            try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
+##            _try_calling(memcpy(self.__data, ptr, size, memcpyH2D))
+            _try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
             self.__is_complex = \
                 (dtype == numpy.complex64 or dtype == numpy.complex128)
-#            self.__is_complex = isinstance(arg[0,0], complex) # lying!!!
         elif isinstance(arg, numbers.Number):
             dtype = data_type
             if dtype is None:
@@ -78,8 +67,10 @@ class Vectors:
             assert m >= 0
             if nvec > 0:
                 size = n*m*dsize
-                try_calling(cuda.malloc(ctypes.byref(self.__data), size))
-                try_calling(cuda.memset(self.__data, 0, size))
+##                _try_calling(malloc(ctypes.byref(self.__data), size))
+##                _try_calling(memset(self.__data, 0, size))
+                _try_calling(cuda.malloc(ctypes.byref(self.__data), size))
+                _try_calling(cuda.memset(self.__data, 0, size))
         else:
             raise ValueError \
                 ('wrong argument %s in constructor' % repr(type(arg)))
@@ -91,7 +82,8 @@ class Vectors:
         self.__dtype = dtype
         self.__cublas = Cublas(dtype)
     def __del__(self):
-        try_calling(cuda.free(self.__data))
+##        _try_calling(free(self.__data))
+        _try_calling(cuda.free(self.__data))
     def __float(self):
         dt = self.data_type()
         if dt == numpy.float32:
@@ -126,12 +118,10 @@ class Vectors:
         else:
             raise ValueError('data type %s not supported' % repr(dt))
         return s
-    def new_vectors(self, nv = 0, dim = None):
+    def new_vectors(self, nv=0, dim=None):
         if dim is None:
             dim = self.dimension()
         return Vectors(dim, nv, self.data_type())
-#    def new_vectors(self, nv = 0):
-#        return Vectors(self.dimension(), nv, self.data_type())
     def clone(self):
         return Vectors(self)
     def append(self, other):
@@ -148,25 +138,27 @@ class Vectors:
 #            print('allocating %d vectors...' % mvec)
             size = mvec * vsize
             data = ctypes.POINTER(ctypes.c_ubyte)()
-            try_calling(cuda.malloc(ctypes.byref(data), size))
+##            _try_calling(malloc(ctypes.byref(data), size))
+            _try_calling(cuda.malloc(ctypes.byref(data), size))
             if m > 0:
                 mn = ctypes.c_int(m*n)
                 data_u = self.all_data_ptr()
-                ptr_u = shifted_ptr(data_u, i*vsize)
-                ptr = shifted_ptr(data, 0)
+                ptr_u = _shifted_ptr(data_u, i*vsize)
+                ptr = _shifted_ptr(data, 0)
                 self.__cublas.copy(self.__cublas.handle, mn, ptr_u, inc, ptr, inc)
-                try_calling(cuda.free(self.__data))
+##                _try_calling(free(self.__data))
+                _try_calling(cuda.free(self.__data))
         else:
             data = self.__data
             mvec = self.__mvec
 #            print('re-using %d vectors...' % mvec)
         data_v = other.all_data_ptr()
-        ptr_v = shifted_ptr(data_v, j*vsize)
-        ptr = shifted_ptr(data, m*vsize)
+        ptr_v = _shifted_ptr(data_v, j*vsize)
+        ptr = _shifted_ptr(data, m*vsize)
         ln = ctypes.c_int(l*n)
 #        print('copying %d vectors...' % l)
         self.__cublas.copy(self.__cublas.handle, ln, ptr_v, inc, ptr, inc)
-#        try_calling(cuda.memcpy(data, data_v, l*vsize, cuda.memcpyD2D))
+#        _try_calling(cuda.memcpy(data, data_v, l*vsize, cuda.memcpyD2D))
         self.__data = data
         self.__nvec = nvec
         self.__mvec = mvec
@@ -176,7 +168,7 @@ class Vectors:
     def data_ptr(self):
         n = self.dimension()
         vsize = n * self.__dsize
-        return shifted_ptr(self.__data, self.first() * vsize)
+        return _shifted_ptr(self.__data, self.first() * vsize)
     def cublas(self):
         return self.__cublas
     def cublas_handle(self):
@@ -190,7 +182,7 @@ class Vectors:
         return self.__selected[1]
     def selected(self):
         return self.__selected
-    def select(self, nv, first = 0):
+    def select(self, nv, first=0):
         assert nv <= self.__nvec and first >= 0
         self.__selected = (first, nv)
     def select_all(self):
@@ -205,7 +197,8 @@ class Vectors:
         if m < 1:
             return
         vsize = self.__dsize * self.__vdim
-        try_calling(cuda.memset(self.data_ptr(), 0, m*vsize))
+##        _try_calling(memset(self.data_ptr(), 0, m*vsize))
+        _try_calling(cuda.memset(self.data_ptr(), 0, m*vsize))
     def fill(self, data):
         m, n = data.shape
         if m != self.__nvec or n != self.__vdim:
@@ -217,7 +210,8 @@ class Vectors:
             raise ValueError('mismatching data types in fill()')
         size = m * self.__dsize * self.__vdim
         ptr = ctypes.c_void_p(data.ctypes.data)
-        try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
+##        _try_calling(memcpy(self.__data, ptr, size, memcpyH2D))
+        _try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
     def fill_random(self):
         n = self.dimension()
         m = self.nvec()
@@ -232,7 +226,8 @@ class Vectors:
         size = m * vsize
         ptr_u = self.data_ptr()
         ptr_v = ctypes.c_void_p(data.ctypes.data)
-        try_calling(cuda.memcpy(ptr_u, ptr_v, size, cuda.memcpyH2D))
+##        _try_calling(memcpy(ptr_u, ptr_v, size, memcpyH2D))
+        _try_calling(cuda.memcpy(ptr_u, ptr_v, size, cuda.memcpyH2D))
     def data(self):
         m = self.nvec()
         n = self.dimension()
@@ -241,13 +236,14 @@ class Vectors:
             return v
         hptr_v = ctypes.c_void_p(v.ctypes.data)
         size = n * m * self.__dsize
-        try_calling(cuda.memcpy(hptr_v, self.data_ptr(), size, cuda.memcpyD2H))
+##        _try_calling(memcpy(hptr_v, self.data_ptr(), size, memcpyD2H))
+        _try_calling(cuda.memcpy(hptr_v, self.data_ptr(), size, cuda.memcpyD2H))
         return v
     def asarray(self):
         return self.data().T
 
     # BLAS level 1
-    def copy(self, other, ind = None):
+    def copy(self, other, ind=None):
         i, m = self.selected()
         j, l = other.selected()
         vdim = self.dimension()
@@ -257,18 +253,18 @@ class Vectors:
         data_v = other.all_data_ptr()
         if ind is None:
             n = ctypes.c_int(m*vdim)
-            ptr_u = shifted_ptr(data_u, i*vsize)
-            ptr_v = shifted_ptr(data_v, j*vsize)
+            ptr_u = _shifted_ptr(data_u, i*vsize)
+            ptr_v = _shifted_ptr(data_v, j*vsize)
             self.__cublas.copy(self.__cublas.handle, n, ptr_u, inc, ptr_v, inc)
         else:
             n = ctypes.c_int(vdim)
             l = len(ind)
             for k in range(l):
-                ptr_u = shifted_ptr(data_u, int(ind[k])*vsize)
-                ptr_v = shifted_ptr(data_v, (j + k)*vsize)
+                ptr_u = _shifted_ptr(data_u, int(ind[k])*vsize)
+                ptr_v = _shifted_ptr(data_v, (j + k)*vsize)
                 self.__cublas.copy \
                     (self.__cublas.handle, n, ptr_u, inc, ptr_v, inc)
-    def scale(self, s, multiply = False):
+    def scale(self, s, multiply=False):
         f, m = self.selected()
         vdim = self.dimension()
         n = ctypes.c_int(vdim)
@@ -277,29 +273,31 @@ class Vectors:
         data_u = self.all_data_ptr()
         if multiply:
             for i in range(m):
-                ptr_u = shifted_ptr(data_u, (f + i)*vsize)
+                ptr_u = _shifted_ptr(data_u, (f + i)*vsize)
                 r = self.__to_floats(s[i])
                 self.__cublas.scal(self.__cublas.handle, n, r, ptr_u, inc)
         else:
             for i in range(m):
-                ptr_u = shifted_ptr(data_u, (f + i)*vsize)
+                ptr_u = _shifted_ptr(data_u, (f + i)*vsize)
                 if s[i] != 0.0:
                     r = self.__to_floats(1.0/s[i])
                     self.__cublas.scal(self.__cublas.handle, n, r, ptr_u, inc)
-    def dots(self, other, transp = False):
+    def dots(self, other, transp=False):
         if transp:
             dptr_u = self.data_ptr()
             dptr_v = other.data_ptr()
             m = self.nvec()
             n = self.dimension()
-            u = numpy.ndarray((m, n), dtype = self.data_type())
-            v = numpy.ndarray((m, n), dtype = self.data_type())
-            w = numpy.ndarray((n,), dtype = self.data_type())
+            u = numpy.ndarray((m, n), dtype=self.data_type())
+            v = numpy.ndarray((m, n), dtype=self.data_type())
+            w = numpy.ndarray((n,), dtype=self.data_type())
             hptr_u = ctypes.c_void_p(u.ctypes.data)
             hptr_v = ctypes.c_void_p(v.ctypes.data)
             size = m*n*self.__dsize
-            try_calling(cuda.memcpy(hptr_u, dptr_u, size, cuda.memcpyD2H))
-            try_calling(cuda.memcpy(hptr_v, dptr_v, size, cuda.memcpyD2H))
+##            _try_calling(memcpy(hptr_u, dptr_u, size, memcpyD2H))
+##            _try_calling(memcpy(hptr_v, dptr_v, size, memcpyD2H))
+            _try_calling(cuda.memcpy(hptr_u, dptr_u, size, cuda.memcpyD2H))
+            _try_calling(cuda.memcpy(hptr_v, dptr_v, size, cuda.memcpyD2H))
             if other.is_complex():
                 for i in range(n):
                     w[i] = numpy.dot(v[:, i].conj(), u[:, i])
@@ -322,14 +320,14 @@ class Vectors:
         inc = ctypes.c_int(1)
         data_u = self.all_data_ptr()
         data_v = other.all_data_ptr()
-        w = numpy.ndarray((m,), dtype = self.data_type())
+        w = numpy.ndarray((m,), dtype=self.data_type())
         for i in range(m):
 #            if transp:
-#                ptr_u = shifted_ptr(data_u, iu*vsize + i*dsize)
-#                ptr_v = shifted_ptr(data_v, iv*vsize + i*dsize)
+#                ptr_u = _shifted_ptr(data_u, iu*vsize + i*dsize)
+#                ptr_v = _shifted_ptr(data_v, iv*vsize + i*dsize)
 #            else:
-            ptr_u = shifted_ptr(data_u, (iu + i)*vsize)
-            ptr_v = shifted_ptr(data_v, (iv + i)*vsize)
+            ptr_u = _shifted_ptr(data_u, (iu + i)*vsize)
+            ptr_v = _shifted_ptr(data_v, (iv + i)*vsize)
             s = self.__floats()
             self.__cublas.dot \
                 (self.__cublas.handle, n, ptr_v, inc, ptr_u, inc, s)
@@ -351,7 +349,8 @@ class Vectors:
         dptr_v = self.data_ptr()
         dptr_q = ctypes.POINTER(ctypes.c_ubyte)()
         size_q = k*m*self.__dsize
-        try_calling(cuda.malloc(ctypes.byref(dptr_q), size_q))
+##        _try_calling(malloc(ctypes.byref(dptr_q), size_q))
+        _try_calling(cuda.malloc(ctypes.byref(dptr_q), size_q))
         if self.is_complex():
             Trans = Cublas.ConjTrans
         else:
@@ -360,11 +359,13 @@ class Vectors:
         zero = self.__to_floats(0.0)
         self.__cublas.gemm(self.__cublas.handle, Trans, Cublas.NoTrans, \
             c_m, c_k, c_n, one, dptr_v, c_n, dptr_u, c_n, zero, dptr_q, c_m)
-        q = numpy.ndarray((k, m), dtype = self.data_type())
+        q = numpy.ndarray((k, m), dtype=self.data_type())
         hptr_q = ctypes.c_void_p(q.ctypes.data)
-        try_calling(cuda.memcpy(hptr_q, dptr_q, size_q, cuda.memcpyD2H))
-        try_calling(cuda.free(dptr_q))
-        return conjugate(q)
+##        _try_calling(memcpy(hptr_q, dptr_q, size_q, memcpyD2H))
+##        _try_calling(free(dptr_q))
+        _try_calling(cuda.memcpy(hptr_q, dptr_q, size_q, cuda.memcpyD2H))
+        _try_calling(cuda.free(dptr_q))
+        return _conjugate(q)
     def multiply(self, a, output):
         m = a.shape[1]
         n = self.dimension()
@@ -376,13 +377,15 @@ class Vectors:
         dptr_v = self.data_ptr()
         dptr_q = ctypes.POINTER(ctypes.c_ubyte)()
         size_q = k*m*self.__dsize
-        try_calling(cuda.malloc(ctypes.byref(dptr_q), size_q))
+##        _try_calling(malloc(ctypes.byref(dptr_q), size_q))
+        _try_calling(cuda.malloc(ctypes.byref(dptr_q), size_q))
         if a.flags['C_CONTIGUOUS'] or a.flags['F_CONTIGUOUS']:
             q = a
         else:
             q = a.copy()
         hptr_q = ctypes.c_void_p(q.ctypes.data)
-        try_calling(cuda.memcpy(dptr_q, hptr_q, size_q, cuda.memcpyH2D))
+##        _try_calling(memcpy(dptr_q, hptr_q, size_q, memcpyH2D))
+        _try_calling(cuda.memcpy(dptr_q, hptr_q, size_q, cuda.memcpyH2D))
         if q.flags['C_CONTIGUOUS']:
             Trans = Cublas.Trans
             ldq = c_m
@@ -393,7 +396,8 @@ class Vectors:
         zero = self.__to_floats(0.0)
         self.__cublas.gemm(self.__cublas.handle, Cublas.NoTrans, Trans, \
             c_n, c_m, c_k, one, dptr_v, c_n, dptr_q, ldq, zero, dptr_u, c_n)
-        try_calling(cuda.free(dptr_q))
+##        _try_calling(free(dptr_q))
+        _try_calling(cuda.free(dptr_q))
     def add(self, other, s, a = None):
         n = self.dimension()
         m = other.nvec()
@@ -421,24 +425,27 @@ class Vectors:
                     q = a
                     ldq = c_m
                 else:
-                    q = numpy.ndarray(a.shape, dtype = a.dtype)
+                    q = numpy.ndarray(a.shape, dtype=a.dtype)
                     q[:,:] = a.copy()
                     Trans = Cublas.Trans
                     ldq = c_k
                 hptr_q = ctypes.c_void_p(q.ctypes.data)
                 dptr_q = ctypes.POINTER(ctypes.c_ubyte)()
                 size_q = k*m*self.__dsize
-                try_calling(cuda.malloc(ctypes.byref(dptr_q), size_q))
-                try_calling(cuda.memcpy(dptr_q, hptr_q, size_q, cuda.memcpyH2D))
+##                _try_calling(malloc(ctypes.byref(dptr_q), size_q))
+##                _try_calling(memcpy(dptr_q, hptr_q, size_q, memcpyH2D))
+                _try_calling(cuda.malloc(ctypes.byref(dptr_q), size_q))
+                _try_calling(cuda.memcpy(dptr_q, hptr_q, size_q, cuda.memcpyH2D))
                 one = self.__to_floats(1.0)
                 self.__cublas.gemm(self.__cublas.handle, Cublas.NoTrans, Trans, \
                     c_n, c_k, c_m, cublas_s, dptr_u, c_n, dptr_q, ldq, \
                     one, dptr_v, c_n)
-                try_calling(cuda.free(dptr_q))
+##                _try_calling(free(dptr_q))
+                _try_calling(cuda.free(dptr_q))
         else:
             for i in range(m):
-                dptr_u = shifted_ptr(other.data_ptr(), i*vsize)
-                dptr_v = shifted_ptr(self.data_ptr(), i*vsize)
+                dptr_u = _shifted_ptr(other.data_ptr(), i*vsize)
+                dptr_v = _shifted_ptr(self.data_ptr(), i*vsize)
                 inc = ctypes.c_int(1)
                 cublas_s = self.__to_floats(s[i])
                 self.__cublas.axpy \
@@ -460,9 +467,11 @@ class Matrix:
         self.__flags = a.flags
         m, n = self.__shape
         size = n*m*self.__dsize
-        try_calling(cuda.malloc(ctypes.byref(self.__data), size))
+##        _try_calling(malloc(ctypes.byref(self.__data), size))
+        _try_calling(cuda.malloc(ctypes.byref(self.__data), size))
         ptr = ctypes.c_void_p(a.ctypes.data)
-        try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
+##        _try_calling(memcpy(self.__data, ptr, size, memcpyH2D))
+        _try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
     def __floats(self):
         dt = self.__dtype
         if dt == numpy.float32:
@@ -502,8 +511,9 @@ class Matrix:
         m, n = self.__shape
         size = n*m*self.__dsize
         ptr = ctypes.c_void_p(data.ctypes.data)
-        try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
-    def apply(self, x, y, transp = False):
+##        _try_calling(memcpy(self.__data, ptr, size, memcpyH2D))
+        _try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
+    def apply(self, x, y, transp=False):
         if x.data_type() != self.__dtype or y.data_type() != self.__dtype:
             raise ValueError('Matrix and vectors data types differ')
         m, n = self.__shape
@@ -546,3 +556,21 @@ class Matrix:
         dptr_y = y.data_ptr()
         x.cublas().gemm(x.cublas_handle(), Trans, Cublas.NoTrans, \
             ny, k, nx, one, dptr_a, lda, dptr_x, nx, zero, dptr_y, ny)
+
+
+def _try_calling(err):
+    if err != 0:
+        raise RuntimeError('cuda error')
+
+
+def _shifted_ptr(dev_ptr, shift=0):
+    ptr = ctypes.cast(dev_ptr, ctypes.c_void_p)
+    return ctypes.cast(ptr.value + shift, ctypes.POINTER(ctypes.c_ubyte))
+
+
+def _conjugate(a):
+    if a.dtype.kind == 'c':
+        return a.conj()
+    else:
+        return a
+

@@ -12,6 +12,7 @@ cuda = ctypes.CDLL(cuda_path + '/cudart64_70.dll', mode = ctypes.RTLD_GLOBAL)
 
 POINTER = ctypes.POINTER
 
+
 class CudaDeviceProp(ctypes.Structure):
     _fields_ = [ 
             ('name', ctypes.c_char * 256),
@@ -80,6 +81,7 @@ class CudaDeviceProp(ctypes.Structure):
             ('pageableMemoryAccess', ctypes.c_int),
             ('concurrentManagedAccess', ctypes.c_int),
             ]
+
 
 getDeviceCount = cuda.cudaGetDeviceCount
 getDeviceProperties = cuda.cudaGetDeviceProperties

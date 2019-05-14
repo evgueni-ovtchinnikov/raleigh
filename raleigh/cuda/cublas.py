@@ -8,15 +8,16 @@ Created on Tue Jun 19 17:05:28 2018
 import ctypes
 import numpy
 import sys
-sys.path.append('..')
 
-import raleigh.cuda.cuda as cuda
+from .cuda import cuda_path
+
 
 POINTER = ctypes.POINTER
 
 #cuda_path = 'C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v7.0/bin'
-cublas_path = cuda.cuda_path + '/cublas64_70.dll'
-cublas = ctypes.CDLL(cublas_path, mode = ctypes.RTLD_GLOBAL)
+#cublas_path = cuda.cuda_path + '/cublas64_70.dll'
+cublas_path = cuda_path + '/cublas64_70.dll'
+cublas = ctypes.CDLL(cublas_path, mode=ctypes.RTLD_GLOBAL)
 
 create = cublas.cublasCreate_v2
 create.argtypes = [POINTER(POINTER(ctypes.c_ubyte))]
@@ -25,6 +26,7 @@ create.restype = ctypes.c_int
 destroy = cublas.cublasDestroy_v2
 #destroy.argtypes = [POINTER(ctypes.c_ubyte)]
 destroy.restype = ctypes.c_int
+
 
 class Cublas:
     NoTrans = 0
