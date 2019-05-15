@@ -39,6 +39,55 @@ def truncated_svd(A, opt=Options(), rank=-1, tol=-1, norm='s', max_rank=-1, \
 
 
 def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=0, arch='cpu'):
+    '''Performs principal component analysis for the set of data items
+    represented by rows of a dense matrix A.
+
+    For a given m by n data matrix A (m data samples n features each)
+    computes m by k matrix L and k by n matrix R such that k < min(m, n),
+    and the product L R approximates A - e a, where e = numpy.ones((m, 1)
+    and a = numpy.mean(A, axis = 0).
+    The rows of R (principal components) are orhonormal, the columns of L
+    (reduced features) are in the descending order of their norms (modulo
+    possible small deviations due to round-off errors).
+
+    Parameters
+    ----------
+    A : 2D numpy array
+        Data matrix.
+    opt : an object of class raleigh.solver.Options
+        Solver options (see raleigh.solver).
+    npc : int
+        Required number of principal components if known.
+        If negative, implicitely defined by the required accuracy of
+        approximation or interactively by the user.
+    tol : float
+        Approximation tolerance in the case rank < 0: if tol > 0, then the
+        norm of D = A - e a - L R is going to be not greater than the norm
+        of A multiplied by tol, otherwise the user will be asked repeatedly
+        whether the approximation achieved so far is acceptable.
+    norm : character
+        The norm to be used for evaluating the approximation error:
+        's' : the largest singular value of D,
+        'f' : Frobenius norm of D,
+        'm' : the largest norm of a row of D.
+    mpc : int
+        Maximal number of PCs to compute. Ignored if negatide, otherwise
+        if mpc < min(m, n), then the required accuracy of approximation
+        may not be achieved.
+    arch : string
+        'cpu' : run on CPU,
+        'gpu' : run on GPU if available, otherwise on CPU,
+        'gpu!' : run on GPU, throw RuntimError if GPU is not present.
+
+    Returns
+    -------
+    mean : numpy array of shape (1, n)
+        The mean of rows of A.
+    trans : numpy array of shape (m, k)
+        The reduced-features data set.
+    comps : numpy array of shape (k, n)
+        Principal components.
+    '''
     lra = LowerRankApproximation()
     lra.compute(A, opt=opt, rank=npc, tol=tol, norm=norm, \
         max_rank=mpc, shift=True, arch=arch)
@@ -49,7 +98,7 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=0, arch='cpu'):
 
 class LowerRankApproximation:
     '''Class for handling the computation of a lower rank approximation of
-       a dense matrix, see method compute below for details.
+    a dense matrix, see method compute below for details.
     '''
     def __init__(self):
         self.left = None
@@ -69,27 +118,28 @@ class LowerRankApproximation:
 
         Parameters
         ----------
-        A : array of shape (m, n)
+        A : 2D numpy array
             Data matrix.
-        opt : an object of class raileigh.solver.Options
+        opt : an object of class raleigh.solver.Options
             Solver options (see raleigh.solver).
         rank : int
-            Number of columns in L = rows in R = k in the above description of
-            the method.
+            Required number of columns in L = number of rows in R (k in the
+            above description of the method).
             If negative, implicitely defined by the required accuracy of
             approximation or interactively by the user.
         tol : float
             Approximation tolerance in the case rank < 0: if tol > 0, then the
-            norm of D = A - L R is going to be not greater than the norm of A
-            multiplied by tol, otherwise the user will be asked repeatedly
-            whether the approximation achieved so far is acceptable.
+            norm of the difference D between A (or A - e a) and L R is going
+            to be not greater than the norm of A multiplied by tol, otherwise
+            the user will be asked repeatedly whether the approximation
+            achieved so far is acceptable.
         norm : character
             The norm to be used for evaluating the approximation error:
             's' : the largest singular value of D,
             'f' : Frobenius norm of D,
             'm' : the largest norm of a row of D.
         max_rank : int
-            Max acceptable rank of L and R. Ignored if negatide, otherwise
+            Maximal acceptable rank of L and R. Ignored if negatide, otherwise
             if max_rank < min(m, n), then the required accuracy of approximation
             may not be achieved.
         rtol : float
