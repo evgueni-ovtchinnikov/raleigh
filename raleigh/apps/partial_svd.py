@@ -13,19 +13,16 @@ import numpy.linalg as nla
 import scipy
 import time
 
-from ..solver import Problem, Solver
+from ..solver import Problem, Solver, Options
 
 
-def truncated_svd(A, opt, rank=-1, tol=-1, norm='s', max_rank=-1, rtol=1e-3, \
-                  arch='cpu'):
-    m, n = A.shape
+def truncated_svd(A, opt=Options(), rank=-1, tol=-1, norm='s', max_rank=-1, \
+                  vtol=1e-3, arch='cpu'):
     opt = copy.deepcopy(opt)
-    if opt.block_size < 1:
+    if opt.block_size < 1 and (rank < 0 or rank > 100):
         opt.block_size = 128
-##    if opt.max_iter < 0:
-##        opt.max_iter = max(100, min(m, n))
     if opt.convergence_criteria is None:
-        opt.convergence_criteria = _DefaultConvergenceCriteria(rtol)
+        opt.convergence_criteria = _DefaultSVDConvergenceCriteria(vtol)
     if opt.stopping_criteria is None and rank < 0:
         opt.stopping_criteria = \
             DefaultStoppingCriteria(A, tol, norm, max_rank)
@@ -39,6 +36,64 @@ def truncated_svd(A, opt, rank=-1, tol=-1, norm='s', max_rank=-1, rtol=1e-3, \
         v = v[:, : max_rank]
         sigma = sigma[: max_rank]
     return u, sigma, v.T
+
+
+def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=0, arch='cpu'):
+    lra = LowerRankApproximation()
+    lra.compute(A, opt=opt, rank=npc, tol=tol, norm=norm, \
+        max_rank=mpc, shift=True, arch=arch)
+    trans = lra.left # transfomed (reduced-features) data
+    comps = lra.right # principal components
+    return lra.mean, trans, comps
+
+
+class LowerRankApproximation:
+    def __init__(self):
+        self.left = None
+        self.right = None
+        self.mean = None
+        self.iterations = -1
+    def compute(self, A, opt, rank=-1, tol=-1, norm='f', max_rank=-1, \
+                rtol=1e-3, shift=False, arch='cpu'):
+        '''
+        For a given m by n data matrix A (m data samples n features each)
+        computes m by k matrix L and k by n matrix R such that k < min(m, n),
+        and the product L R approximates A. The rows of R are orhonormal,
+        the columns of L are in the descending order of their norms (modulo
+        possible small deviations due to round-off errors).
+
+        Parameters
+        ----------
+        A : array of shape (m, n)
+            Data matrix.
+        opt : an object of class Options
+            options
+        rank : int
+            number of columns in L = rows in R (if negative, defined by 
+            the required accuracy of LRA or interactively by the user).
+        tol : float
+            approximation tolerance: the norm of A - L R is going
+            to be not greater than the norm of A multiplied by tol.
+            TBC...
+        '''
+        m, n = A.shape
+        opt = copy.deepcopy(opt)
+        if opt.block_size < 1:
+            opt.block_size = 128
+        if opt.convergence_criteria is None:
+            opt.convergence_criteria = _DefaultLRAConvergenceCriteria(rtol)
+        if opt.stopping_criteria is None and rank < 0:
+            opt.stopping_criteria = \
+                DefaultStoppingCriteria(A, tol, norm, max_rank)
+        psvd = PartialSVD()
+        psvd.compute(A, opt, (0, rank), (None, None), shift, False, arch)
+        self.left = psvd.sigma*psvd.u # left multiplier L
+        self.right = psvd.v.T # right multiplier R
+        self.mean = psvd.mean # bias
+        if max_rank > 0 and self.left.shape[1] > max_rank:
+            self.left = self.left[:, : max_rank]
+            self.right = self.right[: max_rank, :]
+        self.iterations = psvd.iterations
 
 
 class PartialSVD:
@@ -361,13 +416,23 @@ class _OperatorSVD:
             return None
 
 
-class _DefaultConvergenceCriteria:
+class _DefaultSVDConvergenceCriteria:
     def __init__(self, tol):
         self.tolerance = tol
     def set_tolerance(self, tolerance):
         self.tolerance = tolerance
     def satisfied(self, solver, i):
         err = solver.convergence_data('kinematic vector err est', i)
+        return err >= 0 and err <= self.tolerance
+
+
+class _DefaultLRAConvergenceCriteria:
+    def __init__(self, tol):
+        self.tolerance = tol
+    def set_tolerance(self, tolerance):
+        self.tolerance = tolerance
+    def satisfied(self, solver, i):
+        err = solver.convergence_data('res', i)
         return err >= 0 and err <= self.tolerance
 
 

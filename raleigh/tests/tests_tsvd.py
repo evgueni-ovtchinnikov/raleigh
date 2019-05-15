@@ -39,7 +39,7 @@ if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 from raleigh.solver import Options
-from raleigh.apps.partial_svd import truncated_svd
+from raleigh.apps.partial_svd import truncated_svd, pca
 
 
 def random_singular_values(k, sigma, dt):
@@ -112,7 +112,7 @@ opt.block_size = block_size
 opt.verbosity = verb
 
 start = time.time()
-u, sigma, vt = truncated_svd(A, opt, tol=th, rtol=tol, arch=arch)
+u, sigma, vt = truncated_svd(A, opt, rank=rank, tol=th, vtol=tol, arch=arch)
 stop = time.time()
 time_r = stop - start
 print('\ntruncated svd time: %.1e' % time_r)
@@ -130,6 +130,12 @@ if not ptb and n_r > 0:
     print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
     print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
 D = A - numpy.dot(sigma[:n_r]*u[:, :n_r], vt[:n_r, :])
+err = nla.norm(D, axis = 1)/nla.norm(A, axis = 1)
+print('\ntruncation error %.1e' % numpy.amax(err))
+
+mean, trans, comp = pca(A, opt, npc=rank, tol=th, arch=arch)
+e = numpy.ones((trans.shape[0], 1), dtype=dtype)
+D = A - numpy.dot(trans, comp) - numpy.dot(e, mean)
 err = nla.norm(D, axis = 1)/nla.norm(A, axis = 1)
 print('\ntruncation error %.1e' % numpy.amax(err))
 
