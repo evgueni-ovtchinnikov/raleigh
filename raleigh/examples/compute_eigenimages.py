@@ -1,8 +1,17 @@
 # -*- coding: utf-8 -*-
-'''
-Incremental PCA demo. Computes Principal Components for a set of 2D images
-in small portions until stopped by user's entering 'n' in answer to 'more?'
-or the error of PCA approximation falls below the tolerance for each image
+'''Principal Component Analysis of 2D images.
+
+Computes Principal Components for a set of 2D images in small portions until
+stopped by user's entering 'n' in answer to 'more?' or the error of PCA
+approximation falls below the tolerance.
+
+Note on Linear Algebra style terminology adopted here:
+Due to a specific nature of this PCA application, principal components are
+referred to as 'eigenimages'. Each image from the original data set is
+approximated by a linear combination of eigenimages, hence we refer to the
+coefficients of these linear combinations as 'coordinates' (of images in
+the orthonormal basis of eigenimages) - in some other PCA software these
+are referred to as 'reduced features data'.
 
 Usage:
   compute_eigenimages [--help | -h | options] <data>
@@ -33,7 +42,6 @@ import time
 raleigh_path = os.path.dirname(os.path.abspath(__file__)) + '/../..'
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
-    print(sys.path)
 
 from raleigh.solver import Options
 from raleigh.apps.partial_svd import pca
