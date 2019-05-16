@@ -325,7 +325,7 @@ class PSVDErrorCalculator:
         self.dt = a.dtype.type
         self.shift = False
         self.ncon = 0
-        self.norms = nla.norm(a, axis = 1).reshape((m, 1))
+        self.norms = _norm(a, axis = 1).reshape((m, 1))
         self.err = self.norms.copy()
         self.aves = None
     def set_up(self, op, solver, eigenvectors, shift=False):
@@ -521,6 +521,10 @@ class _DefaultLRAConvergenceCriteria:
     def satisfied(self, solver, i):
         err = solver.convergence_data('res', i)
         return err >= 0 and err <= self.tolerance
+
+
+def _norm(a, axis):
+    return numpy.apply_along_axis(nla.norm, axis, a)
 
 
 def _conj(a):

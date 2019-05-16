@@ -154,7 +154,9 @@ for i in range(nimg):
         image[mask > 0] = v
         images[j,:,:] = image
     if asymm < 1.0:
-        a[j] = numpy.linalg.norm(image - image[:, ::-1])/numpy.linalg.norm(image)
+        img = numpy.reshape(image, (n,))
+        gmi = numpy.reshape(image[:, ::-1], (n,))
+        a[j] = numpy.linalg.norm(img - gmi)/numpy.linalg.norm(img)
         ia[j] = j
     if dble:
         images[j + 1, :, :] = image[:, ::-1]

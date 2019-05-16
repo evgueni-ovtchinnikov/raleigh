@@ -46,6 +46,9 @@ if raleigh_path not in sys.path:
 from raleigh.solver import Options
 from raleigh.apps.partial_svd import pca
 
+def _norm(a, axis):
+    return numpy.apply_along_axis(numpy.linalg.norm, axis, a)
+
 __version__ = '0.1.0'
 args = docopt(__doc__, version=__version__)
 file = args['<data>']
@@ -88,7 +91,7 @@ mean, coord, eigim = pca(images, opt, tol=err_tol, arch=arch)
 stop = time.time()
 elapsed_time = stop - start
 
-sigma = numpy.linalg.norm(coord, axis=0)
+sigma = _norm(coord, axis=0)
 ncon = sigma.shape[0]
 print('%d eigenimages computed' % ncon)
 if err_tol > 0:

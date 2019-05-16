@@ -48,7 +48,7 @@ if nx != nxu or ny != nyu:
     raise ValueError('mismatching image sizes (%d, %d) and (%d, %d)' % \
           (ny, nx, nyu, nxu))
 
-sigma = numpy.linalg.norm(v, axis = 0)
+sigma = _norm(v, axis=0)
 
 pylab.figure()
 pylab.plot(numpy.arange(1, nc + 1, 1), sigma)
@@ -63,7 +63,7 @@ images = numpy.reshape(images, (ni, n))
 u = numpy.reshape(u, (nc, n))
 
 print('measuring PCA errors...')
-norm = _norm(images[:m, :], axis = 1)
+norm = _norm(images[:m, :], axis=1)
 if mean is None:
     pca_images = numpy.dot(v, u)
 else:
@@ -71,8 +71,8 @@ else:
     mean = numpy.reshape(mean, (1, n))
     pca_images = numpy.dot(v, u) + numpy.dot(ones, mean)
 mean = numpy.reshape(mean, n)
-proj = _norm(v, axis = 1)
-err = _norm(images[:m, :] - pca_images, axis = 1)/norm
+proj = _norm(v, axis=1)
+err = _norm(images[:m, :] - pca_images, axis=1)/norm
 ind = numpy.argsort(-err)
 pylab.figure()
 pylab.plot(numpy.arange(1, m + 1, 1), err[ind])
@@ -96,7 +96,7 @@ while True:
     pylab.title('image %d' % i)
     img = images[i, :]
     image = numpy.reshape(img, (ny, nx))
-    pylab.imshow(image, cmap = 'gray')
+    pylab.imshow(image, cmap='gray')
     img = numpy.dot(w, u)
     if mean is not None:
         img += mean
