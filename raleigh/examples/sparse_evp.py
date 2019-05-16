@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-"""
-Real symmetric/Hermitian SCR matrix test.
+"""Eigenvalue problem for real symmetric SCR matrix.
 
 Usage:
-    tests_hevp [--help | -h | options]
+    sparse_evp [--help | -h | options]
 
 Options:
     -a <mat>, --matrix=<mat>  problem matrix [default: lap3d]

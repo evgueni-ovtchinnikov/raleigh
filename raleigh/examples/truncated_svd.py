@@ -2,7 +2,7 @@
 """Truncated SVD of a a randomly generated matrix.
 
 Usage:
-  tests_tsvd [--help | -h | options] <m> <n> <k>
+  truncated_svd [--help | -h | options] <m> <n> <k>
 
 Arguments:
   m  number of rows
