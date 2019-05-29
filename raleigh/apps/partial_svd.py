@@ -16,25 +16,75 @@ import time
 from ..solver import Problem, Solver, Options
 
 
-def truncated_svd(A, opt=Options(), rank=-1, tol=-1, norm='s', max_rank=-1, \
+def truncated_svd(A, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
                   vtol=1e-3, arch='cpu'):
+    '''Computes truncated Singular Value Decomposition of a dense matrix A.
+    
+    For a given m by n data matrix A computes m by k matrix U, k by k diagonal
+    matrix S and n by k matrix V such that A V = U S, the columns of U and V
+    are orthonirmal (orthogonal and of unit norm) and the largest singular
+    value of A - U S V' is smallest possible for a given k (V' = V.T for a real
+    A and A.T.conj() for a complex A).
+    The diagonal entries of S are the largest k singular values of A and the
+    columns of U and V are corresponding left and right singular vectors.
+
+    Parameters
+    ----------
+    A : 2D numpy array
+        Data matrix.
+    opt : an object of class raleigh.solver.Options
+        Solver options (see raleigh.solver).
+    nsv : int
+        Required number of singular values and vectors if known.
+        If negative, implicitely defined by the required truncation tolerance
+        or interactively by the user.
+    tol : float
+        Truncation tolerance in the case nsv < 0: if tol > 0, then the norm of
+        D = A - U S V' is going to be not greater than the norm of A multiplied 
+        by tol, otherwise the user will be asked repeatedly whether the 
+        truncation error achieved so far is small enough.
+    norm : character
+        The norm to be used for evaluating the truncation error:
+        's' : the largest singular value of D,
+        'f' : Frobenius norm of D,
+        'm' : the largest norm of a row of D.
+    msv : int
+        Maximal number of singular values to compute. Ignored if negative, 
+        otherwise if msv < min(m, n), then the truncation error may be greater
+        than requested.
+    vtol : float
+        Singular vectors error tolerance.
+    arch : string
+        'cpu' : run on CPU,
+        'gpu' : run on GPU if available, otherwise on CPU,
+        'gpu!' : run on GPU, throw RuntimError if GPU is not present.
+
+    Returns
+    -------
+    u : numpy array of shape (m, k)
+        The matrix U.
+    sigma : numpy array of shape (k,)
+        The array of the largest k singular values in descending order.
+    vt : numpy array of shape (k, n)
+        The matrix V'.
+    '''
     opt = copy.deepcopy(opt)
-    if opt.block_size < 1 and (rank < 0 or rank > 100):
+    if opt.block_size < 1 and (nsv < 0 or nsv > 100):
         opt.block_size = 128
     if opt.convergence_criteria is None:
         opt.convergence_criteria = _DefaultSVDConvergenceCriteria(vtol)
-    if opt.stopping_criteria is None and rank < 0:
+    if opt.stopping_criteria is None and nsv < 0:
         opt.stopping_criteria = \
-            DefaultStoppingCriteria(A, tol, norm, max_rank)
+            DefaultStoppingCriteria(A, tol, norm, msv)
     psvd = PartialSVD()
-    psvd.compute(A, opt, (0, rank), (None, None), False, False, arch)
+    psvd.compute(A, opt, (0, nsv), (None, None), False, False, arch)
     u = psvd.u
     v = psvd.v
     sigma = psvd.sigma
-    if max_rank > 0 and u.shape[1] > max_rank:
-        u = u[:, : max_rank]
-        v = v[:, : max_rank]
-        sigma = sigma[: max_rank]
+    if msv > 0 and u.shape[1] > msv:
+        u = u[:, : msv]
+        v = v[:, : msv]
+        sigma = sigma[: msv]
     return u, sigma, v.T
 
 
@@ -45,7 +95,7 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=0, arch='cpu'):
     For a given m by n data matrix A (m data samples n features each)
     computes m by k matrix L and k by n matrix R such that k < min(m, n),
     and the product L R approximates A - e a, where e = numpy.ones((m, 1)
-    and a = numpy.mean(A, axis = 0).
+    and a = numpy.mean(A, axis=0).
     The rows of R (principal components) are orhonormal, the columns of L
     (reduced features) are in the descending order of their norms (modulo
     possible small deviations due to round-off errors).
@@ -71,7 +121,7 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=0, arch='cpu'):
         'f' : Frobenius norm of D,
         'm' : the largest norm of a row of D.
     mpc : int
-        Maximal number of PCs to compute. Ignored if negatide, otherwise
+        Maximal number of PCs to compute. Ignored if negative, otherwise
         if mpc < min(m, n), then the required accuracy of approximation
         may not be achieved.
     arch : string
@@ -111,7 +161,7 @@ class LowerRankApproximation:
         For a given m by n data matrix A (m data samples n features each)
         computes m by k matrix L and k by n matrix R such that k < min(m, n),
         and the product L R approximates A if shift=False or else A - e a,
-        where e = numpy.ones((A.shape[0], 1) and a = numpy.mean(A, axis = 0).
+        where e = numpy.ones((A.shape[0], 1) and a = numpy.mean(A, axis=0).
         The rows of R are orhonormal, the columns of L are in the descending
         order of their norms (modulo possible small deviations due to round-off
         errors).
@@ -173,7 +223,7 @@ class LowerRankApproximation:
             opt.stopping_criteria = \
                 DefaultStoppingCriteria(A, tol, norm, max_rank)
         psvd = PartialSVD()
-        psvd.compute(A, opt, (0, rank), (None, None), shift, False, arch)
+        psvd.compute(A, opt, nsv=(0, rank), shift=shift, arch=arch)
         self.left = psvd.sigma*psvd.u # left multiplier L
         self.right = psvd.v.T # right multiplier R
         self.mean = psvd.mean # bias
@@ -325,7 +375,7 @@ class PSVDErrorCalculator:
         self.dt = a.dtype.type
         self.shift = False
         self.ncon = 0
-        self.norms = _norm(a, axis = 1).reshape((m, 1))
+        self.norms = _norm(a, axis=1).reshape((m, 1))
         self.err = self.norms.copy()
         self.aves = None
     def set_up(self, op, solver, eigenvectors, shift=False):
@@ -509,7 +559,7 @@ class _DefaultSVDConvergenceCriteria:
     def set_tolerance(self, tolerance):
         self.tolerance = tolerance
     def satisfied(self, solver, i):
-        err = solver.convergence_data('kinematic vector err est', i)
+        err = solver.convergence_data('kinematic vector error', i)
         return err >= 0 and err <= self.tolerance
 
 
@@ -519,7 +569,7 @@ class _DefaultLRAConvergenceCriteria:
     def set_tolerance(self, tolerance):
         self.tolerance = tolerance
     def satisfied(self, solver, i):
-        err = solver.convergence_data('res', i)
+        err = solver.convergence_data('residual', i)
         return err >= 0 and err <= self.tolerance
 
 

@@ -104,7 +104,7 @@ f_sigma = lambda t: 2**(-alpha*t).astype(dtype)
 sigma0, u0, v0, A = random_matrix_for_svd(m, n, k, f_sigma, dtype)
 if ptb:
     a = 2*numpy.random.rand(m, n).astype(dtype) - 1
-    s = norm(a, axis = 0)
+    s = norm(a, axis=0)
     A += a*(sigma0[-1]/s)
 
 print('\n--- solving with raleigh.svd...')
@@ -112,11 +112,10 @@ print('\n--- solving with raleigh.svd...')
 # set raleigh solver options
 opt = Options()
 opt.block_size = block_size
-#opt.max_iter = 1000
 opt.verbosity = verb
 
 start = time.time()
-u, sigma, vt = truncated_svd(A, opt, rank=rank, tol=th, vtol=tol, arch=arch)
+u, sigma, vt = truncated_svd(A, opt, nsv=rank, tol=th, vtol=tol, arch=arch)
 stop = time.time()
 time_r = stop - start
 print('\ntruncated svd time: %.1e' % time_r)
@@ -129,18 +128,16 @@ if not ptb and n_r > 0:
     n_r = min(n_r, sigma0.shape[0])
     err_vec = vec_err(v0[:,:n_r], vt.transpose()[:,:n_r])
     err_val = abs(sigma[:n_r] - sigma0[:n_r])
-    #print(err_vec)
-    #print(err_vec*sigma_r[:n_r])
     print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
     print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
 D = A - numpy.dot(sigma[:n_r]*u[:, :n_r], vt[:n_r, :])
-err = norm(D, axis = 1)/norm(A, axis = 1)
+err = norm(D, axis=1)/norm(A, axis=1)
 print('\ntruncation error %.1e' % numpy.amax(err))
 
 mean, trans, comp = pca(A, opt, npc=rank, tol=th, arch=arch)
 e = numpy.ones((trans.shape[0], 1), dtype=dtype)
 D = A - numpy.dot(trans, comp) - numpy.dot(e, mean)
-err = norm(D, axis = 1)/norm(A, axis = 1)
+err = norm(D, axis=1)/norm(A, axis=1)
 print('\ntruncation error %.1e' % numpy.amax(err))
 
 print('\ndone')
