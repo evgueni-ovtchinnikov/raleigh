@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Partial SVD of an ndarray via RALEIGH
+"""Partial SVD of a matrix represented by a 2D ndarray.
 
 Created on Tue Feb 19 13:58:54 2019
 
-@author: Evgueni Ovtchinnikov, UKRI
+@author: Evgueni Ovtchinnikov, UKRI-STFC
 """
 
 import copy
@@ -97,8 +97,7 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=0, arch='cpu'):
     and the product L R approximates A - e a, where e = numpy.ones((m, 1)
     and a = numpy.mean(A, axis=0).
     The rows of R (principal components) are orhonormal, the columns of L
-    (reduced features) are in the descending order of their norms (modulo
-    possible small deviations due to round-off errors).
+    (reduced features) are in the descending order of their norms.
 
     Parameters
     ----------
@@ -163,8 +162,7 @@ class LowerRankApproximation:
         and the product L R approximates A if shift=False or else A - e a,
         where e = numpy.ones((A.shape[0], 1) and a = numpy.mean(A, axis=0).
         The rows of R are orhonormal, the columns of L are in the descending
-        order of their norms (modulo possible small deviations due to round-off
-        errors).
+        order of their norms.
 
         Parameters
         ----------
