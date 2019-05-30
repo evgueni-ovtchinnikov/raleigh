@@ -77,7 +77,7 @@ def truncated_svd(A, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
         opt.stopping_criteria = \
             DefaultStoppingCriteria(A, tol, norm, msv)
     psvd = PartialSVD()
-    psvd.compute(A, opt, (0, nsv), (None, None), False, False, arch)
+    psvd.compute(A, opt, nsv=(0, nsv), arch=arch)
     u = psvd.u
     v = psvd.v
     sigma = psvd.sigma
@@ -221,7 +221,7 @@ class LowerRankApproximation:
             opt.stopping_criteria = \
                 DefaultStoppingCriteria(A, tol, norm, max_rank)
         psvd = PartialSVD()
-        psvd.compute(A, opt, nsv=(0, rank), shift=shift, arch=arch)
+        psvd.compute(A, opt=opt, nsv=(0, rank), shift=shift, arch=arch)
         self.left = psvd.sigma*psvd.u # left multiplier L
         self.right = psvd.v.T # right multiplier R
         self.mean = psvd.mean # bias
@@ -231,6 +231,8 @@ class LowerRankApproximation:
         self.iterations = psvd.iterations
 
 
+''' The rest is for advanced users only.
+'''
 class PartialSVD:
     def __init__(self):
         self.sigma = None
@@ -238,8 +240,8 @@ class PartialSVD:
         self.v = None
         self.mean = None
         self.iterations = -1
-    def compute(self, a, opt, nsv=(-1, -1), isv=(None, None), \
-                shift=False, refine=False, arch='cpu'):
+    def compute(self, a, opt=Options(), nsv=(-1, -1), shift=False, \
+                refine=False, arch='cpu'):
     
         if arch[:3] == 'gpu':
             try:
@@ -260,30 +262,9 @@ class PartialSVD:
         m, n = a.shape
         dt = a.dtype.type
     
-        isvec = ()
-        for i in range(2):
-            if isv[i] is not None:
-                k, l = isv[i].shape
-                if k != n:
-                    msg = 'initial singular vectors must have dimension %d, not %d'
-                    raise ValueError(msg % (n, k))
-                isvec += (Vectors(isv[i].T),)
-            else:
-                isvec += (None,)
-        isv = isvec
-    
         transp = m < n
         if transp:
             n, m = m, n
-            isvec = ()
-            for i in range(2):
-                if isv[i] is not None:
-                    tmp = Vectors(n, l, data_type=dt)
-                    op.apply(isv[i], tmp)
-                    isvec += (tmp,)
-                else:
-                    isvec += (None,)
-            isv = isvec
     
         v = Vectors(n, data_type=dt)
         opSVD = _OperatorSVD(op, v, gpu, transp, shift)
@@ -299,7 +280,7 @@ class PartialSVD:
                 print('partial SVD error calculation not requested')
             pass
     
-        solver.solve(v, opt, which=nsv, init=isv)
+        solver.solve(v, options=opt, which=nsv)
         if opt.verbosity > 0:
             print('operator application time: %.2e' % opSVD.time)
     
