@@ -16,6 +16,48 @@ from ..solver import Problem, Solver, Options, DefaultConvergenceCriteria
 
 
 def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
+    '''Computes several eigenpairs of sparse real symmetric/Hermitian eigenvalue
+    problems using either shift-invert or preconditioning technique.
+    Requires MKL 10.3 or later (needs mkl_rt.dll on Windows, libmkl_rt.so on
+    Linux).
+
+    Parameters
+    ----------
+    A : either scipy's sparse matrix or raleigh's SparseSymmetricSolver
+        In the first case, the (stiffness) matrix of the problem.
+        In the second case, the inverse of A - sigma B if B is not None or
+        A - sigma I, where I is the identity, otherwise.
+    B : scipy's sparse matrix
+        Mass matrix. If None, eigenvalues and eigenvectors of A are computed,
+        otherwise those of the generalized problem A x = lambda B x.
+    T : a Python object
+        If T is not None, then A must be positive definite.
+        Preconditioner (roughly, approximate inverse of A). Must have method
+        apply(x, y) that, for a given equally shaped 2D ndarrays x and y with
+        the second dimension equal to the problem size, applies preconditioning
+        to rows of x and places them into respective rows of y.
+        The method apply(x, y) must act as a symmetric positive definite linear
+        operator, i.e. for any x, the matrix numpy.dot(x, y) must be real
+        symmetric/Hermitian and positive definite.
+    sigma : float
+        Ignored if T is not None. Otherwise specifies value in the vicinity of
+        which the wanted eigenvalues are situated.
+    which : an integer or tuple of integers
+        Specifies which eigenvalues are wanted. If T is not none, then it is
+        the number of smallest eigenvalues. Otherwise, if it is an integer k,
+        then k eigenvalues nearest to sigma will be computed, and if it is a
+        tuple (k, l), then k neares eigenvalues left from sigma and l nearest
+        eigenvalues right from sigma will be computed.
+    tol : float
+        Eigenvector error tolerance.
+    verb : integer
+        Verbosity level.
+        < 0 : nothing printed
+          0 : error and warning messages printed
+          1 : + number of iteration and converged eigenvalues printed
+          2 : + current eigenvalue iterates, residuals and error estimates
+              printed
+    '''
 
     if B is not None:
         B = SparseSymmetricMatrix(B)
