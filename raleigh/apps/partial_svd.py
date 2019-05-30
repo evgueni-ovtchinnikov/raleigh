@@ -67,6 +67,13 @@ def truncated_svd(A, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
         The array of the largest k singular values in descending order.
     vt : numpy array of shape (k, n)
         The matrix V'.
+
+    Notes
+    -----
+    This solver can only be efficient if singular values decay quickly, e.g.
+    exponentially. If the singular values properties are unknown, then it is
+    worth to try it first in interactive mode (nsv < 0, tol = 0), and if the
+    computation is too slow, use scipy.linalg.svd instead.
     '''
     opt = copy.deepcopy(opt)
     if opt.block_size < 1 and (nsv < 0 or nsv > 100):
@@ -138,8 +145,8 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=0, arch='cpu'):
         Principal components.
     '''
     lra = LowerRankApproximation()
-    lra.compute(A, opt=opt, rank=npc, tol=tol, norm=norm, \
-        max_rank=mpc, shift=True, arch=arch)
+    lra.compute(A, opt=opt, rank=npc, tol=tol, norm=norm, max_rank=mpc, \
+                shift=True, arch=arch)
     trans = lra.left # transfomed (reduced-features) data
     comps = lra.right # principal components
     return lra.mean, trans, comps
