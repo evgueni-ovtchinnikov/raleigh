@@ -35,10 +35,11 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
         Preconditioner (roughly, approximate inverse of A). Must have method
         apply(x, y) that, for a given equally shaped 2D ndarrays x and y with
         the second dimension equal to the problem size, applies preconditioning
-        to rows of x and places them into respective rows of y.
-        The method apply(x, y) must act as a symmetric positive definite linear
-        operator, i.e. for any x, the matrix numpy.dot(x, y) must be real
-        symmetric/Hermitian and positive definite.
+        to rows of x and places the results into respective rows of y.
+        The method apply(x, y) must act as a self-adjoint positive definite 
+        linear operator, i.e. for any x, the matrix numpy.dot(x, y), where y is
+        computed by apply(x, y), must be real symmetric/Hermitian and positive
+        definite.
     sigma : float
         Ignored if T is not None. Otherwise specifies value in the vicinity of
         which the wanted eigenvalues are situated.

@@ -202,7 +202,7 @@ class ILUT:
         self.__U = ctypes.c_char_p(self.__u.encode('utf-8'))
         self.__L = ctypes.c_char_p(self.__l.encode('utf-8'))
         self.__N = ctypes.c_char_p(self.__n.encode('utf-8'))
-    def factorize(self, tol=1e-2, max_fill_rel=10):
+    def factorize(self, tol=1e-6, max_fill_rel=1):
         max_fill_abs = min(self.__rows - 1, self.__nnz * max_fill_rel)
         self.__ipar[30] = 1
         self.__dpar[30] = tol

@@ -92,7 +92,7 @@ class IncompleteLU:
         ia = matrix.indptr + 1
         ja = matrix.indices + 1
         self.__ilut = ILUT(a, ia, ja)
-    def factorize(self, tol=1e-4, max_fill=10):
+    def factorize(self, tol=1e-6, max_fill=1):
         self.__ilut.factorize(tol=tol, max_fill_rel=max_fill)
     def apply(self, x, y):
         try:

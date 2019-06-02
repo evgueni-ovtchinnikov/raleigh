@@ -134,12 +134,12 @@ else:
         print('setting up the preconditioner...')
         start = time.time()
         T = IncompleteLU(M)
-        T.factorize(tol=1e-4, max_fill=10)
+        T.factorize()
         stop = time.time()
         setup_time = stop - start
         print('setup time: %.2e' % setup_time)
 
-if T is not None:
+if T is not None or left == 0 and right == 0:
     which = nev
 else:
     which = (left, right)
