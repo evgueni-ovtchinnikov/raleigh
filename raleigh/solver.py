@@ -673,8 +673,13 @@ class Solver:
                           abs(err_X[0, i]), abs(err_X[1, i]), \
                           acf[0, i], self.cnv[i]))
 
-            if self.iteration < 2:
-                dlmd_min = (epsilon**0.67)*numpy.amax(abs(dlmd[:, 0]))
+            if self.iteration == 2:
+                eps = epsilon**0.67
+                lbs = left_block_size
+                dlmd_min_lft = eps*numpy.amax(abs(dlmd[:lbs, rec - 1]))
+                dlmd_min_rgt = eps*numpy.amax(abs(dlmd[lbs:, rec - 1]))
+                #print(dlmd_min_lft, dlmd_min_rgt)
+                #dlmd_min = (epsilon**0.67)*numpy.amax(abs(dlmd[:, 0]))
 ##            if single:
 ##                q = 10
 ##            else:
@@ -704,7 +709,7 @@ class Solver:
                         print(msg % (j, it, lmd[k], err_X[0, k], err_X[1, k]))
                     lcon += 1
                     self.cnv[k] = self.iteration + 1
-                elif detect_stagn and it > 2 and dlmd1 <= dlmd_min \
+                elif detect_stagn and it > 2 and dlmd1 <= dlmd_min_lft \
                      and (dlmd1 > dlmd2 or dlmd1 == 0.0):
 ##                elif detect_stagn and res[k] >= 0 and it > 2 and \
 ##                    res[k] < res_err and (dlmd1 > dlmd2 or dlmd1 == 0.0):
@@ -740,7 +745,7 @@ class Solver:
                         print(msg % (j, it, lmd[k], res[k], err_X[0, k], err_X[1, k]))
                     rcon += 1
                     self.cnv[k] = self.iteration + 1
-                elif detect_stagn and it > 2 and dlmd1 <= dlmd_min \
+                elif detect_stagn and it > 2 and dlmd1 <= dlmd_min_rgt \
                      and (dlmd1 > dlmd2 or dlmd1 == 0.0):
 ##                elif detect_stagn and it > 2 and ((res[k] >= 0 and \
 ##                    res[k] < res_err and dlmd1 > dlmd2) or dlmd1 <= dlmd_min):
