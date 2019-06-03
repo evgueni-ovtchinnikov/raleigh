@@ -25,7 +25,36 @@ Options:
 @author: Evgueni Ovtchinnikov, UKRI-STFC
 """
 
-from docopt import docopt
+try:
+    from docopt import docopt
+    __version__ = '0.1.0'
+    args = docopt(__doc__, version=__version__)
+    matrix = args['--matrix']
+    mass = args['--mass']
+    if matrix == 'lap3d':
+        nx = int(args['--dim'])
+    dt = args['--dtype']
+    sigma = float(args['--shift'])
+    left = int(args['--left'])
+    right = int(args['--right'])
+    nev = int(args['--nev'])
+    tol = float(args['--tol'])
+    invop = args['--invop']
+    ilutp = args['--ilutp']
+except:
+    matrix = 'lap3d'
+    mass = None
+    if matrix == 'lap3d':
+        nx = 10
+    dt = 'd'
+    sigma = 0
+    left = 0
+    right = 6
+    nev = 6
+    tol = 1e-10
+    invop = False
+    ilutp = False
+
 import numpy
 from scipy.io import mmread
 import scipy.sparse as scs
@@ -65,22 +94,6 @@ def lap3d(nx, ny, nz, ax, ay, az):
 def lap3d_upper(nx, ny, nz, ax, ay, az):
     return scs.triu(lap3d(nx, ny, nz, ax, ay, az), format='csr')
 
-
-__version__ = '0.1.0'
-args = docopt(__doc__, version=__version__)
-
-matrix = args['--matrix']
-mass = args['--mass']
-if matrix == 'lap3d':
-    nx = int(args['--dim'])
-dt = args['--dtype']
-sigma = float(args['--shift'])
-left = int(args['--left'])
-right = int(args['--right'])
-nev = int(args['--nev'])
-tol = float(args['--tol'])
-invop = args['--invop']
-ilutp = args['--ilutp']
 
 numpy.random.seed(1) # makes the results reproducible
 
