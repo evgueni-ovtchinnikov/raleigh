@@ -13,18 +13,17 @@ import os
 import sys
 from sys import platform
 
-from .cuda import cuda_path
-
 
 POINTER = ctypes.POINTER
 
 
 try:
     if platform == 'win32':
+        from .cuda import cuda_path
         cublas_dll = glob.glob(cuda_path + '/cublas64*')[0]
         cublas = ctypes.CDLL(cublas_dll, mode = ctypes.RTLD_GLOBAL)
     else:
-        cublas = ctypes.CDLL('libcublas.so')
+        cublas = ctypes.CDLL('libcublas.so', mode = ctypes.RTLD_GLOBAL)
 
     create = cublas.cublasCreate_v2
     create.argtypes = [POINTER(POINTER(ctypes.c_ubyte))]

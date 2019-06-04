@@ -44,7 +44,7 @@ try:
         cudart_dll = glob.glob(cuda_path + '/cudart64*')[0]
         cuda = ctypes.CDLL(cudart_dll, mode = ctypes.RTLD_GLOBAL)
     else:
-        cuda = ctypes.CDLL('libcudart.so')
+        cuda = ctypes.CDLL('libcudart.so', mode = ctypes.RTLD_GLOBAL)
 
     v = ctypes.c_int()
     cuda.cudaRuntimeGetVersion(ctypes.byref(v))
