@@ -1,14 +1,64 @@
 # -*- coding: utf-8 -*-
-"""
+"""CUDA Toolkit Loader.
+
 Created on Tue Jun 19 16:37:57 2018
 
 @author: Evgueni Ovtchinnikov, UKRI-STFC
 """
 
 import ctypes
+import glob
+import os
+from sys import platform
 
-cuda_path = 'C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v7.0/bin'
-cuda = ctypes.CDLL(cuda_path + '/cudart64_70.dll', mode = ctypes.RTLD_GLOBAL)
+
+def _find_cuda_path(path):
+    n = len(path)
+    i = 0
+    while i < n:
+        cpath = path[i:]
+        j = cpath.find('CUDA')
+        if j < 0:
+            return None
+        f = cpath[: j].rfind(';')
+        if f < 0:
+            f = 0
+        else:
+            f += 1
+        t = cpath[j :].find(';')
+        if t < 0:
+            t = len(cpath)
+        else:
+            t += j
+        b = cpath[f : t].find('bin')
+        if b < 0:
+            i += t
+            continue
+        return cpath[f : t]
+    return None
+
+
+try:
+    if platform == 'win32':
+        cuda_path = _find_cuda_path(os.environ['PATH'])
+        cudart_dll = glob.glob(cuda_path + '/cudart64*')[0]
+        cuda = ctypes.CDLL(cudart_dll, mode = ctypes.RTLD_GLOBAL)
+    else:
+        cuda = ctypes.CDLL('libcudart.so')
+
+    v = ctypes.c_int()
+    cuda.cudaRuntimeGetVersion(ctypes.byref(v))
+    version = v.value
+    print('CUDA version: %d' % version)
+except:
+    print('CUDA Toolkit not found, switching to cpu...')
+    raise RuntimeError('CUDA Toolkit not found')
+
+
+if version >= 10000:
+    UUID_SIZE = 32
+else:
+    UUID_SIZE = 0
 
 POINTER = ctypes.POINTER
 
@@ -16,6 +66,7 @@ POINTER = ctypes.POINTER
 class CudaDeviceProp(ctypes.Structure):
     _fields_ = [ 
             ('name', ctypes.c_char * 256),
+            ('uuid', ctypes.c_char * UUID_SIZE),
             ('totalGlobalMem', ctypes.c_size_t),
             ('sharedMemPerBlock', ctypes.c_size_t),
             ('regsPerBlock', ctypes.c_int),
@@ -80,6 +131,7 @@ class CudaDeviceProp(ctypes.Structure):
             ('singleToDoublePrecisionPerfRatio', ctypes.c_int),
             ('pageableMemoryAccess', ctypes.c_int),
             ('concurrentManagedAccess', ctypes.c_int),
+            ('rest', ctypes.c_int * 1024)
             ]
 
 

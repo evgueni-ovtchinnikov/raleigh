@@ -1,31 +1,51 @@
 # -*- coding: utf-8 -*-
-"""
+"""CUBLAS Interface.
+
 Created on Tue Jun 19 17:05:28 2018
 
 @author: Evgueni Ovtchinnikov, UKRI-STFC
 """
 
 import ctypes
+import glob
 import numpy
+import os
 import sys
+from sys import platform
 
 from .cuda import cuda_path
 
 
 POINTER = ctypes.POINTER
 
-#cuda_path = 'C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v7.0/bin'
-#cublas_path = cuda.cuda_path + '/cublas64_70.dll'
-cublas_path = cuda_path + '/cublas64_70.dll'
-cublas = ctypes.CDLL(cublas_path, mode=ctypes.RTLD_GLOBAL)
 
-create = cublas.cublasCreate_v2
-create.argtypes = [POINTER(POINTER(ctypes.c_ubyte))]
-create.restype = ctypes.c_int
+try:
+    if platform == 'win32':
+        cublas_dll = glob.glob(cuda_path + '/cublas64*')[0]
+        cublas = ctypes.CDLL(cublas_dll, mode = ctypes.RTLD_GLOBAL)
+    else:
+        cublas = ctypes.CDLL('libcublas.so')
 
-destroy = cublas.cublasDestroy_v2
-#destroy.argtypes = [POINTER(ctypes.c_ubyte)]
-destroy.restype = ctypes.c_int
+    create = cublas.cublasCreate_v2
+    create.argtypes = [POINTER(POINTER(ctypes.c_ubyte))]
+    create.restype = ctypes.c_int
+
+    destroy = cublas.cublasDestroy_v2
+    destroy.restype = ctypes.c_int
+
+    cublasVersion = cublas.cublasGetVersion_v2
+    cublasVersion.restype = ctypes.c_int
+
+    cublas_handle = POINTER(ctypes.c_ubyte)()
+    err = create(ctypes.byref(cublas_handle))
+    v = ctypes.c_int()
+    err = cublasVersion(cublas_handle, ctypes.byref(v))
+    version = v.value
+    print('CUBLAS version: %d' % version)
+    destroy(cublas_handle)
+except:
+    print('CUBLAS not found, switching to cpu...')
+    raise RuntimeError('CUBLAS not found')
 
 
 class Cublas:

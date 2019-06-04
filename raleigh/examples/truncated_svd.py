@@ -29,33 +29,9 @@ Options:
 try:
     from docopt import docopt
     __version__ = '0.1.0'
-    args = docopt(__doc__, version=__version__)
-    m = int(args['<m>'])
-    n = int(args['<n>'])
-    k = int(args['<k>'])
-    alpha = float(args['--alpha'])
-    arch = args['--arch']
-    block_size = int(args['--bsize'])
-    rank = int(args['--rank'])
-    th = float(args['--thres'])
-    tol = float(args['--rtol'])
-    verb = int(args['--verb'])
-    dble = args['--double']
-    ptb = args['--ptb']
+    have_docopt = True
 except:
-    m = 3000
-    n = 2000
-    k = 1000
-    alpha = 100
-    arch = 'cpu'
-    block_size = -1
-    rank = -1
-    th = 0.01
-    tol = 1e-3
-    verb = 0
-    dble = False
-    ptb = False
-
+    have_docopt = False
 
 import numpy
 import numpy.linalg as nla
@@ -104,6 +80,34 @@ def vec_err(u, v):
     s = norm(w, axis = 0)
     return s
 
+
+if have_docopt:
+    args = docopt(__doc__, version=__version__)
+    m = int(args['<m>'])
+    n = int(args['<n>'])
+    k = int(args['<k>'])
+    alpha = float(args['--alpha'])
+    arch = args['--arch']
+    block_size = int(args['--bsize'])
+    rank = int(args['--rank'])
+    th = float(args['--thres'])
+    tol = float(args['--rtol'])
+    verb = int(args['--verb'])
+    dble = args['--double']
+    ptb = args['--ptb']
+else:
+    m = 3000
+    n = 2000
+    k = 1000
+    alpha = 100
+    arch = 'cpu'
+    block_size = -1
+    rank = -1
+    th = 0.01
+    tol = 1e-3
+    verb = 0
+    dble = False
+    ptb = False
 
 numpy.random.seed(1) # make results reproducible
 
