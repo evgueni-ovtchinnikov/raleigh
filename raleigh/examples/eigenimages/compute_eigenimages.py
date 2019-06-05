@@ -32,31 +32,47 @@ Created on Mon Jun 18 12:10:20 2018
 @author: Evgueni Ovtchinnikov, UKRI-STFC
 '''
 
-from docopt import docopt
+try:
+    from docopt import docopt
+    __version__ = '0.1.0'
+    have_docopt = True
+except:
+    have_docopt = False
+
 import numpy
 import pylab
 import os
 import sys
 import time
 
-raleigh_path = os.path.dirname(os.path.abspath(__file__)) + '/../..'
+raleigh_path = os.path.dirname(os.path.abspath(__file__)) + '/../../..'
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 from raleigh.solver import Options
 from raleigh.apps.partial_svd import pca
 
+
 def _norm(a, axis):
     return numpy.apply_along_axis(numpy.linalg.norm, axis, a)
 
-__version__ = '0.1.0'
-args = docopt(__doc__, version=__version__)
-file = args['<data>']
-ni = int(args['--nimgs'])
-err_tol = float(args['--imerr'])
-block_size = int(args['--bsize'])
-tol = float(args['--rtol'])
-arch = args['--arch']
+
+if have_docopt:
+    __version__ = '0.1.0'
+    args = docopt(__doc__, version=__version__)
+    file = args['<data>']
+    ni = int(args['--nimgs'])
+    err_tol = float(args['--imerr'])
+    block_size = int(args['--bsize'])
+    tol = float(args['--rtol'])
+    arch = args['--arch']
+else:
+    file = sys.argv[1]
+    ni = -1
+    err_tol = 0
+    block_size = -1
+    tol = 1e-3
+    arch = 'cpu'
 
 numpy.random.seed(1) # make results reproducible
 
@@ -105,12 +121,12 @@ while True:
     pylab.title('image %d' % i)
     img = images[i,:]
     image = numpy.reshape(img, (ny, nx))
-    pylab.imshow(image, cmap = 'gray')
+    pylab.imshow(image, cmap='gray')
     img = numpy.dot(coord[i,:], eigim) + mean
     pca_image = numpy.reshape(img, (ny, nx))
     pylab.figure()
     pylab.title('PCA approximation of the image')
-    pylab.imshow(pca_image, cmap = 'gray')
+    pylab.imshow(pca_image, cmap='gray')
     pylab.show()
 
 print('saving...')

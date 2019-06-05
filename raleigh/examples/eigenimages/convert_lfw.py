@@ -31,14 +31,22 @@ Created on Tue Aug 21 14:34:18 2018
 @author: Evgueni Ovtchinnikov, UKRI-STFC
 """
 
-from docopt import docopt
+try:
+    from docopt import docopt
+    __version__ = '0.1.0'
+    have_docopt = True
+except:
+    have_docopt = False
+
 import numpy
 import os
 import pylab
 import scipy.ndimage as ndimage
+import sys
+
 
 def _mask(nx, ny):
-    mask = numpy.zeros((ny, nx), dtype = numpy.uint8)
+    mask = numpy.zeros((ny, nx), dtype=numpy.uint8)
     x0 = nx/2
     y0 = ny/2
     ax = x0 - nx/5
@@ -49,16 +57,25 @@ def _mask(nx, ny):
                 mask[y, x] = 1
     return mask
 
-__version__ = '0.1.0'
-args = docopt(__doc__, version=__version__)
 
-datapath = args['<datapath>']
-m = int(args['--how-many'])
-output = args['--output']
-asymm = float(args['--asymm'])
-dble = args['--double']
-face = args['--face-area']
-view = args['--view']
+if have_docopt:
+    __version__ = '0.1.0'
+    args = docopt(__doc__, version=__version__)
+    datapath = args['<datapath>']
+    m = int(args['--how-many'])
+    output = args['--output']
+    asymm = float(args['--asymm'])
+    dble = args['--double']
+    face = args['--face-area']
+    view = args['--view']
+else:
+    datapath = sys.argv[1]
+    m = -1
+    output = 'images.npy'
+    asymm = 1.0
+    dble = False
+    face = False
+    view = False
 
 print('loading images from %s...' % datapath)
 image_dir = datapath
@@ -98,9 +115,9 @@ if dble:
     ni = 2*nimg
 else:
     ni = nimg
-images = numpy.zeros((ni, ny, nx), dtype = numpy.float32)
-names = numpy.ndarray((ni,), dtype = object)
-offsets = numpy.zeros((ni,), dtype = int)
+images = numpy.zeros((ni, ny, nx), dtype=numpy.float32)
+names = numpy.ndarray((ni,), dtype=object)
+offsets = numpy.zeros((ni,), dtype=int)
 
 print('collecting %d images from %d folders...' % (nimg, ndir))
 ndir = 0
@@ -113,7 +130,7 @@ for subdir in os.listdir(image_dir):
         if not filename.endswith('.jpg'):
             continue
         fullname = fulldir + '/' + filename
-        image = ndimage.imread(fullname, mode = 'L')
+        image = ndimage.imread(fullname, mode='L')
         if dble:
             images[2*nimg, :, :] = image
             names[2*nimg] = subdir
@@ -128,7 +145,7 @@ for subdir in os.listdir(image_dir):
     if m > 0 and nimg >= m:
         break
 
-file = open("all_names.txt", "w+")
+file = open("names.txt", "w+")
 for i in range(ni):
     file.write('%s\n' % names[i])
 file.close()
@@ -139,7 +156,7 @@ print('pixel values range: %f to %f' % (vmin, vmax))
 
 if asymm < 1.0:
     a = numpy.zeros(ni)
-    ia = numpy.zeros(ni, dtype = numpy.int32)
+    ia = numpy.zeros(ni, dtype=numpy.int32)
 mask = _mask(nx, ny)
 n = nx*ny
 for i in range(nimg):
@@ -177,7 +194,6 @@ if asymm < 1.0:
     else:
         th = mean_asymm
     k = sum(a <= th)
-    #photos = images[ind[:k],:,:]
     iind = numpy.sort(ia[ind[:k]])
     photos = images[iind,:,:]
     print(photos.shape)
@@ -187,7 +203,7 @@ if asymm < 1.0:
             break
         image = photos[i,:,:]
         pylab.title('%s' % names[iind[i]].replace('_', ' '))
-        pylab.imshow(image, cmap = 'gray')
+        pylab.imshow(image, cmap='gray')
         pylab.show()
     print('saving %d photos to %s...' % (k, 'photos.npy'))
     numpy.save('photos.npy', photos)
@@ -206,7 +222,7 @@ while view:
         break
     image = images[i,:,:]
     pylab.title('%s' % names[i].replace('_', ' '))
-    pylab.imshow(image, cmap = 'gray')
+    pylab.imshow(image, cmap='gray')
     pylab.show()
 
 print('done')

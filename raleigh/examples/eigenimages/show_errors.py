@@ -2,7 +2,7 @@
 '''Compares images with their PCA approximations.
 
 Usage:
-    analyse_errors [--help | -h] <file>
+    show_errors [--help | -h] <file>
 
 Arguments:
     file       images file (must end with .npy)
@@ -12,17 +12,29 @@ Created on Wed Aug 22 11:13:17 2018
 @author: Evgueni Ovtchinnikov, UKRI-STFC
 '''
 
-from docopt import docopt
+try:
+    from docopt import docopt
+    __version__ = '0.1.0'
+    have_docopt = True
+except:
+    have_docopt = False
+
 import numpy
 import numpy.linalg as nla
 import pylab
+import sys
+
 
 def _norm(a, axis):
     return numpy.apply_along_axis(nla.norm, axis, a)
 
-__version__ = '0.1.0'
-args = docopt(__doc__, version=__version__)
-file = args['<file>']
+
+if have_docopt:
+    __version__ = '0.1.0'
+    args = docopt(__doc__, version=__version__)
+    file = args['<file>']
+else:
+    file = sys.argv[1]
 
 u = numpy.load('eigenimages.npy')
 v = numpy.load('coordinates.npy')
@@ -103,7 +115,7 @@ while True:
     pca_image = numpy.reshape(img, (ny, nx))
     pylab.figure()
     pylab.title('PCA approximation of the image')
-    pylab.imshow(pca_image, cmap = 'gray')
+    pylab.imshow(pca_image, cmap='gray')
     pylab.show()
 
 print('done')
