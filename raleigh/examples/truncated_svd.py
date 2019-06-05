@@ -18,7 +18,7 @@ Options:
                              [default: -1]
   -r <alph>, --alpha=<alph>  singular values decay rate [default: 100]
   -s <thsh>, --thres=<thsh>  singular values threshold [default: 0.01]
-  -t <rtol>, --rtol=<rtol>   residual tolerance [default: 1e-3]
+  -t <vtol>, --vtol=<vtol>   singular vectors error tolerance [default: 1e-3]
   -v <verb>, --verb=<verb>   verbosity level [default: 0]
   -d, --double   use double precision
   -p, --ptb      add random perturbation to make the matrix full rank
@@ -91,7 +91,7 @@ if have_docopt:
     block_size = int(args['--bsize'])
     rank = int(args['--rank'])
     th = float(args['--thres'])
-    tol = float(args['--rtol'])
+    tol = float(args['--vtol'])
     verb = int(args['--verb'])
     dble = args['--double']
     ptb = args['--ptb']
