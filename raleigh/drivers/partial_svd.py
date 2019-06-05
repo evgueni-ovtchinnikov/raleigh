@@ -252,8 +252,10 @@ class PartialSVD:
     
         if arch[:3] == 'gpu':
             try:
-                from ..cuda import cuda
-                from ..cuda.cublas_algebra import Vectors, Matrix
+##                from ..cuda import cuda
+##                from ..cuda.cublas_algebra import Vectors, Matrix
+                from ..algebra import cuda
+                from ..algebra.dense_cublas import Vectors, Matrix
                 op = Matrix(a)
                 gpu = cuda
             except:
@@ -263,7 +265,8 @@ class PartialSVD:
         else:
             gpu = None
         if gpu is None:
-            from ..ndarray.algebra import Vectors, Matrix
+            #from ..ndarray.algebra import Vectors, Matrix
+            from ..algebra.dense_cpu import Vectors, Matrix
             op = Matrix(a)
     
         m, n = a.shape

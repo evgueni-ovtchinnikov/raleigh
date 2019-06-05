@@ -22,11 +22,15 @@ def mkl_version(mkl):
     mkl.mkl_get_version_string(ptr_v, len_v)
     return str_v.tostring().decode('ascii')
 
-if platform == 'win32':
-    mkl = ctypes.CDLL('mkl_rt.dll', mode=ctypes.RTLD_GLOBAL)
-else:
-    mkl = ctypes.CDLL('libmkl_rt.so', mode=ctypes.RTLD_GLOBAL)
-print('Loaded %s' % mkl_version(mkl))
+try:
+    mkl.mkl_get_max_threads()
+    print('mkl already loaded')
+except:
+    if platform == 'win32':
+        mkl = ctypes.CDLL('mkl_rt.dll', mode=ctypes.RTLD_GLOBAL)
+    else:
+        mkl = ctypes.CDLL('libmkl_rt.so', mode=ctypes.RTLD_GLOBAL)
+    print('Loaded %s' % mkl_version(mkl))
 
 # find the total number of threads    
 num_cpus = multiprocessing.cpu_count()

@@ -8,10 +8,14 @@ import numpy
 import scipy.sparse as scs
 import time
 
-from ..ndarray.cblas_algebra import Vectors
-from ..ndarray.sparse_algebra import SparseSymmetricMatrix
-from ..ndarray.sparse_algebra import SparseSymmetricSolver
-from ..ndarray.sparse_algebra import Operator
+##from ..ndarray.cblas_algebra import Vectors
+##from ..ndarray.sparse_algebra import SparseSymmetricMatrix
+##from ..ndarray.sparse_algebra import SparseSymmetricSolver
+##from ..ndarray.sparse_algebra import Operator
+from ..algebra.dense_cblas import Vectors
+from ..algebra.sparse_mkl import SparseSymmetricMatrix
+from ..algebra.sparse_mkl import SparseSymmetricSolver
+from ..algebra.sparse_mkl import Operator
 from ..solver import Problem, Solver, Options, DefaultConvergenceCriteria
 
 

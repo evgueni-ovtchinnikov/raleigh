@@ -30,15 +30,20 @@ if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 try:
-    from raleigh.ndarray.cblas_algebra import Vectors as cblasVectors
-    from raleigh.ndarray.cblas_algebra import Matrix as cblasMatrix
+##    from raleigh.ndarray.cblas_algebra import Vectors as cblasVectors
+##    from raleigh.ndarray.cblas_algebra import Matrix as cblasMatrix
+    from raleigh.algebra.dense_cblas import Vectors as cblasVectors
+    from raleigh.algebra.dense_cblas import Matrix as cblasMatrix
     have_cblas = True
 except:
     have_cblas = False
 try:
-    import raleigh.cuda.cuda as cuda
-    from raleigh.cuda.cublas_algebra import Vectors as cublasVectors
-    from raleigh.cuda.cublas_algebra import Matrix as cublasMatrix
+##    import raleigh.cuda.cuda as cuda
+##    from raleigh.cuda.cublas_algebra import Vectors as cublasVectors
+##    from raleigh.cuda.cublas_algebra import Matrix as cublasMatrix
+    import raleigh.algebra.cuda as cuda
+    from raleigh.algebra.dense_cublas import Vectors as cublasVectors
+    from raleigh.algebra.dense_cublas import Matrix as cublasMatrix
     have_cublas = True
 except:
     have_cublas = False

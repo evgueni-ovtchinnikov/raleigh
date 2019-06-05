@@ -22,15 +22,19 @@ raleigh_path = '../../..'
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
-from raleigh.ndarray.numpy_algebra import Vectors as numpyVectors
+from raleigh.algebra.dense_numpy import Vectors as numpyVectors
+#from raleigh.ndarray.numpy_algebra import Vectors as numpyVectors
 try:
-    from raleigh.ndarray.cblas_algebra import Vectors as cblasVectors
+#    from raleigh.ndarray.cblas_algebra import Vectors as cblasVectors
+    from raleigh.algebra.dense_cblas import Vectors as cblasVectors
     have_cblas = True
 except:
     have_cblas = False
 try:
-    import raleigh.cuda.cuda as cuda
-    from raleigh.cuda.cublas_algebra import Vectors as cublasVectors
+#    import raleigh.cuda.cuda as cuda
+#    from raleigh.cuda.cublas_algebra import Vectors as cublasVectors
+    import raleigh.algebra.cuda as cuda
+    from raleigh.algebra.dense_cublas import Vectors as cublasVectors
     have_cublas = True
 except:
     have_cublas = False

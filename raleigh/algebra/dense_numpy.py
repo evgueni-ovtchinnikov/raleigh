@@ -9,7 +9,7 @@ Created on Thu Jun 14 11:52:38 2018
 
 import numpy
 
-from .algebra_base import NDArrayVectors, NDArrayMatrix
+from .dense_ndarray import NDArrayVectors, NDArrayMatrix
 
 
 class Vectors(NDArrayVectors):

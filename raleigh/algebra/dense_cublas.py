@@ -10,9 +10,9 @@ import numbers
 import numpy
 import sys
 
-from ..cuda import cuda
 #from .cuda import malloc, free, memset, memcpy
 #from .cuda import memcpyH2H, memcpyH2D, memcpyD2H, memcpyD2D
+from . import cuda
 from .cublas import Cublas
 
 class Vectors:

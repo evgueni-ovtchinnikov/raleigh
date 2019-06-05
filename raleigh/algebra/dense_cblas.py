@@ -12,7 +12,7 @@ import numpy
 import scipy.sparse as scs
 
 from .mkl import Cblas
-from .algebra_base import NDArrayVectors, NDArrayMatrix
+from .dense_ndarray import NDArrayVectors, NDArrayMatrix
 
 
 class Vectors(NDArrayVectors):

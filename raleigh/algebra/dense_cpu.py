@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-BLAS selector
+Dense algebra on cpu selector
 
 Created on Thu Jun 14 13:08:20 2018
 
@@ -8,8 +8,8 @@ Created on Thu Jun 14 13:08:20 2018
 """
 
 try:
-    from .cblas_algebra import Vectors, Matrix
+    from .dense_cblas import Vectors, Matrix
     print('using mkl cblas...')
 except:
     print('mkl cblas not found, using numpy...')
-    from .numpy_algebra import Vectors, Matrix
+    from .dense_numpy import Vectors, Matrix
