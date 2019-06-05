@@ -1,3 +1,0 @@
-'''
-RALEIGH applications
-'''

@@ -44,7 +44,7 @@ if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 from raleigh.solver import Options
-from raleigh.apps.partial_svd import truncated_svd, pca
+from raleigh.drivers.partial_svd import truncated_svd, pca
 
 
 def norm(a, axis):

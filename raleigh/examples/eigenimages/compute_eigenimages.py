@@ -50,7 +50,7 @@ if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
 from raleigh.solver import Options
-from raleigh.apps.partial_svd import pca
+from raleigh.drivers.partial_svd import pca
 
 
 def _norm(a, axis):

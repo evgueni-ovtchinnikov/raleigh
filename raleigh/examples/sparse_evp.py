@@ -47,7 +47,7 @@ if raleigh_path not in sys.path:
 from raleigh.ndarray.sparse_algebra import SparseSymmetricMatrix
 from raleigh.ndarray.sparse_algebra import SparseSymmetricSolver
 from raleigh.ndarray.sparse_algebra import IncompleteLU
-from raleigh.apps.partial_hevp import partial_hevp
+from raleigh.drivers.partial_hevp import partial_hevp
 
 
 def lap1d(n, a):
