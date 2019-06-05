@@ -117,7 +117,6 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
         opA = lambda x, y: A.apply(x, y)
         op = Operator(T)
         opT = lambda x, y: op.apply(x, y)
-##        opT = lambda x, y: T.apply(x.data(), y.data())
         if B is None:
             evp = Problem(eigenvectors, opA)
         else:
@@ -128,11 +127,9 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
         which = (which, 0)
 
     opt = Options()
-    #opt.block_size = block_size
     opt.convergence_criteria = DefaultConvergenceCriteria()
     opt.convergence_criteria.set_error_tolerance('k eigenvector error', tol)
     opt.sigma = sigma
-    #opt.max_iter = 30
     opt.verbosity = verb
 
     start = time.time()
@@ -153,5 +150,3 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
     if ne > 0:
         x = x[:, ind]
     return lmd, x, status
-    #return lmd, eigenvectors.data().T[:,ind], status
-

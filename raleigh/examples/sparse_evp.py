@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Eigenvalue problem for real symmetric SCR matrix.
+"""Computes several eigenvalues and eigenvectors of a real symmetric matrix.
 
 Usage:
     sparse_evp [--help | -h | options]
 
 Options:
-    -a <mat>, --matrix=<mat>  problem matrix [default: lap3d]
-    -b <mss>, --mass=<mss>    mass matrix
+    -a <mat>, --matrix=<mat>  problem matrix (name of a Matrix Market file or
+                              lap3d) [default: lap3d]
+    -b <mss>, --mass=<mss>    mass matrix if problem is generalized
     -n <dim>, --dim=<dim>     mesh sizes nx = ny = nz for lap3d [default: 10]
-    -d <dat>, --dtype=<dat>   data type (BLAS prefix s/d) [default: d]
     -s <sft>, --shift=<sft>   shift (ignored in preconditioned mode) [default: 0]
     -l <lft>, --left=<lft>    number of eigenvalues left of shift (shift-invert
                               mode) [default: 0]
@@ -19,6 +19,8 @@ Options:
                               or smallest if preconditioning is used
                               [default: 6]
     -t <tol>, --tol=<tol>     error/residual tolerance [default: 1e-10]
+    -v <vrb>, --verb=<vrb>    verbosity level (negative suppresses all output)
+                              [default: 0]
     -I, --invop  first argument of partial_hevp is a SparseSymmetricSolver
     -P, --ilutp  use mkl dcsrilut (incomplete ILU) as a preconditioner
 
@@ -68,66 +70,53 @@ def lap3d(nx, ny, nz, ax, ay, az):
     return L
 
 
-def lap3d_upper(nx, ny, nz, ax, ay, az):
-    return scs.triu(lap3d(nx, ny, nz, ax, ay, az), format='csr')
-
-
 if have_docopt:
     args = docopt(__doc__, version=__version__)
     matrix = args['--matrix']
     mass = args['--mass']
     if matrix == 'lap3d':
         nx = int(args['--dim'])
-    dt = args['--dtype']
     sigma = float(args['--shift'])
     left = int(args['--left'])
     right = int(args['--right'])
     nev = int(args['--nev'])
     tol = float(args['--tol'])
+    verb = int(args['--verb'])
     invop = args['--invop']
     ilutp = args['--ilutp']
 else:
     matrix = 'lap3d'
+    nx = 10
     mass = None
-    if matrix == 'lap3d':
-        nx = 10
-    dt = 'd'
     sigma = 0
     left = 0
     right = 6
     nev = 6
     tol = 1e-10
+    verb = 0
     invop = False
     ilutp = False
 
 numpy.random.seed(1) # makes the results reproducible
 
-if dt == 's':
-    dtype = numpy.float32
-elif dt == 'd':
-    dtype = numpy.float64
-elif dt == 'c':
-    dtype = numpy.complex64
-elif dt == 'z':
-    dtype = numpy.complex128
-else:
-    raise ValueError('data type %s not supported' % dt)
-
 if matrix == 'lap3d':
-    print('generating %s matrix...' % matrix)
+    if verb > -1:
+        print('generating discretized 3D Laplacian matrix...')
     M = lap3d(nx, nx, nx, 1.0, 1.0, 1.0)
     ia = M.indptr + 1
     n = ia.shape[0] - 1
-    if mass is not None:
-        B = 2*scs.eye(n, dtype=dtype, format='csr')
+    if mass is not None: # just a simple generalized problem test
+        B = 2*scs.eye(n, format='csr')
     else:
         B = None
 else:
-    print('reading the matrix from %s...' % matrix)
+    if verb > -1:
+        print('reading the matrix from %s...' % matrix)
     M = mmread(matrix).tocsr().astype(dtype)
     n = M.shape[0]
     if mass is not None:
-        print('reading the mass matrix from %s...' % mass)
+        if verb > -1:
+            print('reading the mass matrix from %s...' % mass)
         B = mmread(path + mass).tocsr()
     else:
         B = None
@@ -135,36 +124,39 @@ else:
 T = None
 
 if invop:
-    print('setting up the linear system solver...')
+    if verb > -1:
+        print('setting up the linear system solver...')
     start = time.time()
-    A = SparseSymmetricSolver(dtype=dtype)
+    A = SparseSymmetricSolver()
     A.analyse(M, sigma, B)
     A.factorize()
     stop = time.time()
     setup_time = stop - start
-    print('setup time: %.2e' % setup_time)
+    if verb > -1:
+        print('setup time: %.2e' % setup_time)
 else:
     A = M
     if ilutp:
-        if dtype != numpy.float64:
-            raise ValueError('ILU preconditioner cannot handle data type %s' \
-                             % repr(dtype))
-        print('setting up the preconditioner...')
+        if verb > -1:
+            print('setting up the preconditioner...')
         start = time.time()
         T = IncompleteLU(M)
         T.factorize()
         stop = time.time()
         setup_time = stop - start
-        print('setup time: %.2e' % setup_time)
+        if verb > -1:
+            print('setup time: %.2e' % setup_time)
 
 if T is not None or left == 0 and right == 0:
     which = nev
 else:
     which = (left, right)
 
-vals, vecs, status = partial_hevp(A, B, T, sigma=sigma, which=which, tol=tol)
+vals, vecs, status = partial_hevp(A, B, T, sigma=sigma, which=which, tol=tol, \
+                                  verb=verb)
 nr = vals.shape[0]
-if status != 0:
-    print('raleighs execution status: %d' % status)
-print('converged eigenvalues are:')
-print(vals)
+if status != 0 and verb > -1:
+    print('partial_hevp execution status: %d' % status)
+if verb > -1:
+    print('converged eigenvalues are:')
+    print(vals)
