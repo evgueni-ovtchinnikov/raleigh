@@ -23,6 +23,7 @@ Options:
                               [default: 0]
     -I, --invop  first argument of partial_hevp is a SparseSymmetricSolver
     -P, --ilutp  use mkl dcsrilut (incomplete ILU) as a preconditioner
+    -C, --check  check the eigenvector errors by running twice
 
 @author: Evgueni Ovtchinnikov, UKRI-STFC
 """
@@ -72,6 +73,18 @@ def lap3d(nx, ny, nz, ax, ay, az):
     return L
 
 
+def norm(a, axis):
+    return numpy.apply_along_axis(numpy.linalg.norm, axis, a)
+
+
+def vec_err(u, v):
+    w = v.copy()
+    q = numpy.dot(u.T, v)
+    w = numpy.dot(u, q) - v
+    s = norm(w, axis = 0)
+    return s
+
+
 if have_docopt:
     args = docopt(__doc__, version=__version__)
     matrix = args['--matrix']
@@ -86,6 +99,7 @@ if have_docopt:
     verb = int(args['--verb'])
     invop = args['--invop']
     ilutp = args['--ilutp']
+    check = args['--check']
 else:
     matrix = 'lap3d'
     nx = 10
@@ -98,6 +112,7 @@ else:
     verb = 0
     invop = False
     ilutp = False
+    check = False
 
 numpy.random.seed(1) # makes the results reproducible
 
@@ -114,7 +129,7 @@ if matrix == 'lap3d':
 else:
     if verb > -1:
         print('reading the matrix from %s...' % matrix)
-    M = mmread(matrix).tocsr().astype(dtype)
+    M = mmread(matrix).tocsr()
     n = M.shape[0]
     if mass is not None:
         if verb > -1:
@@ -156,9 +171,28 @@ else:
 
 vals, vecs, status = partial_hevp(A, B, T, sigma=sigma, which=which, tol=tol, \
                                   verb=verb)
-nr = vals.shape[0]
 if status != 0 and verb > -1:
     print('partial_hevp execution status: %d' % status)
 if verb > -1:
     print('converged eigenvalues are:')
     print(vals)
+
+if check:
+    nev = vals.shape[0]
+    lft = numpy.sum(vals < sigma)
+    rgt = nev - lft
+    vls, vcs, status = partial_hevp(A, B, T, sigma=sigma, which=which, tol=tol, \
+                                    verb=verb)
+    if status != 0 and verb > -1:
+        print('partial_hevp execution status: %d' % status)
+    ne = vls.shape[0]
+    lt = numpy.sum(vls < sigma)
+    rt = ne - lt
+    left = min(lft, lt)
+    right = min(rgt, rt)
+    if left > 0:
+        errs = vec_err(vecs[:, : left], vcs[:, : left])
+        print(errs)
+    if right > 0:
+        errs = vec_err(vecs[:, lft : lft + right], vcs[:, lt : lt + right])
+        print(errs)
