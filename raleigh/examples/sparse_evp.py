@@ -191,7 +191,7 @@ if check:
     left = min(lft, lt)
     right = min(rgt, rt)
     if left > 0:
-        errs = vec_err(vecs[:, : left], vcs[:, : left])
+        errs = vec_err(vecs[:, lft - left : lft], vcs[:, lt - left : lt])
         print(errs)
     if right > 0:
         errs = vec_err(vecs[:, lft : lft + right], vcs[:, lt : lt + right])

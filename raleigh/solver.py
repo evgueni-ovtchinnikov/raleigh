@@ -338,6 +338,7 @@ class Solver:
         dlmd = numpy.zeros((m, RECORDS), dtype=numpy.float32)
         dX = numpy.ones((m,), dtype=numpy.float32)
         acf = numpy.ones((2, m,), dtype=numpy.float32)
+        cluster = numpy.zeros((2, m), dtype=numpy.int32)
 
         # workspace
         X = vector.new_vectors(m)
@@ -684,6 +685,29 @@ class Solver:
 ##                q = 10
 ##            else:
 ##                q = 100
+            if self.iteration >= 2:
+                cluster[:, :] = 0
+                nc = 0
+                for i in range(left_block_size - 1):
+                    if abs(lmd[i + 1] - lmd[i]) <= dlmd_min_lft:
+                        if cluster[0, i] == 0:
+                            nc += 1
+                            cluster[0, i] = nc
+                            cluster[1, i] = 1
+                        cluster[0, i + 1] = cluster[0, i]
+                        cluster[1, i + 1] = cluster[1, i] + 1
+                for j in range(m - left_block_size - 1):
+                    i = m - j - 1
+                    if abs(lmd[i - 1] - lmd[i]) <= dlmd_min_rgt:
+                        if cluster[0, i] == 0:
+                            nc += 1
+                            cluster[0, i] = nc
+                            cluster[1, i] = 1
+                        cluster[0, i - 1] = cluster[0, i]
+                        cluster[1, i - 1] = cluster[1, i] + 1
+                if verb > 2:
+                    print(cluster[0, :])
+                    print(cluster[1, :])
 
             lcon = 0
             for i in range(leftX - leftX//4):
@@ -698,7 +722,7 @@ class Solver:
                     break
 ##                res_err = q*min_res[k] + 10*delta_R[i]
                 dlmd1 = abs(dlmd[k, max(0, rec - 1)])
-                dlmd2 = abs(dlmd[k, max(0, rec - 2)])
+                dlmd2 = abs(dlmd[k, max(0, rec - 3)])
 ##                print(dlmd1, dlmd2, dlmd_min)
                 if convergence_criteria.satisfied(self, k):
                     if verb > 0:
@@ -720,6 +744,14 @@ class Solver:
                     lcon += 1
                     self.cnv[k] = -self.iteration - 1
                 else:
+                    if cluster[0, k] > 0:
+                        for l in range(k - 1, k - cluster[1, k], -1):
+                            if self.cnv[l] == -self.iteration - 1:
+                                self.cnv[l] = 0
+                                lcon -= 1
+                                if verb > 0:
+                                    msg = 'stagnation of %e cancelled'
+                                    print(msg % lmd[l])
                     break
 
             rcon = 0
@@ -735,7 +767,7 @@ class Solver:
                     break
 ##                res_err = q*min_res[k] + 10*delta_R[nx - i - 1]
                 dlmd1 = abs(dlmd[k, max(0, rec - 1)])
-                dlmd2 = abs(dlmd[k, max(0, rec - 2)])
+                dlmd2 = abs(dlmd[k, max(0, rec - 3)])
 ##                print(dlmd1, dlmd2, dlmd_min)
                 if convergence_criteria.satisfied(self, k):
                     if verb > 0:
@@ -756,6 +788,14 @@ class Solver:
                     rcon += 1
                     self.cnv[k] = -self.iteration - 1
                 else:
+                    if cluster[0, k] > 0:
+                        for l in range(k + 1, k + cluster[1, k]):
+                            if self.cnv[l] == -self.iteration - 1:
+                                self.cnv[l] = 0
+                                rcon -= 1
+                                if verb > 0:
+                                    msg = 'stagnation of %e cancelled'
+                                    print(msg % lmd[l])
                     break
 
             if largest: # ensure the largest converge first
