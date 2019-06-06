@@ -61,8 +61,8 @@ def random_singular_values(k, sigma, dt):
 def random_singular_vectors(m, n, k, dt):
     u = numpy.random.randn(m, k).astype(dt)
     v = numpy.random.randn(n, k).astype(dt)
-    u, r = numpy.linalg.qr(u)
-    v, r = numpy.linalg.qr(v)
+    u, r = sla.qr(u, mode='economic')
+    v, r = sla.qr(v, mode='economic')
     return u, v
 
 
