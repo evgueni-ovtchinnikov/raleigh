@@ -2,24 +2,19 @@
 '''Unit tests for matrix and vectors algebra.
 
 Usage:
-  tests_matrix [--help | options] <m> <n> <k>
+  tests_matrix [-h | --help | <m> <n> <k> <t>]
 
 Arguments:
   m   matrix rows
   n   matrix columns
   k   number of vectors
+  t   data type (s/d/c/z)
 
-Options:
-  -d, --double
-  -c, --complex
-'''
-'''
 Created on Tue Aug 14 14:06:19 2018
 
 @author: Evgueni Ovtchinnikov, UKRI-STFC
 '''
 
-from docopt import docopt
 import numpy
 import numpy.linalg as nla
 import sys
@@ -29,59 +24,24 @@ raleigh_path = '../../..'
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
-try:
-##    from raleigh.ndarray.cblas_algebra import Vectors as cblasVectors
-##    from raleigh.ndarray.cblas_algebra import Matrix as cblasMatrix
-    from raleigh.algebra.dense_cblas import Vectors as cblasVectors
-    from raleigh.algebra.dense_cblas import Matrix as cblasMatrix
-    have_cblas = True
-except:
-    have_cblas = False
-try:
-##    import raleigh.cuda.cuda as cuda
-##    from raleigh.cuda.cublas_algebra import Vectors as cublasVectors
-##    from raleigh.cuda.cublas_algebra import Matrix as cublasMatrix
-    import raleigh.algebra.cuda as cuda
-    from raleigh.algebra.dense_cublas import Vectors as cublasVectors
-    from raleigh.algebra.dense_cublas import Matrix as cublasMatrix
-    have_cublas = True
-except:
-    have_cublas = False
-
-
-class cblasOperatorSVD:
-    def __init__(self, op):
-        self.op = op
-    def apply(self, x, y, transp=False):
-        m, n = self.op.shape()
-        k = x.nvec()
-        if transp:
-            z = cblasVectors(n, k, x.data_type())
-            self.op.apply(x, z, transp=True)
-            self.op.apply(z, y)
-        else:
-            z = cblasVectors(m, k, x.data_type())
-            self.op.apply(x, z)
-            self.op.apply(z, y, transp=True)
-
-
-class cublasOperatorSVD:
-    def __init__(self, op):
-        self.op = op
-    def apply(self, x, y, transp=False):
-        m, n = self.op.shape()
-        k = x.nvec()
-        if transp:
-            z = cublasVectors(n, k, x.data_type())
-            self.op.apply(x, z, transp=True)
-            self.op.apply(z, y)
-        else:
-            z = cublasVectors(m, k, x.data_type())
-            self.op.apply(x, z)
-            self.op.apply(z, y, transp=True)
-
 
 def test(u, v):
+
+    try:
+        from raleigh.algebra.dense_cblas import Vectors as cblasVectors
+        from raleigh.algebra.dense_cblas import Matrix as cblasMatrix
+        have_cblas = True
+    except:
+        have_cblas = False
+    try:
+        import raleigh.algebra.cuda as cuda
+        from raleigh.algebra.dense_cublas import Vectors as cublasVectors
+        from raleigh.algebra.dense_cublas import Matrix as cublasMatrix
+        have_cublas = True
+    except:
+        have_cublas = False
+    if not have_cblas and not have_cublas:
+        return
 
     n = u.shape[1]
     m = v.shape[1]
@@ -197,32 +157,70 @@ def test(u, v):
             print('    error: %.1e' % (nla.norm(diff)/nla.norm(y_cblas.data())))
 
 
-__version__ = '0.1.0'
-args = docopt(__doc__, version=__version__)
+class cblasOperatorSVD:
+    def __init__(self, op):
+        self.op = op
+    def apply(self, x, y, transp=False):
+        from raleigh.algebra.dense_cblas import Vectors as cblasVectors
+        m, n = self.op.shape()
+        k = x.nvec()
+        if transp:
+            z = cblasVectors(n, k, x.data_type())
+            self.op.apply(x, z, transp=True)
+            self.op.apply(z, y)
+        else:
+            z = cblasVectors(m, k, x.data_type())
+            self.op.apply(x, z)
+            self.op.apply(z, y, transp=True)
 
-m = int(args['<m>'])
-n = int(args['<n>'])
-k = int(args['<k>'])
-dble = args['--double']
-cmplx = args['--complex']
+
+class cublasOperatorSVD:
+    def __init__(self, op):
+        self.op = op
+    def apply(self, x, y, transp=False):
+        from raleigh.algebra.dense_cublas import Vectors as cublasVectors
+        m, n = self.op.shape()
+        k = x.nvec()
+        if transp:
+            z = cublasVectors(n, k, x.data_type())
+            self.op.apply(x, z, transp=True)
+            self.op.apply(z, y)
+        else:
+            z = cublasVectors(m, k, x.data_type())
+            self.op.apply(x, z)
+            self.op.apply(z, y, transp=True)
+
+
+narg = len(sys.argv)
+if narg < 2 or sys.argv[1] == '-h' or sys.argv[1] == '--help':
+    print('\nUsage:\n')
+    print('python tests_matrix.py <rows> <columns> <vector_size> <data_type>')
+    exit()
+n = int(sys.argv[1])
+m = int(sys.argv[2])
+k = int(sys.argv[3])
+dt = sys.argv[4]
+
 
 numpy.random.seed(1) # make results reproducible
 
 try:
-    if not have_cblas and not have_cublas:
-        exit()
-    if dble:
-        print('running in double precision...')
-        dt = numpy.float64
+    if dt == 's':
+        dtype = numpy.float32
+    elif dt == 'd':
+        dtype = numpy.float64
+    elif dt == 'c':
+        dtype = numpy.complex64
+    elif dt == 'z':
+        dtype = numpy.complex128
     else:
-        print('running in single precision...')
-        dt = numpy.float32
-#    u = numpy.ones((k, n), dtype = dt)
-#    v = numpy.ones((k, m), dtype = dt)
-    u = numpy.random.randn(k, n).astype(dt)
-    v = numpy.random.randn(k, m).astype(dt)
+        raise ValueError('data type %s not supported' % dt)
+#    u = numpy.ones((k, n), dtype = dtype)
+#    v = numpy.ones((k, m), dtype = dtype)
+    u = numpy.random.randn(k, n).astype(dtype)
+    v = numpy.random.randn(k, m).astype(dtype)
 
-    if cmplx:
+    if dt == 'c' or dt == 'z':
         print('testing on complex data...')
         test(u + 1j*u, v - 2j*v)
     else:

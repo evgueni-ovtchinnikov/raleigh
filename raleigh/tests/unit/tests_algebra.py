@@ -1,18 +1,14 @@
 '''Unit tests for vectors algebra.
 
 Usage:
-  tests_algebra [--help | options] <dim> <nv>
+  python tests_algebra [-h | --help | <dim> <nv> <dtype>]
 
 Arguments:
-  dim  vector space dimension
-  nv   number of vectors
-
-Options:
-  -d, --double
-  -c, --complex
+  dim    vector size
+  nv     number of vectors
+  dtype  data type (s/d/c/z)
 '''
 
-from docopt import docopt
 import numpy
 import numpy.linalg as nla
 import sys
@@ -22,25 +18,21 @@ raleigh_path = '../../..'
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
-from raleigh.algebra.dense_numpy import Vectors as numpyVectors
-#from raleigh.ndarray.numpy_algebra import Vectors as numpyVectors
-try:
-#    from raleigh.ndarray.cblas_algebra import Vectors as cblasVectors
-    from raleigh.algebra.dense_cblas import Vectors as cblasVectors
-    have_cblas = True
-except:
-    have_cblas = False
-try:
-#    import raleigh.cuda.cuda as cuda
-#    from raleigh.cuda.cublas_algebra import Vectors as cublasVectors
-    import raleigh.algebra.cuda as cuda
-    from raleigh.algebra.dense_cublas import Vectors as cublasVectors
-    have_cublas = True
-except:
-    have_cublas = False
-
 
 def test(u, v):
+
+    from raleigh.algebra.dense_numpy import Vectors as numpyVectors
+    try:
+        from raleigh.algebra.dense_cblas import Vectors as cblasVectors
+        have_cblas = True
+    except:
+        have_cblas = False
+    try:
+        import raleigh.algebra.cuda as cuda
+        from raleigh.algebra.dense_cublas import Vectors as cublasVectors
+        have_cublas = True
+    except:
+        have_cublas = False
 
     u_numpy = numpyVectors(u)
     v_numpy = numpyVectors(v)
@@ -301,29 +293,35 @@ def test(u, v):
         print('error: %e' % t)
 
 
-__version__ = '0.1.0'
-args = docopt(__doc__, version=__version__)
-
-n = int(args['<dim>'])
-m = int(args['<nv>'])
-dble = args['--double']
-cmplx = args['--complex']
+narg = len(sys.argv)
+if narg < 2 or sys.argv[1] == '-h' or sys.argv[1] == '--help':
+    print('\nUsage:\n')
+    print('python tests_algebra.py <vector_size> <number_of_vectors> <data_type>')
+    exit()
+n = int(sys.argv[1])
+m = int(sys.argv[2])
+dt = sys.argv[3]
 
 numpy.random.seed(1) # make results reproducible
 
 try:
-    if dble:
-        print('running in double precision...')
-        dt = numpy.float64
+    if dt == 's':
+        dtype = numpy.float32
+    elif dt == 'd':
+        dtype = numpy.float64
+    elif dt == 'c':
+        dtype = numpy.complex64
+    elif dt == 'z':
+        dtype = numpy.complex128
     else:
-        print('running in single precision...')
-        dt = numpy.float32
-#    u = numpy.ones((m, n), dtype = dt)
-#    v = numpy.ones((m, n), dtype = dt)
-    u = numpy.random.randn(m, n).astype(dt)
-    v = numpy.random.randn(m, n).astype(dt)
+        raise ValueError('data type %s not supported' % dt)
 
-    if cmplx:
+#    u = numpy.ones((m, n), dtype = dtype)
+#    v = numpy.ones((m, n), dtype = dtype)
+    u = numpy.random.randn(m, n).astype(dtype)
+    v = numpy.random.randn(m, n).astype(dtype)
+
+    if dt == 'c' or dt == 'z':
         print('testing on complex data...')
         test(u + 1j*v, v - 2j*u)
     else:
