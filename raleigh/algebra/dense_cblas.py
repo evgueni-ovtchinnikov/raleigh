@@ -11,7 +11,7 @@ import ctypes
 import numpy
 import scipy.sparse as scs
 
-from .mkl import Cblas
+from .mkl_wrap import Cblas
 from .dense_ndarray import NDArrayVectors, NDArrayMatrix
 
 

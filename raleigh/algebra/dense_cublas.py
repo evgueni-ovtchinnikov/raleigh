@@ -12,8 +12,8 @@ import sys
 
 #from .cuda import malloc, free, memset, memcpy
 #from .cuda import memcpyH2H, memcpyH2D, memcpyD2H, memcpyD2D
-from . import cuda
-from .cublas import Cublas
+from . import cuda_wrap as cuda
+from .cublas_wrap import Cublas
 
 class Vectors:
     MIN_INC = 16

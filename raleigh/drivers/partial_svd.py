@@ -254,7 +254,7 @@ class PartialSVD:
             try:
 ##                from ..cuda import cuda
 ##                from ..cuda.cublas_algebra import Vectors, Matrix
-                from ..algebra import cuda
+                from ..algebra import cuda_wrap as cuda
                 from ..algebra.dense_cublas import Vectors, Matrix
                 op = Matrix(a)
                 gpu = cuda

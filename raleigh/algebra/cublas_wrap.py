@@ -19,7 +19,7 @@ POINTER = ctypes.POINTER
 
 try:
     if platform == 'win32':
-        from .cuda import cuda_path
+        from .cuda_wrap import cuda_path
         cublas_dll = glob.glob(cuda_path + '/cublas64*')[0]
         cublas = ctypes.CDLL(cublas_dll, mode=ctypes.RTLD_GLOBAL)
     else:

@@ -28,7 +28,7 @@ def test(u, v):
     except:
         have_cblas = False
     try:
-        import raleigh.algebra.cuda as cuda
+        import raleigh.algebra.cuda_wrap as cuda
         from raleigh.algebra.dense_cublas import Vectors as cublasVectors
         have_cublas = True
     except:

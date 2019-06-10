@@ -7,9 +7,9 @@ MKL implementation of sparse symmetric/Hermitian matrices and solvers.
 import numpy
 import scipy.sparse as scs
 
-from .mkl import SparseSymmetricMatrix as SSM
-from .mkl import ParDiSo as SSS
-from .mkl import ILUT
+from .mkl_wrap import SparseSymmetricMatrix as SSM
+from .mkl_wrap import ParDiSo as SSS
+from .mkl_wrap import ILUT
 
 
 class SparseSymmetricMatrix:
