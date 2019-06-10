@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
-"""
-Pure numpy implementation of ndarray-vectors algebra.
+# Copyright 2019 United Kingdom Research and Innovation 
+# Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
+# This software is distributed under a BSD licence, see ../../LICENSE.txt.
+"""Pure numpy implementation of RALEIGH dense algebra.
 
 Created on Thu Jun 14 11:52:38 2018
-
-@author: Evgueni Ovtchinnikov, UKRI-STFC
 """
 
 import numpy

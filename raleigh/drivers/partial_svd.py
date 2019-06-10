@@ -1,9 +1,9 @@
-# -*- coding: utf-8 -*-
+# Copyright 2019 United Kingdom Research and Innovation 
+# Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
+# This software is distributed under a BSD licence, see ../LICENSE.txt.
 """Partial SVD of a matrix represented by a 2D ndarray.
 
 Created on Tue Feb 19 13:58:54 2019
-
-@author: Evgueni Ovtchinnikov, UKRI-STFC
 """
 
 import copy
@@ -252,8 +252,6 @@ class PartialSVD:
     
         if arch[:3] == 'gpu':
             try:
-##                from ..cuda import cuda
-##                from ..cuda.cublas_algebra import Vectors, Matrix
                 from ..algebra import cuda_wrap as cuda
                 from ..algebra.dense_cublas import Vectors, Matrix
                 op = Matrix(a)
@@ -265,7 +263,6 @@ class PartialSVD:
         else:
             gpu = None
         if gpu is None:
-            #from ..ndarray.algebra import Vectors, Matrix
             from ..algebra.dense_cpu import Vectors, Matrix
             op = Matrix(a)
     

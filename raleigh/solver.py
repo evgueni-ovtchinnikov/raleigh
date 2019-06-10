@@ -1,7 +1,9 @@
+# Copyright 2019 United Kingdom Research and Innovation 
+# Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
+# This software is distributed under a BSD licence, see ../LICENSE.txt.
 '''
-RAL EIGensolver for real symmetric and Hermitian problems.
-
-@author: Evgueni Ovtchinnikov, UKRI-STFC
+RALEIGH (RAL EIGensolvers for real symmetric and Hermitian problems) core
+solver.
 '''
 
 import math
@@ -10,6 +12,7 @@ import numpy.linalg as nla
 import scipy.linalg as sla
 
 RECORDS = 100
+
 
 class DefaultConvergenceCriteria:
     '''
@@ -25,6 +28,7 @@ class DefaultConvergenceCriteria:
     def satisfied(self, solver, i):
         err = solver.convergence_data(self.error, i)
         return err >= 0 and err <= self.tolerance
+
 
 class Options:
     '''
@@ -42,6 +46,7 @@ class Options:
         self.detect_stagnation = True
         self.max_quota = 0.5
 
+
 class EstimatedErrors:
     '''
     Estimated errors accumulator.
@@ -57,6 +62,7 @@ class EstimatedErrors:
     def reorder(self, ind):
         self.kinematic = self.kinematic[ind]
         self.residual = self.residual[ind]
+
 
 class Problem:
     '''
@@ -81,6 +87,7 @@ class Problem:
         return self.__type[0]
     def vector(self):
         return self.__vector
+
 
 class Solver:
     '''

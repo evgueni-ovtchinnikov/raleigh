@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Jun 20 14:19:47 2018
-
-@author: Evgueni Ovtchinnikov, UKRI-STFC
-"""
+# Copyright 2019 United Kingdom Research and Innovation 
+# Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
+# This software is distributed under a BSD licence, see ../../LICENSE.txt.
+'''GPU implementation of RALEIGH dense algebra.
+'''
 
 import ctypes
 import numbers

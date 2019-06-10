@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
-"""CUBLAS Interface.
-
-Created on Tue Jun 19 17:05:28 2018
-
-@author: Evgueni Ovtchinnikov, UKRI-STFC
+# Copyright 2019 United Kingdom Research and Innovation 
+# Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
+# This software is distributed under a BSD licence, see ../../LICENSE.txt.
+"""CUBLAS wrapper.
 """
 
 import ctypes

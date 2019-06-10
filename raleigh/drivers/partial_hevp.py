@@ -1,17 +1,14 @@
+# Copyright 2019 United Kingdom Research and Innovation 
+# Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
+# This software is distributed under a BSD licence, see ../LICENSE.txt.
 """
 Partial eigenvalue problem solver for a sparse symmetric/Hermitian matrix.
-
-@author: Evgueni Ovtchinnikov, UKRI-STFC
 """
 
 import numpy
 import scipy.sparse as scs
 import time
 
-##from ..ndarray.cblas_algebra import Vectors
-##from ..ndarray.sparse_algebra import SparseSymmetricMatrix
-##from ..ndarray.sparse_algebra import SparseSymmetricSolver
-##from ..ndarray.sparse_algebra import Operator
 from ..algebra.dense_cblas import Vectors
 from ..algebra.sparse_mkl import SparseSymmetricMatrix
 from ..algebra.sparse_mkl import SparseSymmetricSolver

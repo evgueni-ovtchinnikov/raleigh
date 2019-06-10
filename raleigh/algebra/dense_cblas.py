@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
-"""
-MKL cblas implementation of ndarray-vectors algebra.
+# Copyright 2019 United Kingdom Research and Innovation 
+# Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
+# This software is distributed under a BSD licence, see ../../LICENSE.txt.
+"""MKL cblas implementation of RALEIGH dense algebra.
 
 Created on Thu Jun 14 12:34:53 2018
-
-@author: Evgueni Ovtchinnikov, UKRI-STFC
 """
 
 import ctypes
