@@ -40,8 +40,9 @@ except:
 def test():
     '''
     >>> test()
+    ... # doctest: +NORMALIZE_WHITESPACE
     after 58 iterations, 6 converged eigenvalues are:
-    [1. 2. 3. 4. 5. 6.]
+    [ 1. 2. 3. 4. 5. 6.]
     '''
 
     if have_docopt:
