@@ -42,7 +42,7 @@ def test():
     >>> test()
     ... # doctest: +NORMALIZE_WHITESPACE
     after 58 iterations, 6 converged eigenvalues are:
-    [ 1. 2. 3. 4. 5. 6.]
+    [1. 2. 3. 4. 5. 6.]
     '''
 
     if have_docopt:
@@ -125,7 +125,10 @@ def test():
     solver.solve(v, opt, which=(left, right))
     print('after %d iterations, %d converged eigenvalues are:' \
           % (solver.iteration, v.nvec()))
-    print(solver.eigenvalues)
+    output = numpy.array_str(solver.eigenvalues)
+    if output[1] == ' ':
+        output = output[0] + output[2:]
+    print(output)
 
 
 if __name__ == '__main__':
