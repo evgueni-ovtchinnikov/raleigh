@@ -8,7 +8,6 @@ Created on Thu Jun 14 12:34:53 2018
 
 import ctypes
 import numpy
-import scipy.sparse as scs
 
 from .mkl_wrap import Cblas
 from .dense_ndarray import NDArrayVectors, NDArrayMatrix

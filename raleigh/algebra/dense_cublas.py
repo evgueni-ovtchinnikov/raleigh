@@ -7,7 +7,6 @@
 import ctypes
 import numbers
 import numpy
-import sys
 
 #from .cuda import malloc, free, memset, memcpy
 #from .cuda import memcpyH2H, memcpyH2D, memcpyD2H, memcpyD2D

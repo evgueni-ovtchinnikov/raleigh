@@ -7,8 +7,6 @@
 import ctypes
 import glob
 import numpy
-import os
-import sys
 from sys import platform
 
 
