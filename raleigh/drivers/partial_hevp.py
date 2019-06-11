@@ -6,7 +6,6 @@ Partial eigenvalue problem solver for a sparse symmetric/Hermitian matrix.
 """
 
 import numpy
-import scipy.sparse as scs
 import time
 
 from ..algebra.dense_cblas import Vectors
