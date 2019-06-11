@@ -130,7 +130,7 @@ class Vectors:
         vsize = self.__dsize * n
         i, m = self.selected()
         j, l = other.selected()
-        nvec = m + l
+        nvec = i + m + l
         if nvec > self.__mvec:
             mvec = ((nvec - 1)//Vectors.MIN_INC + 1)*Vectors.MIN_INC
 #            print('allocating %d vectors...' % mvec)
@@ -152,7 +152,7 @@ class Vectors:
 #            print('re-using %d vectors...' % mvec)
         data_v = other.all_data_ptr()
         ptr_v = _shifted_ptr(data_v, j*vsize)
-        ptr = _shifted_ptr(data, m*vsize)
+        ptr = _shifted_ptr(data, (i + m)*vsize)
         ln = ctypes.c_int(l*n)
 #        print('copying %d vectors...' % l)
         self.__cublas.copy(self.__cublas.handle, ln, ptr_v, inc, ptr, inc)
