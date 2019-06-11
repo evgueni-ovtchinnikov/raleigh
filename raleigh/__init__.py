@@ -1,9 +1,10 @@
 '''RALEIGH: RAL EIGensolver for real symmetric and Hermitian problems.
 
-solver:
-    Core eigensolver routine implemented in terms of an abstract Vectors class.
+core:
+    Contains core eigensolver routine implemented in terms of an abstract
+    Vectors class.
     Direct use is for advanced users only - start by trying user-friendly
-    interfaces in drivers package.
+    interfaces in drivers.
 
 algebra:
     Implementations of Vectors class (and related matrix classes) on CPU and
@@ -16,7 +17,4 @@ examples:
     Example scripts demonstrating the use of drivers for the solution of
     eigenvalue problems for sparse matrices and singular value problems for
     dense matrices.
-
-tests:
-    Test scripts.
 '''
