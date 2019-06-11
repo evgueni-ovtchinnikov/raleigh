@@ -64,7 +64,7 @@ class NDArrayVectors(object):
         k, n = self.__data.shape
         if n < nv:
             raise ValueError('fill_orthogonal: too many vectors in the array')
-        fill_ndarray_with_orthogonal_vectors(self.__data[iv : iv + nv, :])
+        _fill_ndarray_with_orthogonal_vectors(self.__data[iv : iv + nv, :])
     def all_data(self):
         return self.__data
     def data(self, i=None):
