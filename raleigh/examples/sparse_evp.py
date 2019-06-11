@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 """Computes several eigenvalues and eigenvectors of a real symmetric matrix.
 
+Visit https://sparse.tamu.edu/ to download matrices (in Matrix Market format)
+to test on. Recommended group: DNVS. Best performance compared to scipy eigsh
+is achieved on matrices with large clusters such as DNVS/shipsec1 and in
+low-to-moderate accuracy in eigenvectors (1e-3 to 1e-6, corresponds to single
+to double machine precision in eigenvalues).
+
 Usage:
     sparse_evp [--help | -h | options]
 
@@ -23,7 +29,7 @@ Options:
                               [default: 0]
     -I, --invop  first argument of partial_hevp is a SparseSymmetricSolver
     -P, --ilutp  use mkl dcsrilut (incomplete ILU) as a preconditioner
-    -C, --check  check the eigenvector errors by running twice
+    -C, --check  check the eigenvector errors by solving twice
 
 @author: Evgueni Ovtchinnikov, UKRI-STFC
 """
@@ -175,6 +181,19 @@ if verb > -1:
     print(vals)
 
 if check:
+    '''Estimate eigenvector errors by solving twice.
+
+    Rationale:
+    Consider for simplicity the case of one eigenvector computed.
+    Let u1 and u2 be the two approximations to a given eigenvector u computed
+    by two calls to partial_evp. Since the initial eigenvector guesses are
+    random, u1 and u2 are different, and errors (I - P)u1 and (I - P)u2,
+    where P is the orthogonal projector onto u and I is the identity, are
+    essentially random vectors, and hence nearly orthogonal. Hence, the norm
+    of u2 - u1 cannot be significantly less than the largest of the two errors
+    and, at the same time, cannot be significantly greater than this error
+    multiplied by the square root of 2, i.e. is very close to the actual error.
+    '''
     nev = vals.shape[0]
     lft = numpy.sum(vals < sigma)
     rgt = nev - lft
@@ -187,6 +206,7 @@ if check:
     rt = ne - lt
     left = min(lft, lt)
     right = min(rgt, rt)
+    print('eigenvector errors:')
     if left > 0:
         errs = vec_err(vecs[:, lft - left : lft], vcs[:, lt - left : lt])
         print(errs)

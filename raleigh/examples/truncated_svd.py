@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Truncated SVD of a a randomly generated matrix.
+"""Truncated SVD and PCA for a randomly generated matrix.
+
+The singular spectrum of the randomly generated test matrix imitates that
+encountered in Principal Component Analyisis or Tensor Network Theory
+applications (ascending-ordered singular values quickly approach zero).
 
 Usage:
   truncated_svd [--help | -h | options] <m> <n> <k>
@@ -124,37 +128,47 @@ if ptb:
     s = norm(a, axis=0)
     A += a*(sigma0[-1]/s)
 
-print('\n--- solving with raleigh.svd...')
-
 # set raleigh solver options
 opt = Options()
 opt.block_size = block_size
 opt.verbosity = verb
 
+print('\n--- solving with truncated_svd...\n')
 start = time.time()
 u, sigma, vt = truncated_svd(A, opt, nsv=rank, tol=th, vtol=tol, arch=arch)
 stop = time.time()
-time_r = stop - start
-print('\ntruncated svd time: %.1e' % time_r)
+time_tsvd = stop - start
+print('\ntruncated svd time: %.1e' % time_tsvd)
 
-n_r = sigma.shape[0]
-print('\n%d singular vectors computed' % n_r)
-n_r = numpy.sum(sigma > th)
-print('\n%d singular values above threshold' % n_r)
-if not ptb and n_r > 0:
-    n_r = min(n_r, sigma0.shape[0])
-    err_vec = vec_err(v0[:,:n_r], vt.transpose()[:,:n_r])
-    err_val = abs(sigma[:n_r] - sigma0[:n_r])
-    print('\nmax singular vector error (raleigh): %.1e' % numpy.amax(err_vec))
-    print('\nmax singular value error (raleigh): %.1e' % numpy.amax(err_val))
-D = A - numpy.dot(sigma[:n_r]*u[:, :n_r], vt[:n_r, :])
+nsv = sigma.shape[0]
+print('\n%d singular vectors computed' % nsv)
+nsv = numpy.sum(sigma > th)
+print('%d singular values above threshold' % nsv)
+if not ptb and nsv > 0:
+    nsv = min(nsv, sigma0.shape[0])
+    err_vec = vec_err(v0[:,:nsv], vt.transpose()[:,:nsv])
+    err_val = abs(sigma[:nsv] - sigma0[:nsv])
+    print('\nmax singular vector error: %.1e' % numpy.amax(err_vec))
+    print('max singular value error: %.1e' % numpy.amax(err_val))
+D = A - numpy.dot(sigma[:nsv]*u[:, :nsv], vt[:nsv, :])
 err = norm(D, axis=1)/norm(A, axis=1)
-print('\ntruncation error %.1e' % numpy.amax(err))
+print('truncation error %.1e' % numpy.amax(err))
 
+print('\n--- solving with pca...\n')
+'''
+Principal components do not have to be accurate singular vectors, hence pca
+can compute them faster than truncated_svd in default singular vector accuracy
+(it is this trick that makes scikit-learn pca much faster than much more
+accurate scipy svds).
+'''
+start = time.time()
 mean, trans, comp = pca(A, opt, npc=rank, tol=th, arch=arch)
+stop = time.time()
+time_pca = stop - start
+print('\npca time: %.1e' % time_pca)
 e = numpy.ones((trans.shape[0], 1), dtype=dtype)
 D = A - numpy.dot(trans, comp) - numpy.dot(e, mean)
 err = norm(D, axis=1)/norm(A, axis=1)
-print('\ntruncation error %.1e' % numpy.amax(err))
+print('\npca error %.1e' % numpy.amax(err))
 
 print('\ndone')
