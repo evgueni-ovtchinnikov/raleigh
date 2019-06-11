@@ -36,8 +36,6 @@ def test(u, v):
 
     u_numpy = numpyVectors(u)
     v_numpy = numpyVectors(v)
-    n = u_numpy.dimension()
-    dt = u_numpy.data_type()
 
     if have_cblas:
         u_cblas = cblasVectors(u.copy())
