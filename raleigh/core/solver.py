@@ -5,15 +5,15 @@
 RALEIGH (RAL EIGensolvers for real symmetric and Hermitian problems) core
 solver.
 
-For advanced users only - consider trying user-friendly interfaces
-in raleigh/drivers first.
+For advanced users only - consider using more user-friendly interfaces in 
+raleigh/drivers first.
 
 Implements a block Conjugate Gradient algorithm for the computation of 
-several eigenvalues and corresponding eigenvectors of real symmetrtic 
-and Hermitian problems, namely:
-- Standard eigenvalue problem 
+several eigenpairs (eigenvalues and corresponding eigenvectors) of real 
+symmetrtic or Hermitian problems, namely:
+- standard eigenvalue problem 
   A x = lambda x
-- Generalized eigenvalue problems
+- generalized eigenvalue problems
   A x = lambda B x
   A B x = lambda x
 where A and B are real symmetric or Hermitian operators, B being positive
@@ -21,28 +21,94 @@ definite.
 
 The algorithm operates on sets of vectors (v_1, ..., v_m) encapsulated by
 an abstract data type Vectors with the following methods:
-
+---------------------------------
 new_vectors(self, nv=0, dim=None)
   returns a new Vectors object encapsulating nv vectors of dimension dim
   if dim is not None or else the same dimension as self
-clone(self)
-  returns a copy of self
-append(self, other):
-  appends vectors from Vectors object other to those of self
+---------------------------------
 dimension(self):
   returns the dimension of vectors encapsulated by self
+---------------------------------
 select(self, nv, first=0)
   selects a subset of nv encapsulated vectors starting from first;
   all subsequent operations on self will involve these vectors only
+---------------------------------
+clone(self)
+  returns a copy of (selected part of) self
+---------------------------------
+append(self, other):
+  appends vectors from Vectors object other to those of self
+---------------------------------
 nvec(self)
   returns the number of currently selected vectors
+---------------------------------
 data_type(self)
   returns the data type of vectors' elements 
   (numpy.float32, numpy.float64, numpy.complex64 or numpy.complex128)
+---------------------------------
 fill_random(self):
   fills vectors with random values uniformly distributed between -1 and 1
+---------------------------------
+copy(self, other, ind=None)
+  copies vectors from self to other:
+  if ind is None, previously selected vectors of self copied into previously
+  selected vectors of other (the numbers of selected vectors must coincide),
+  otherwise vectors specified by the array of indices ind are copied
+---------------------------------
+scale(self, s, multiply=False)
+  if multiply is True, previously selected vectors of self are multiplied by
+  the respective elements of numpy ndarray s, otherwise the former are divided
+  by the latter, skipping division for zero elements
+---------------------------------
+dots(self, other, transp=False)
+  if transp is False, returns the numpy ndarray of dot products of previously
+  selected vectors of self with the respective selected vectors of other,
+  otherwise returns a numpy ndarray, i-th element of which is the dot product
+  of the vector of i-th components of selected vectors of self by the vector
+  of i-th components of selected vectors of other (note that for complex 
+  vectors the complex dot products are computed, i.e. complex conjugation is
+  applied to the components of vectors in other)
+---------------------------------
+dot(self, other)
+  returns the ndarray of shape (m, n), where m and n are the numbers of the
+  selected vectors in other and self respectively, containing dot products of
+  the selected vectors of self by those of other (again, dot products are
+  complex in the complex vectors case)
+---------------------------------
+multiply(self, q, other)
+  for each column q[:, j] of ndarray q, assigns the linear combination of the
+  selected vectors of self with coefficients q[0, j], q[1, j], ... to j-th
+  selected vector of other
+---------------------------------
+add(self, other, s, q=None)
+  if s is a scalar: 
+    if q is None, adds the selected vectors of other multiplied by s to the 
+    respective selected vectors of self, otherwise
+    for each column q[:, j] of ndarray q, adds the linear combination of 
+    selected vectors of other with coefficients q[0, j], q[1, j], ... 
+    multiplied by s to j-th selected vector of self,
+  otherwise adds the selected vectors of other multiplied by the respective
+  elements of one-dimensional ndarray s to respective selected vectors of self
+  (q is ignored)
+---------------------------------
 
-TBC...
+The folder raleigh/algebra contains three implementations of Vectors type:
+(i) numpy implementaion, (ii) mkl implementation (requires MKL 10.3 or later:
+needs mkl_rt.dll on Windows, libmkl_rt.so on Linux), and (iii) CUDA GPU 
+implementation (requires CUDA-enabled GPU and NVIDIA Toolkit). These may be
+used as templates for further implementations - MPI, out of core etc.
+
+The number of wanted eigenpairs does not need to be set before calling the 
+core solver - instead, the user may provide an object responsible for stopping 
+the computation based on the data computed so far. 
+
+An object responsible for deciding whether a particular eigenpair has converged 
+can also be supplied by the user (default convergence criteria object is 
+available).
+
+If some eigenvectors are already available, they can be passed to the core 
+solver, which then will compute further eigenpairs. Initial guesses to
+eigenvectors may also be supplied by the user.
 '''
 
 import math
