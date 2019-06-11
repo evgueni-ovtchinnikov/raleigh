@@ -137,7 +137,7 @@ else:
     if mass is not None:
         if verb > -1:
             print('reading the mass matrix from %s...' % mass)
-        B = mmread(path + mass).tocsr()
+        B = mmread(mass).tocsr()
     else:
         B = None
 
