@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Basic solver usage demonstration.
+Basic core solver usage demonstration.
 
 Usage:
-    basic_solver_usage [--help | -h | options]
+    core_solver [--help | -h | options]
 
 Options:
     -p <pro>, --problem=<pro>  eigenvalue problem type [default: std]
@@ -28,7 +28,8 @@ import sys
 raleigh_path = '../..'
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
-import raleigh.solver
+from raleigh.core.solver import Options, Problem, Solver
+from raleigh.core.solver import DefaultConvergenceCriteria
 from raleigh.algebra.dense_cpu import Vectors, Matrix
 
 try:
@@ -83,9 +84,9 @@ def test():
     else:
         raise ValueError('data type %s not supported' % dt)
 
-    opt = raleigh.solver.Options()
+    opt = Options()
     opt.block_size = block_size
-    opt.convergence_criteria = raleigh.solver.DefaultConvergenceCriteria()
+    opt.convergence_criteria = DefaultConvergenceCriteria()
     opt.convergence_criteria.set_error_tolerance('eigenvector error', vec_tol)
     opt.verbosity = verbosity
 
@@ -110,10 +111,10 @@ def test():
         opB = None
 
     if problem[0] == 'p':
-        evp = raleigh.solver.Problem(v, opA, opB, 'pro')
+        evp = Problem(v, opA, opB, 'pro')
     else:
-        evp = raleigh.solver.Problem(v, opA, opB)
-    solver = raleigh.solver.Solver(evp)
+        evp = Problem(v, opA, opB)
+    solver = Solver(evp)
 
     if with_prec:
         if problem[0] == 'p':

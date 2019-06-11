@@ -13,7 +13,7 @@ import numpy.linalg as nla
 import scipy
 import time
 
-from ..solver import Problem, Solver, Options
+from ..core.solver import Problem, Solver, Options
 
 
 def truncated_svd(A, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \

@@ -43,7 +43,7 @@ raleigh_path = '../..'
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
-from raleigh.solver import Options
+from raleigh.core.solver import Options
 from raleigh.drivers.partial_svd import truncated_svd, pca
 
 

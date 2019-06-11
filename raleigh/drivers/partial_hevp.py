@@ -13,7 +13,7 @@ from ..algebra.dense_cblas import Vectors
 from ..algebra.sparse_mkl import SparseSymmetricMatrix
 from ..algebra.sparse_mkl import SparseSymmetricSolver
 from ..algebra.sparse_mkl import Operator
-from ..solver import Problem, Solver, Options, DefaultConvergenceCriteria
+from ..core.solver import Problem, Solver, Options, DefaultConvergenceCriteria
 
 
 def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):

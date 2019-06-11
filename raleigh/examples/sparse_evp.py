@@ -45,9 +45,6 @@ raleigh_path = '../..'
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
-##from raleigh.ndarray.sparse_algebra import SparseSymmetricMatrix
-##from raleigh.ndarray.sparse_algebra import SparseSymmetricSolver
-##from raleigh.ndarray.sparse_algebra import IncompleteLU
 from raleigh.algebra.sparse_mkl import SparseSymmetricSolver
 from raleigh.algebra.sparse_mkl import IncompleteLU
 from raleigh.drivers.partial_hevp import partial_hevp
