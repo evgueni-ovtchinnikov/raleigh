@@ -138,6 +138,48 @@ class DefaultConvergenceCriteria:
 class Options:
     '''
     Solver options.
+    
+    Attributes
+    ----------
+    verbosity : int
+        printout level
+       <0 : no output
+        0 : error an warning messages
+        1 : iteration number, converged eigenvalues
+        2 : convergence data for all current iterates
+    max_iter : int
+        maximal number of iterations per eigenpair;
+        if negative, set by solver
+    min_iter : int
+        minimal number of iterations per eigenpair
+    block_size : int
+        the nuber of simultaneously iterated eigenvector approximations;
+        if negative, set by solver
+    threads : int
+        the number of CPU threads, to be used to determine the block size if
+        not set by the user
+    sigma : float
+        if not None, indicates that the solver is used in shift-invert context
+    convergence_criteria : object
+        if not None, must be an object with method satisfied(self, solver, i)
+        that returns True if i-th approximate eigenpair converged and False
+        otherwise, based on the information provided by solver.convergence_data
+        (see below)
+    stopping_criteria : object
+        if not None, must be an object with method satisfied(self, solver)
+        that returns True if sufficient number of eigenpairs have been computed
+        and False otherwise, based on the values of solver attributes (e.g.
+        solver.eigenvalues) and possibly the user input, see 
+        drivers.partial_svd.DefaultStoppingCriteria for an example
+    detect_stagnation : bool
+        if set to True, detects the loss of convergence, i.e. impossibility to
+        significantly improve the accuracy of the approximation (set to False
+        and request very high accuracy if you want to test the solver for 
+        numerical stability)
+    max_quota : float
+        the iterations will stop as soon as the number of computed eigenpairs 
+        exceeds max_quota multiplied by the problem size, and the rest of 
+        eigenpairs will be computed by scipy.linalg.eigh
     '''
     def __init__(self):
         self.verbosity = 0
@@ -154,14 +196,21 @@ class Options:
 
 class EstimatedErrors:
     '''
-    Estimated errors accumulator.
+    Estimated errors container.
+    
+    Attributes
+    ----------
+    kinematic : one-dimensional ndarray of floats
+        error estimates based on the convergence history
+    residual : one-dimensional ndarray of floats
+        error estimates based on the residuals
     '''
     def __init__(self):
         self.kinematic = numpy.ndarray((0,), dtype=numpy.float32)
         self.residual = numpy.ndarray((0,), dtype=numpy.float32)
     def __getitem__(self, item):
         return self.kinematic[item], self.residual[item]
-    def append(self, est):
+    def _append(self, est):
         self.kinematic = numpy.concatenate((self.kinematic, est[0, :]))
         self.residual = numpy.concatenate((self.residual, est[1, :]))
     def reorder(self, ind):
@@ -172,6 +221,18 @@ class EstimatedErrors:
 class Problem:
     '''
     Eigenvalue problem specification.
+    
+    Attributes
+    ----------
+    __A : object
+        operator A (stiffness matrix)
+    __B : object
+        operator B (mass matrix)
+    __type : string
+        problem type
+        'std' :  standard A x = lambda x
+        'gen' :  generalized A x = lambda B x
+        'pro' :  generalized A B x = lambda x
     '''
     def __init__(self, v, A, B=None, prod=None):
         self.__vector = v
@@ -197,6 +258,31 @@ class Problem:
 class Solver:
     '''
     Eigenvalue problem solver specification.
+    
+    Attributes
+    ----------
+    __problem : instance of Problem
+        problem specification
+    __P : object
+        preconditioner
+    iteration : int
+        the current iteration number
+    lcon : int
+        the number of computed eigenpairs on the left margin of the spectrum
+    rcon : int
+        the number of computed eigenpairs on the right margin of the spectrum
+    eigenvalues : one-dimensional ndarray of dtype numpy.float64
+        converged eigenvalues
+    eigenvalue_errors : one-dimensional ndarray of dtype EstimatedErrors
+        estimated errors for computed eigenvalues
+    eigenvector_errors : one-dimensional ndarray of dtype EstimatedErrors
+        estimated errors for computed eigenvectors
+    residual_norms : one-dimensional ndarray of dtype numpy.float32
+        residual norms for computed eigenpairs
+    convergence_status : one-dimensional ndarray of dtype numpy.int32
+        computed eigenpairs convergence status
+        > 0 : the number of iterations taken to converge
+        < 0 : the negative of the number of iterations taken to stagnate
     '''
     def __init__(self, problem):
         self.__problem = problem
@@ -214,9 +300,24 @@ class Solver:
         self.__P = P
 
     def convergence_data(self, what='residual', which=0):
+        '''Reports current convergence data.
+        
+        Parameters
+        ----------
+        what : string
+            convergence data to report (can be abbreviated, full names below)
+        which : int
+            for which eigenpair iterate to report
+        '''
         if what.find('block') > -1:
+            '''block size
+            '''
             return self.block_size
         elif what.find('res') > -1 and what.find('vec') == -1:
+            '''relative residual.
+            
+            WARNING: use only for the largest eigenvalues computation.
+            '''
             max_lmd = numpy.amax(abs(self.lmd))
             if self.lcon + self.rcon > 0:
                 max_lmd = max(max_lmd, numpy.amax(abs(self.eigenvalues)))
@@ -225,22 +326,71 @@ class Solver:
             if what.find('err') > -1:
                 err = self.err_lmd[:, which]
                 if what.find('k'):
+                    '''kinematic eigenvalue error estimate.
+                    '''
                     return err[0]
                 else:
+                    '''residual-based eigenvalue error estimate.
+                    '''
                     return err[1]
             else:
+                '''current eigenvalue iterate.
+                '''
                 return self.lmd[which]
         elif what.find('vec') > -1:
             err = self.err_X[:, which]
             if what.find('k') > -1:
+                '''kinematic eigenvector error estimate.
+                '''
                 return err[0]
             else:
+                '''residual-based eigenvector error estimate.
+                '''
                 return err[1]
         else:
             raise ValueError('convergence data %s not found' % what)
 
     def solve(self, eigenvectors, options=Options(), which=(-1, -1), \
-        extra=(-1, -1), init=(None, None)):
+              extra=(-1, -1), init=(None, None)):
+        '''Main core solver routine.
+        
+        Parameters
+        ----------
+        eigenvectors : object of abstract Vectors type
+            eigenvectors container; normally empty (eigenvectors.nvec() = 0),
+            if not, then assumed by the solver to contain previously computed
+            eigenvectors of the solved problem; on return contains all computed
+            eigenvectors (previous and new)
+        options : object of type Options
+            solver options
+        which : int or tuple of two ints
+            if int, the number of the largest eigenvalues wanted;
+            if tuple, the numbers of eigenvalues wanted on the left (which[0])
+            and right (which[1]) margine of the spectrum;
+            negative values mark unknown number of wanted eigenvalues: in this
+            case, the user must provide stopping_criteria
+        extra : tuple of two ints
+            numbers of extra eigenvectors corresponding to eigenvalues on the
+            margins of the spectrum to iterate purely for the sake of better
+            convergence: convergence criteria will not be applied to these
+            extra eigenpairs, i.e. iterations will stop when all wanted
+            eigenpairs converge
+        init : tuple of two Vectors objects
+            each tuple item, if not None, contains initial guesses for
+            eigenvectors corresponding to eigenvalues on the respective margin
+            of the spectrum
+            
+        Returns
+        -------
+        status : int
+            execution status
+            0 : success
+            1 : maximal number of iterations exceeded
+            2 : no search directions left (bad problem data or preconditioner)
+            3 : some of the requested left eigenvalues may not exist
+            4 : some of the requested right eigenvalues may not exist
+           <0 : fatal error - exception thrown
+        '''
 
         verb = options.verbosity
 
@@ -254,9 +404,12 @@ class Solver:
             largest = True
 
         if largest:
-            total = which
-            left = total//2
-            right = total - left
+            if which >= 0:
+                left = which//2
+                right = which - left
+            else:
+                left = -1
+                right = -1
         else:
             left = int(which[0])
             right = int(which[1])
@@ -297,9 +450,10 @@ class Solver:
             try:
                 status = self._solve(eigenvectors, options, which, extra, init)
                 if status > 1:
-                    return status
+                    return status - 1
             except _Error as err:
-                print('%s' % err.value)
+                if verb > -1:
+                    print('%s' % err.value)
                 return -1
         else:
             status = 1
@@ -935,8 +1089,8 @@ class Solver:
             if lcon > 0:
                 self.eigenvalues = numpy.concatenate \
                     ((self.eigenvalues, lmd[ix : ix + lcon]))
-                self.eigenvalue_errors.append(err_lmd[:, ix : ix + lcon])
-                self.eigenvector_errors.append(err_X[:, ix : ix + lcon])
+                self.eigenvalue_errors._append(err_lmd[:, ix : ix + lcon])
+                self.eigenvector_errors._append(err_X[:, ix : ix + lcon])
                 self.residual_norms = numpy.concatenate \
                     ((self.residual_norms, res[ix : ix + lcon]))
                 self.convergence_status = numpy.concatenate \
@@ -968,8 +1122,8 @@ class Solver:
                 jx = ix + nx
                 self.eigenvalues = numpy.concatenate \
                     ((self.eigenvalues, lmd[jx - rcon : jx]))
-                self.eigenvalue_errors.append(err_lmd[:, jx - rcon : jx])
-                self.eigenvector_errors.append(err_X[:, jx - rcon : jx])
+                self.eigenvalue_errors._append(err_lmd[:, jx - rcon : jx])
+                self.eigenvector_errors._append(err_X[:, jx - rcon : jx])
                 self.residual_norms = numpy.concatenate \
                     ((self.residual_norms, res[jx - rcon : jx]))
                 self.convergence_status = numpy.concatenate \
