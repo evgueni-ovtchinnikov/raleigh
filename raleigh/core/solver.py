@@ -4,6 +4,45 @@
 '''
 RALEIGH (RAL EIGensolvers for real symmetric and Hermitian problems) core
 solver.
+
+For advanced users only - consider trying user-friendly interfaces
+in raleigh/drivers first.
+
+Implements a block Conjugate Gradient algorithm for the computation of 
+several eigenvalues and corresponding eigenvectors of real symmetrtic 
+and Hermitian problems, namely:
+- Standard eigenvalue problem 
+  A x = lambda x
+- Generalized eigenvalue problems
+  A x = lambda B x
+  A B x = lambda x
+where A and B are real symmetric or Hermitian operators, B being positive
+definite.
+
+The algorithm operates on sets of vectors (v_1, ..., v_m) encapsulated by
+an abstract data type Vectors with the following methods:
+
+new_vectors(self, nv=0, dim=None)
+  returns a new Vectors object encapsulating nv vectors of dimension dim
+  if dim is not None or else the same dimension as self
+clone(self)
+  returns a copy of self
+append(self, other):
+  appends vectors from Vectors object other to those of self
+dimension(self):
+  returns the dimension of vectors encapsulated by self
+select(self, nv, first=0)
+  selects a subset of nv encapsulated vectors starting from first;
+  all subsequent operations on self will involve these vectors only
+nvec(self)
+  returns the number of currently selected vectors
+data_type(self)
+  returns the data type of vectors' elements 
+  (numpy.float32, numpy.float64, numpy.complex64 or numpy.complex128)
+fill_random(self):
+  fills vectors with random values uniformly distributed between -1 and 1
+
+TBC...
 '''
 
 import math
