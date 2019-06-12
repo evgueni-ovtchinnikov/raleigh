@@ -10,7 +10,39 @@ import numbers
 import numpy
 
 class NDArrayVectors(object):
-    def __init__(self, arg, nvec = 0, data_type = None):
+    '''Base class for ndarray-based Vectors type.
+    '''
+
+    '''========== Methods required by RALEIGH core solver ==========
+    '''
+
+    def dimension(self):
+        return self.__vdim
+
+    def nvec(self):
+        return self.__selected[1]
+
+    def select(self, nv, first=0):
+        assert nv <= self.__nvec and first >= 0
+        self.__selected = (first, nv)
+
+    def data_type(self):
+        return self.__dtype
+
+    def fill_random(self):
+        iv, nv = self.__selected
+        m, n = self.__data.shape
+        self.__data[iv : iv + nv, :] = 2*numpy.random.rand(nv, n) - 1
+
+    def append(self, other):
+        self.__data = numpy.concatenate((self.__data, other.data()))
+        self.__nvec += other.nvec()
+        self.select_all()
+
+    '''========== Other methods ====================================
+    '''
+
+    def __init__(self, arg, nvec=0, data_type=None):
         if isinstance(arg, NDArrayVectors):
             i, n = arg.selected()
             self.__data = arg.__data[i : i + n, :].copy()
@@ -20,7 +52,7 @@ class NDArrayVectors(object):
             if data_type is None: # use default data type
                 self.__data = numpy.zeros((nvec, arg))
             else:
-                self.__data = numpy.zeros((nvec, arg), dtype = data_type)
+                self.__data = numpy.zeros((nvec, arg), dtype=data_type)
         else:
             raise ValueError \
                 ('wrong argument %s in constructor' % repr(type(arg)))
@@ -33,64 +65,60 @@ class NDArrayVectors(object):
         self.__vdim = n
         self.__nvec = m
 
-    def dimension(self):
-        return self.__vdim
-    def nvec(self):
-        return self.__selected[1]
     def selected(self):
         return self.__selected
-    def select(self, nv, first=0):
-        assert nv <= self.__nvec and first >= 0
-        self.__selected = (first, nv)
+
     def select_all(self):
         self.select(self.__nvec)
-    def data_type(self):
-        return self.__dtype
+
     def is_complex(self):
         return self.__is_complex
 
     def zero(self):
         f, n = self.__selected;
         self.__data[f : f + n, :] = 0.0
+
     def fill(self, array_or_value):
         f, n = self.__selected;
         self.__data[f : f + n, :] = array_or_value
-    def fill_random(self):
-        iv, nv = self.__selected
-        m, n = self.__data.shape
-        self.__data[iv : iv + nv, :] = 2*numpy.random.rand(nv, n) - 1
+
     def fill_orthogonal(self):
         iv, nv = self.__selected
         k, n = self.__data.shape
         if n < nv:
             raise ValueError('fill_orthogonal: too many vectors in the array')
         _fill_ndarray_with_orthogonal_vectors(self.__data[iv : iv + nv, :])
+
     def all_data(self):
         return self.__data
+
     def data(self, i=None):
         f, n = self.__selected
         if i is None:
             return self.__data[f : f + n, :]
         else:
             return self.__data[f + i, :]
-    def append(self, other):
-        self.__data = numpy.concatenate((self.__data, other.data()))
-        self.__nvec += other.nvec()
-        self.select_all()
+
 
 class NDArrayMatrix:
+
     def __init__(self, data):
         self.__data = data
         self.__shape = data.shape
         self.__dtype = data.dtype.type
+
     def data(self):
         return self.__data
+
     def shape(self):
         return self.__shape
+
     def data_type(self):
         return self.__dtype
+
     def is_complex(self):
         return (self.__data.dtype.kind == 'c')
+
 
 def _fill_ndarray_with_orthogonal_vectors(a):
     m, n = a.shape
@@ -113,4 +141,3 @@ def _fill_ndarray_with_orthogonal_vectors(a):
     j = i//2
     a[k : m,   : j] = a[: (m - k), : j]
     a[k : m, j : i] = -a[: (m - k), j : i]
-

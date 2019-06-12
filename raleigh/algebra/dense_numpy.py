@@ -12,16 +12,20 @@ from .dense_ndarray import NDArrayVectors, NDArrayMatrix
 
 
 class Vectors(NDArrayVectors):
-    def __init__(self, arg, nvec=0, data_type=None):
-        super(Vectors, self).__init__(arg, nvec, data_type)
+    '''Pure numpy implementation of ndarray-based Vectors type.
+    '''
+
+    '''========== Methods required by RALEIGH core solver ==========
+    '''
+
     def new_vectors(self, nv=0, dim=None):
         if dim is None:
             dim = self.dimension()
         return Vectors(dim, nv, self.data_type())
+
     def clone(self):
         return Vectors(self)
 
-    # BLAS level 1
     def copy(self, other, ind=None):
         i, n = self.selected()
         j, m = other.selected()
@@ -30,6 +34,7 @@ class Vectors(NDArrayVectors):
             other.data()[:,:] = self.data()
         else:
             other.all_data()[j : j + len(ind), :] = self.all_data()[ind, :]
+
     def scale(self, s, multiply=False):
         f, n = self.selected();
         if multiply:
@@ -39,6 +44,7 @@ class Vectors(NDArrayVectors):
             for i in range(n):
                 if s[i] != 0.0:
                     self.data(i)[:] /= s[i]
+
     def dots(self, other, transp=False):
         if transp:
             u = self.data()
@@ -63,12 +69,12 @@ class Vectors(NDArrayVectors):
             v[i] = s
         return v
 
-    # BLAS level 3
     def dot(self, other):
         if other.is_complex():
             return numpy.dot(other.data().conj(), self.data().T)
         else:
             return numpy.dot(other.data(), self.data().T)
+
     def multiply(self, q, output):
         f, s = output.selected();
         m = q.shape[1]
@@ -79,6 +85,25 @@ class Vectors(NDArrayVectors):
             return
         print('using non-optimized dot')
         output.data()[:,:] = numpy.dot(q.T, self.data())
+
+    def add(self, other, s, q = None):
+        f, m = self.selected();
+        if numpy.isscalar(s):
+            if q is None:
+                self.data()[:,:] += s*other.data()
+            else:
+                self.data()[:,:] += s*numpy.dot(q.T, other.data())
+            return
+        else:
+            for i in range(m):
+                self.data(i)[:] += s[i]*other.data(i)
+
+    '''========== Other methods ====================================
+    '''
+
+    def __init__(self, arg, nvec=0, data_type=None):
+        super(Vectors, self).__init__(arg, nvec, data_type)
+
     def apply(self, A, output, transp=False):
         a = A.data()
         if transp:
@@ -94,21 +119,10 @@ class Vectors(NDArrayVectors):
     def __apply(self, q, output):
         if output.data().flags['C_CONTIGUOUS']:
             #print('using optimized dot')
-            numpy.dot(self.data(), q.T, out = output.data())
+            numpy.dot(self.data(), q.T, out=output.data())
         else:
-            print('using non-optimized dot')
+            #print('using non-optimized dot')
             output.data()[:,:] = numpy.dot(self.data(), q.T)
-    def add(self, other, s, q = None):
-        f, m = self.selected();
-        if numpy.isscalar(s):
-            if q is None:
-                self.data()[:,:] += s*other.data()
-            else:
-                self.data()[:,:] += s*numpy.dot(q.T, other.data())
-            return
-        else:
-            for i in range(m):
-                self.data(i)[:] += s[i]*other.data(i)
 
 
 class Matrix(NDArrayMatrix):
