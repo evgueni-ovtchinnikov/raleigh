@@ -210,7 +210,7 @@ class EstimatedErrors:
         self.residual = numpy.ndarray((0,), dtype=numpy.float32)
     def __getitem__(self, item):
         return self.kinematic[item], self.residual[item]
-    def _append(self, est):
+    def append(self, est):
         self.kinematic = numpy.concatenate((self.kinematic, est[0, :]))
         self.residual = numpy.concatenate((self.residual, est[1, :]))
     def reorder(self, ind):
@@ -308,7 +308,8 @@ class Solver:
         self.eigenvector_errors = EstimatedErrors()
         self.residual_norms = numpy.ndarray((0,), dtype=numpy.float32)
         self.convergence_status = numpy.ndarray((0,), dtype=numpy.int32)
-        # current convergence data - to be allocated by solver
+        # data to be set by solver
+        self.block_size = None
         self.cnv = None
         self.lmd = None
         self.res = None
@@ -1083,8 +1084,8 @@ class Solver:
             if lcon > 0:
                 self.eigenvalues = numpy.concatenate \
                     ((self.eigenvalues, lmd[ix : ix + lcon]))
-                self.eigenvalue_errors._append(err_lmd[:, ix : ix + lcon])
-                self.eigenvector_errors._append(err_X[:, ix : ix + lcon])
+                self.eigenvalue_errors.append(err_lmd[:, ix : ix + lcon])
+                self.eigenvector_errors.append(err_X[:, ix : ix + lcon])
                 self.residual_norms = numpy.concatenate \
                     ((self.residual_norms, res[ix : ix + lcon]))
                 self.convergence_status = numpy.concatenate \
@@ -1116,8 +1117,8 @@ class Solver:
                 jx = ix + nx
                 self.eigenvalues = numpy.concatenate \
                     ((self.eigenvalues, lmd[jx - rcon : jx]))
-                self.eigenvalue_errors._append(err_lmd[:, jx - rcon : jx])
-                self.eigenvector_errors._append(err_X[:, jx - rcon : jx])
+                self.eigenvalue_errors.append(err_lmd[:, jx - rcon : jx])
+                self.eigenvector_errors.append(err_X[:, jx - rcon : jx])
                 self.residual_norms = numpy.concatenate \
                     ((self.residual_norms, res[jx - rcon : jx]))
                 self.convergence_status = numpy.concatenate \
