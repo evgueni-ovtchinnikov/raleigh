@@ -38,6 +38,31 @@ try:
 except:
     have_docopt = False
 
+if have_docopt:
+    __version__ = '0.1.0'
+    args = docopt(__doc__, version=__version__)
+    problem = args['--problem']
+    matrix = args['--matrix']
+    n = int(args['--dim'])
+    dt = args['--dtype']
+    left = int(args['--left'])
+    right = int(args['--right'])
+    vec_tol = float(args['--vtol'])
+    block_size = int(args['--bsize'])
+    verbosity = int(args['--verb'])
+    with_prec = args['--precond']
+else:
+    problem = 'std'
+    matrix = 'diag'
+    n = 100
+    dt = 'd'
+    left = 6
+    right = 0
+    vec_tol = 1e-8
+    block_size = -1
+    verbosity = 0
+    with_prec = False
+
 def test():
     '''
     >>> test()
@@ -45,31 +70,6 @@ def test():
     after 58 iterations, 6 converged eigenvalues are:
     [1. 2. 3. 4. 5. 6.]
     '''
-
-    if have_docopt:
-        __version__ = '0.1.0'
-        args = docopt(__doc__, version=__version__)
-        problem = args['--problem']
-        matrix = args['--matrix']
-        n = int(args['--dim'])
-        dt = args['--dtype']
-        left = int(args['--left'])
-        right = int(args['--right'])
-        vec_tol = float(args['--vtol'])
-        block_size = int(args['--bsize'])
-        verbosity = int(args['--verb'])
-        with_prec = args['--precond']
-    else:
-        problem = 'std'
-        matrix = 'diag'
-        n = 100
-        dt = 'd'
-        left = 6
-        right = 0
-        vec_tol = 1e-8
-        block_size = -1
-        verbosity = 0
-        with_prec = False
 
     numpy.random.seed(1) # to debug - makes the results reproducible
 
@@ -101,27 +101,24 @@ def test():
     else:
         a = numpy.asarray([i + 1 for i in range(n)]).astype(dtype)
         operatorA = Matrix(numpy.diag(a))
-    opA = lambda x, y: operatorA.apply(x, y)
 
     if problem[0] != 's':
         b = 2*numpy.ones((n,), dtype=dtype)
         operatorB = Matrix(numpy.diag(b))
-        opB = lambda x, y: operatorB.apply(x, y)
     else:
-        opB = None
+        operatorB = None
 
     if problem[0] == 'p':
-        evp = Problem(v, opA, opB, 'pro')
+        evp = Problem(v, operatorA, operatorB, 'pro')
     else:
-        evp = Problem(v, opA, opB)
+        evp = Problem(v, operatorA, operatorB)
     solver = Solver(evp)
 
     if with_prec:
         if problem[0] == 'p':
             raise ValueError('preconditioning does not work for matrix product')
         operatorP = Matrix(numpy.diag(1/a))
-        opP = lambda x, y: operatorP.apply(x, y)
-        solver.set_preconditioner(opP)
+        solver.set_preconditioner(operatorP)
 
     solver.solve(v, opt, which=(left, right))
     print('after %d iterations, %d converged eigenvalues are:' \
