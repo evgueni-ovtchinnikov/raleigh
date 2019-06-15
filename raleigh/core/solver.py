@@ -319,6 +319,12 @@ class Solver:
     def set_preconditioner(self, P):
         self.__P = P
 
+    def problem(self):
+        return self.__problem
+
+    def preconditioner(self):
+        return self.__P
+
     def convergence_data(self, what='residual', which=0):
         '''Reports current convergence data.
         
@@ -494,8 +500,9 @@ class Solver:
         std = (self.__problem.type() == 's')
         pro = (self.__problem.type() == 'p')
 
-        A = lambda x, y: self.__problem.A().apply(x, y)
-        opB = self.__problem.B()
+        opA = problem().A()
+        A = lambda x, y: opA.apply(x, y)
+        opB = problem().B()
         if opB is not None:
             B = lambda x, y: opB.apply(x, y)
         data_type = eigenvectors.data_type()
@@ -679,8 +686,8 @@ class Solver:
         res = self.res
         err_lmd = self.err_lmd
         err_X = self.err_X
-        A = lambda x, y: self.__problem.A().apply(x, y)
-        opB = self.__problem.B()
+        A = lambda x, y: problem.A().apply(x, y)
+        opB = problem.B()
         if opB is not None:
             B = lambda x, y: opB.apply(x, y)
         else:
