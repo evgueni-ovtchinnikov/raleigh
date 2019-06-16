@@ -61,8 +61,7 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
     '''
 
     if B is not None:
-        B = SparseSymmetricMatrix(B)
-        opB = lambda x, y: B.apply(x, y)
+        opB = SparseSymmetricMatrix(B)
     else:
         opB = None
 
@@ -88,7 +87,7 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
             setup_time = stop - start
             if verb > -1:
                 print('setup time: %.2e' % setup_time)
-        opAinv = lambda x, y: solver.solve(x, y)
+        opAinv = solver
         neg, pos = solver.inertia()
         if verb > -1:
             print('positive eigenvalues: %d' % pos)
@@ -114,9 +113,8 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
         n = A.size()
         dtype = A.data_type()
         eigenvectors = Vectors(n, data_type=dtype)
-        opA = lambda x, y: A.apply(x, y)
-        op = Operator(T)
-        opT = lambda x, y: op.apply(x, y)
+        opA = A
+        opT = Operator(T)
         if B is None:
             evp = Problem(eigenvectors, opA)
         else:

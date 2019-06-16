@@ -275,7 +275,7 @@ class PartialSVD:
     
         v = Vectors(n, data_type=dt)
         opSVD = _OperatorSVD(op, v, gpu, transp, shift)
-        problem = Problem(v, lambda x, y: opSVD.apply(x, y))
+        problem = Problem(v, opSVD)
         solver = Solver(problem)
     
         try:

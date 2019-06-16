@@ -33,6 +33,9 @@ select(self, nv, first=0)
   selects a subset of nv encapsulated vectors starting from first;
   all subsequent operations on self will involve these vectors only
 ---------------------------------
+selected(self)
+  returns current subset selection as tuple (first, nv)
+---------------------------------
 clone(self)
   returns a copy of (selected part of) self
 ---------------------------------
@@ -309,6 +312,8 @@ class Solver:
         self.residual_norms = numpy.ndarray((0,), dtype=numpy.float32)
         self.convergence_status = numpy.ndarray((0,), dtype=numpy.int32)
         # data to be set by solver
+        self.eigenvectors = None
+        self.eigenvectors_im = None
         self.block_size = None
         self.cnv = None
         self.lmd = None
@@ -318,6 +323,12 @@ class Solver:
 
     def set_preconditioner(self, P):
         self.__P = P
+
+    def problem(self):
+        return self.__problem
+
+    def preconditioner(self):
+        return self.__P
 
     def convergence_data(self, what='residual', which=0):
         '''Reports current convergence data.
@@ -494,8 +505,11 @@ class Solver:
         std = (self.__problem.type() == 's')
         pro = (self.__problem.type() == 'p')
 
-        A = self.__problem.A()
-        B = self.__problem.B()
+        opA = problem().A()
+        A = lambda x, y: opA.apply(x, y)
+        opB = problem().B()
+        if opB is not None:
+            B = lambda x, y: opB.apply(x, y)
         data_type = eigenvectors.data_type()
 
         if nc > 0:
@@ -677,17 +691,27 @@ class Solver:
         res = self.res
         err_lmd = self.err_lmd
         err_X = self.err_X
-        A = self.__problem.A()
-        B = self.__problem.B()
-        P = self.__P
+        A = lambda x, y: problem.A().apply(x, y)
+        opB = problem.B()
+        if opB is not None:
+            B = lambda x, y: opB.apply(x, y)
+        else:
+            B = None
+        opP = self.__P
+        if opP is not None:
+            P = lambda x, y: opP.apply(x, y)
+        else:
+            P = None
 
         # constraints (already available eigenvectors e.g. from previous run)
+        self.eigenvectors = eigenvectors
         Xc = eigenvectors
         nc = Xc.nvec()
         if not std:
             BXc = eigenvectors.clone()
             if nc > 0:
                 B(Xc, BXc)
+            self.eigenvectors_im = BXc
         else:
             BXc = Xc
         if nc > 0:
