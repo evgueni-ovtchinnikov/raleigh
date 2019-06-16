@@ -309,6 +309,8 @@ class Solver:
         self.residual_norms = numpy.ndarray((0,), dtype=numpy.float32)
         self.convergence_status = numpy.ndarray((0,), dtype=numpy.int32)
         # data to be set by solver
+        self.eigenvectors = None
+        self.eigenvectors_im = None
         self.block_size = None
         self.cnv = None
         self.lmd = None
@@ -699,12 +701,14 @@ class Solver:
             P = None
 
         # constraints (already available eigenvectors e.g. from previous run)
+        self.eigenvectors = eigenvectors
         Xc = eigenvectors
         nc = Xc.nvec()
         if not std:
             BXc = eigenvectors.clone()
             if nc > 0:
                 B(Xc, BXc)
+            self.eigenvectors_im = BXc
         else:
             BXc = Xc
         if nc > 0:
