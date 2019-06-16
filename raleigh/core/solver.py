@@ -33,6 +33,9 @@ select(self, nv, first=0)
   selects a subset of nv encapsulated vectors starting from first;
   all subsequent operations on self will involve these vectors only
 ---------------------------------
+selected(self)
+  returns current subset selection as tuple (first, nv)
+---------------------------------
 clone(self)
   returns a copy of (selected part of) self
 ---------------------------------

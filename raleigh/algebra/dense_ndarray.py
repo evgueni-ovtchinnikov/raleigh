@@ -26,6 +26,9 @@ class NDArrayVectors(object):
         assert nv <= self.__nvec and first >= 0
         self.__selected = (first, nv)
 
+    def selected(self):
+        return self.__selected
+
     def data_type(self):
         return self.__dtype
 
@@ -64,9 +67,6 @@ class NDArrayVectors(object):
         self.__selected = (0, m)
         self.__vdim = n
         self.__nvec = m
-
-    def selected(self):
-        return self.__selected
 
     def select_all(self):
         self.select(self.__nvec)

@@ -75,6 +75,9 @@ class Vectors:
         assert nv <= self.__nvec and first >= 0
         self.__selected = (first, nv)
 
+    def selected(self):
+        return self.__selected
+
     def data_type(self):
         return self.__dtype
 
@@ -400,9 +403,6 @@ class Vectors:
 
     def first(self):
         return self.__selected[0]
-
-    def selected(self):
-        return self.__selected
 
     def select_all(self):
         self.select(self.__nvec)
