@@ -47,22 +47,28 @@ class Vectors:
                 mn = ctypes.c_int(m*n)
                 data_u = self.all_data_ptr()
                 ptr_u = _shifted_ptr(data_u, i*vsize)
-                ptr = _shifted_ptr(data, 0)
-                self.__cublas.copy(self.__cublas.handle, mn, ptr_u, inc, ptr, inc)
-                _try_calling(cuda.free(self.__data))
-        else:
-            data = self.__data
-            mvec = self.__mvec
+#                ptr = _shifted_ptr(data, 0)
+                self.__cublas.copy(self.__cublas.handle, mn, ptr_u, inc, data, inc)
+#                self.__cublas.copy(self.__cublas.handle, mn, ptr_u, inc, ptr, inc)
+#                _try_calling(cuda.free(self.__data))
+            _try_calling(cuda.free(self.all_data_ptr()))
+            self.__data = data
+            self.__mvec = mvec
+#        else:
+#            data = self.__data
+#            data = self.all_data_ptr()
+#            mvec = self.__mvec
 #            print('re-using %d vectors...' % mvec)
+        data = self.all_data_ptr()
         data_v = other.all_data_ptr()
         ptr_v = _shifted_ptr(data_v, j*vsize)
         ptr = _shifted_ptr(data, (i + m)*vsize)
         ln = ctypes.c_int(l*n)
 #        print('copying %d vectors...' % l)
         self.__cublas.copy(self.__cublas.handle, ln, ptr_v, inc, ptr, inc)
-        self.__data = data
+#        self.__data = data
         self.__nvec = nvec
-        self.__mvec = mvec
+#        self.__mvec = mvec
         self.select_all()
 
     def dimension(self):
@@ -311,6 +317,7 @@ class Vectors:
             _try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
             self.__is_complex = \
                 (dtype == numpy.complex64 or dtype == numpy.complex128)
+            self.__vdata = _VectorsData(size)
         elif isinstance(arg, numbers.Number):
             dtype = data_type
             if dtype is None:
@@ -393,7 +400,8 @@ class Vectors:
     def data_ptr(self):
         n = self.dimension()
         vsize = n * self.__dsize
-        return _shifted_ptr(self.__data, self.first() * vsize)
+        return _shifted_ptr(self.all_data_ptr(), self.first() * vsize)
+#        return _shifted_ptr(self.__data, self.first() * vsize)
 
     def cublas(self):
         return self.__cublas
@@ -428,7 +436,8 @@ class Vectors:
             raise ValueError('mismatching data types in fill()')
         size = m * self.__dsize * self.__vdim
         ptr = ctypes.c_void_p(data.ctypes.data)
-        _try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
+        _try_calling(cuda.memcpy(self.all_data_ptr(), ptr, size, cuda.memcpyH2D))
+#        _try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
 
     def data(self):
         m = self.nvec()
@@ -571,3 +580,12 @@ def _conjugate(a):
     else:
         return a
 
+
+class _VectorsData:
+    def __init__(self, size):
+        self.__data = ctypes.POINTER(ctypes.c_ubyte)()
+        _try_calling(cuda.malloc(ctypes.byref(self.__data), size))
+    def __del__(self):
+        _try_calling(cuda.free(self.__data))
+    def data_ptr(self):
+        return self.__data
