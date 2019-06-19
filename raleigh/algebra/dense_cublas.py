@@ -41,14 +41,13 @@ class Vectors:
             mvec = ((nvec - 1)//Vectors.MIN_INC + 1)*Vectors.MIN_INC
 #            print('allocating %d vectors...' % mvec)
             size = mvec * vsize
-            data = ctypes.POINTER(ctypes.c_ubyte)()
-            _try_calling(cuda.malloc(ctypes.byref(data), size))
+            vdata = _VectorsData(size)
+            data = vdata.data_ptr()
             if i + m > 0:
                 mn = ctypes.c_int((i + m)*n)
                 ptr_u = self.all_data_ptr()
                 self.__cublas.copy(self.__cublas.handle, mn, ptr_u, inc, data, inc)
-            _try_calling(cuda.free(self.all_data_ptr()))
-            self.__data = data
+            self.__vdata = vdata
             self.__mvec = mvec
         data = self.all_data_ptr()
         data_v = other.all_data_ptr()
@@ -285,28 +284,26 @@ class Vectors:
     '''
 
     def __init__(self, arg, nvec=0, data_type=None):
-        self.__data = ctypes.POINTER(ctypes.c_ubyte)()
         if isinstance(arg, Vectors):
             n = arg.dimension()
             m = arg.nvec()
             self.__is_complex = arg.__is_complex
-            dtype = arg.__dtype
-            dsize = arg.__dsize
+            dtype = arg.data_type()
+            dsize = arg.data_size()
             size = n*m*dsize
-            _try_calling(cuda.malloc(ctypes.byref(self.__data), size))
-            _try_calling(cuda.memcpy(self.__data, arg.data_ptr(), size, \
+            self.__vdata = _VectorsData(size)
+            _try_calling(cuda.memcpy(self.all_data_ptr(), arg.data_ptr(), size, \
                 cuda.memcpyD2D))
         elif isinstance(arg, numpy.ndarray):
             m, n = arg.shape
             dtype = arg.dtype.type
             dsize = arg.itemsize
             size = n*m*dsize
-            _try_calling(cuda.malloc(ctypes.byref(self.__data), size))
+            self.__vdata = _VectorsData(size)
             ptr = ctypes.c_void_p(arg.ctypes.data)
-            _try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
+            _try_calling(cuda.memcpy(self.all_data_ptr(), ptr, size, cuda.memcpyH2D))
             self.__is_complex = \
                 (dtype == numpy.complex64 or dtype == numpy.complex128)
-            self.__vdata = _VectorsData(size)
         elif isinstance(arg, numbers.Number):
             dtype = data_type
             if dtype is None:
@@ -330,8 +327,10 @@ class Vectors:
             assert m >= 0
             if nvec > 0:
                 size = n*m*dsize
-                _try_calling(cuda.malloc(ctypes.byref(self.__data), size))
-                _try_calling(cuda.memset(self.__data, 0, size))
+                self.__vdata = _VectorsData(size)
+                _try_calling(cuda.memset(self.all_data_ptr(), 0, size))
+            else:
+                self.__vdata = None
         else:
             raise ValueError \
                 ('wrong argument %s in constructor' % repr(type(arg)))
@@ -342,9 +341,6 @@ class Vectors:
         self.__dsize = dsize
         self.__dtype = dtype
         self.__cublas = Cublas(dtype)
-
-    def __del__(self):
-        _try_calling(cuda.free(self.__data))
 
     def __float(self):
         dt = self.data_type()
@@ -384,12 +380,18 @@ class Vectors:
         return s
 
     def all_data_ptr(self):
-        return self.__data
+        return self.__vdata.data_ptr()
 
     def data_ptr(self):
         n = self.dimension()
         vsize = n * self.__dsize
         return _shifted_ptr(self.all_data_ptr(), self.first() * vsize)
+        
+    def vectors_data(self):
+        return self.__vdata
+
+    def data_size(self):
+        return self.__dsize
 
     def cublas(self):
         return self.__cublas
