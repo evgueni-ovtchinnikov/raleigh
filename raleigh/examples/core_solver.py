@@ -16,6 +16,7 @@ Options:
     -b <blk>, --bsize=<blk>    block CG block size [default: -1]
     -v <vrb>, --verb=<vrb>     verbosity [default: 0]
     -P, --precond  with preconditioning
+    -T, --doctest  with doctest (stay with defaults!)
 
 Created on Thu Aug  2 10:57:27 2018
 
@@ -51,6 +52,7 @@ if have_docopt:
     block_size = int(args['--bsize'])
     verbosity = int(args['--verb'])
     with_prec = args['--precond']
+    with_doctest = args['--doctest']
 else:
     problem = 'std'
     matrix = 'diag'
@@ -62,6 +64,7 @@ else:
     block_size = -1
     verbosity = 0
     with_prec = False
+    with_doctest = True
 
 def test():
     '''
@@ -130,5 +133,8 @@ def test():
 
 
 if __name__ == '__main__':
-    import doctest
-    doctest.testmod(verbose=True)
+    if with_doctest:
+        import doctest
+        doctest.testmod(verbose=True)
+    else:
+        test()
