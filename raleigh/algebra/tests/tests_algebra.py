@@ -290,6 +290,32 @@ def test(u, v):
         t = nla.norm(v_cublas.data())/s
         print('error: %e' % t)
 
+    z_numpy = cblasVectors(u_numpy, shallow=True)
+    z_numpy.zero()
+    q = u_numpy.dots(u_numpy)
+    print(nla.norm(q))
+    del u_numpy
+    q = z_numpy.dots(z_numpy)
+    print(nla.norm(q))
+
+    if have_cblas:
+        z_cblas = cblasVectors(u_cblas, shallow=True)
+        z_cblas.zero()
+        q = u_cblas.dots(u_cblas)
+        print(nla.norm(q))
+        del u_cblas
+        q = z_cblas.dots(z_cblas)
+        print(nla.norm(q))
+
+    if have_cublas:
+        z_cublas = cublasVectors(u_cublas, shallow=True)
+        z_cublas.zero()
+        q = u_cublas.dots(u_cublas)
+        print(nla.norm(q))
+        del u_cublas
+        q = z_cublas.dots(z_cublas)
+        print(nla.norm(q))
+
 
 narg = len(sys.argv)
 if narg < 2 or sys.argv[1] == '-h' or sys.argv[1] == '--help':

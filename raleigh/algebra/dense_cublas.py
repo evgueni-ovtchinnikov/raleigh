@@ -283,17 +283,21 @@ class Vectors:
     '''========== Other methods ====================================
     '''
 
-    def __init__(self, arg, nvec=0, data_type=None):
+    def __init__(self, arg, nvec=0, data_type=None, shallow=False):
+        #print('in Vectors constructor...')
         if isinstance(arg, Vectors):
             n = arg.dimension()
             m = arg.nvec()
             self.__is_complex = arg.__is_complex
             dtype = arg.data_type()
             dsize = arg.data_size()
-            size = n*m*dsize
-            self.__vdata = _VectorsData(size)
-            _try_calling(cuda.memcpy(self.all_data_ptr(), arg.data_ptr(), size, \
-                cuda.memcpyD2D))
+            if shallow:
+                self.__vdata = arg.vectors_data()
+            else:
+                size = n*m*dsize
+                self.__vdata = _VectorsData(size)
+                _try_calling(cuda.memcpy(self.all_data_ptr(), arg.data_ptr(), \
+                                         size, cuda.memcpyD2D))
         elif isinstance(arg, numpy.ndarray):
             m, n = arg.shape
             dtype = arg.dtype.type
@@ -341,6 +345,9 @@ class Vectors:
         self.__dsize = dsize
         self.__dtype = dtype
         self.__cublas = Cublas(dtype)
+
+#    def __del__(self):
+#        print('in Vectors destructor...')
 
     def __float(self):
         dt = self.data_type()
@@ -572,9 +579,11 @@ def _conjugate(a):
 
 class _VectorsData:
     def __init__(self, size):
+        #print('in _VectorsData constructor...')
         self.__data = ctypes.POINTER(ctypes.c_ubyte)()
         _try_calling(cuda.malloc(ctypes.byref(self.__data), size))
     def __del__(self):
+        #print('in _VectorsData destructor...')
         _try_calling(cuda.free(self.__data))
     def data_ptr(self):
         return self.__data

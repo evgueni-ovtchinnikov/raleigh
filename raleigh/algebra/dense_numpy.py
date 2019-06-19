@@ -101,8 +101,8 @@ class Vectors(NDArrayVectors):
     '''========== Other methods ====================================
     '''
 
-    def __init__(self, arg, nvec=0, data_type=None):
-        super(Vectors, self).__init__(arg, nvec, data_type)
+    def __init__(self, arg, nvec=0, data_type=None, shallow=False):
+        super(Vectors, self).__init__(arg, nvec, data_type, shallow)
 
     def apply(self, A, output, transp=False):
         a = A.data()

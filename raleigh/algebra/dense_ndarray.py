@@ -45,10 +45,13 @@ class NDArrayVectors(object):
     '''========== Other methods ====================================
     '''
 
-    def __init__(self, arg, nvec=0, data_type=None):
+    def __init__(self, arg, nvec=0, data_type=None, shallow=False):
         if isinstance(arg, NDArrayVectors):
             i, n = arg.selected()
-            self.__data = arg.__data[i : i + n, :].copy()
+            if shallow:
+                self.__data = arg.__data[i : i + n, :]
+            else:
+                self.__data = arg.__data[i : i + n, :].copy()
         elif isinstance(arg, numpy.ndarray):
             self.__data = arg
         elif isinstance(arg, numbers.Number):
