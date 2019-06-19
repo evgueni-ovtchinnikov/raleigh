@@ -412,6 +412,10 @@ class Vectors:
     def select_all(self):
         self.select(self.__nvec)
 
+    def reference(self):
+        v = Vectors(self, shallow=True)
+        return v
+
     def is_complex(self):
         return self.__is_complex
 

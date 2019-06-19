@@ -223,6 +223,10 @@ class Vectors(NDArrayVectors):
     def cblas(self):
         return self.__cblas
 
+    def reference(self):
+        v = Vectors(self, shallow=True)
+        return v
+
     def apply(self, A, output, transp=False):
         a = A.data()
         if transp:

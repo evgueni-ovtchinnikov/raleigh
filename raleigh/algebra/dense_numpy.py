@@ -103,6 +103,10 @@ class Vectors(NDArrayVectors):
 
     def __init__(self, arg, nvec=0, data_type=None, shallow=False):
         super(Vectors, self).__init__(arg, nvec, data_type, shallow)
+        
+    def reference(self):
+        v = Vectors(self, shallow=True)
+        return v
 
     def apply(self, A, output, transp=False):
         a = A.data()

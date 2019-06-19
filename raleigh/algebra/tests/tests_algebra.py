@@ -290,7 +290,11 @@ def test(u, v):
         t = nla.norm(v_cublas.data())/s
         print('error: %e' % t)
 
-    z_numpy = cblasVectors(u_numpy, shallow=True)
+    nv = u_numpy.nvec()//2
+    z_numpy = u_numpy.reference()
+    z_numpy.select(nv, nv)
+    q = u_numpy.dots(u_numpy)
+    print(nla.norm(q))
     z_numpy.zero()
     q = u_numpy.dots(u_numpy)
     print(nla.norm(q))
@@ -299,7 +303,10 @@ def test(u, v):
     print(nla.norm(q))
 
     if have_cblas:
-        z_cblas = cblasVectors(u_cblas, shallow=True)
+        z_cblas = u_cblas.reference()
+        z_cblas.select(nv, nv)
+        q = u_cblas.dots(u_cblas)
+        print(nla.norm(q))
         z_cblas.zero()
         q = u_cblas.dots(u_cblas)
         print(nla.norm(q))
@@ -308,7 +315,10 @@ def test(u, v):
         print(nla.norm(q))
 
     if have_cublas:
-        z_cublas = cublasVectors(u_cublas, shallow=True)
+        z_cublas = u_cublas.reference()
+        z_cublas.select(nv, nv)
+        q = u_cublas.dots(u_cublas)
+        print(nla.norm(q))
         z_cublas.zero()
         q = u_cublas.dots(u_cublas)
         print(nla.norm(q))
