@@ -26,6 +26,7 @@ Options:
   -v <verb>, --verb=<verb>   verbosity level [default: 0]
   -d, --double   use double precision
   -p, --ptb      add random perturbation to make the matrix full rank
+  -P, --pca      compute also PCA
 
 @author: Evgueni Ovtchinnikov, UKRI
 """
@@ -99,6 +100,7 @@ if have_docopt:
     verb = int(args['--verb'])
     dble = args['--double']
     ptb = args['--ptb']
+    do_pca = args['--pca']
 else:
     m = 3000
     n = 2000
@@ -112,6 +114,7 @@ else:
     verb = 0
     dble = False
     ptb = False
+    do_pca = True
 
 numpy.random.seed(1) # make results reproducible
 
@@ -154,21 +157,22 @@ D = A - numpy.dot(sigma[:nsv]*u[:, :nsv], vt[:nsv, :])
 err = norm(D, axis=1)/norm(A, axis=1)
 print('truncation error %.1e' % numpy.amax(err))
 
-print('\n--- solving with pca...\n')
-'''
-Principal components do not have to be accurate singular vectors, hence pca
-can compute them faster than truncated_svd in default singular vector accuracy
-(it is this trick that makes scikit-learn pca much faster than much more
-accurate scipy svds).
-'''
-start = time.time()
-mean, trans, comp = pca(A, opt, npc=rank, tol=th, arch=arch)
-stop = time.time()
-time_pca = stop - start
-print('\npca time: %.1e' % time_pca)
-e = numpy.ones((trans.shape[0], 1), dtype=dtype)
-D = A - numpy.dot(trans, comp) - numpy.dot(e, mean)
-err = norm(D, axis=1)/norm(A, axis=1)
-print('\npca error %.1e' % numpy.amax(err))
+if do_pca:
+    print('\n--- solving with pca...\n')
+    '''
+    Principal components do not have to be accurate singular vectors, hence pca
+    can compute them faster than truncated_svd in default singular vector accuracy
+    (it is this trick that makes scikit-learn pca much faster than much more
+    accurate scipy svds).
+    '''
+    start = time.time()
+    mean, trans, comp = pca(A, opt, npc=rank, tol=th, arch=arch)
+    stop = time.time()
+    time_pca = stop - start
+    print('\npca time: %.1e' % time_pca)
+    e = numpy.ones((trans.shape[0], 1), dtype=dtype)
+    D = A - numpy.dot(trans, comp) - numpy.dot(e, mean)
+    err = norm(D, axis=1)/norm(A, axis=1)
+    print('\npca error %.1e' % numpy.amax(err))
 
 print('\ndone')
