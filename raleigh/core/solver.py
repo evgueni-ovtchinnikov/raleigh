@@ -896,7 +896,7 @@ class Solver:
                     s = 0
                     # go through the last 1/3 of the history
                     for r in range(rec - 1, rec - rec//3 - 2, -1):
-                        d = dlmd[ix + i, r]
+                        d = abs(dlmd[ix + i, r])
                         if d == 0:
                             break
                         k = k + 1
@@ -904,7 +904,7 @@ class Solver:
                     if k < 2 or s == 0:
                         continue
                     # estimate asymptotic convergence factor (a.c.f)
-                    qi = dlmd[ix + i, rec - 1]/s
+                    qi = abs(dlmd[ix + i, rec - 1])/s
                     if qi <= 0:
                         continue
                     qi = qi**(1.0/(k - 1))
