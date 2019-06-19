@@ -43,22 +43,13 @@ class Vectors:
             size = mvec * vsize
             data = ctypes.POINTER(ctypes.c_ubyte)()
             _try_calling(cuda.malloc(ctypes.byref(data), size))
-            if m > 0:
-                mn = ctypes.c_int(m*n)
-                data_u = self.all_data_ptr()
-                ptr_u = _shifted_ptr(data_u, i*vsize)
-#                ptr = _shifted_ptr(data, 0)
+            if i + m > 0:
+                mn = ctypes.c_int((i + m)*n)
+                ptr_u = self.all_data_ptr()
                 self.__cublas.copy(self.__cublas.handle, mn, ptr_u, inc, data, inc)
-#                self.__cublas.copy(self.__cublas.handle, mn, ptr_u, inc, ptr, inc)
-#                _try_calling(cuda.free(self.__data))
             _try_calling(cuda.free(self.all_data_ptr()))
             self.__data = data
             self.__mvec = mvec
-#        else:
-#            data = self.__data
-#            data = self.all_data_ptr()
-#            mvec = self.__mvec
-#            print('re-using %d vectors...' % mvec)
         data = self.all_data_ptr()
         data_v = other.all_data_ptr()
         ptr_v = _shifted_ptr(data_v, j*vsize)
@@ -66,9 +57,7 @@ class Vectors:
         ln = ctypes.c_int(l*n)
 #        print('copying %d vectors...' % l)
         self.__cublas.copy(self.__cublas.handle, ln, ptr_v, inc, ptr, inc)
-#        self.__data = data
         self.__nvec = nvec
-#        self.__mvec = mvec
         self.select_all()
 
     def dimension(self):
@@ -401,7 +390,6 @@ class Vectors:
         n = self.dimension()
         vsize = n * self.__dsize
         return _shifted_ptr(self.all_data_ptr(), self.first() * vsize)
-#        return _shifted_ptr(self.__data, self.first() * vsize)
 
     def cublas(self):
         return self.__cublas
@@ -437,7 +425,6 @@ class Vectors:
         size = m * self.__dsize * self.__vdim
         ptr = ctypes.c_void_p(data.ctypes.data)
         _try_calling(cuda.memcpy(self.all_data_ptr(), ptr, size, cuda.memcpyH2D))
-#        _try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
 
     def data(self):
         m = self.nvec()
