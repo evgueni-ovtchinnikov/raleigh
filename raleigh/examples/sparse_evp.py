@@ -20,8 +20,8 @@ Options:
                               mode) [default: 0]
     -r <rgt>, --right=<rgt>   number of eigenvalues right of shift (shift-ivert
                               mode) [default: 6]
-    -e <nev>, --nev=<nev>     number of eigenvalues wanted: largest if left and
-                              right are set to 0 in shift-invert mode
+    -e <nev>, --nev=<nev>     number of eigenvalues wanted: nearest to the shift
+                              in shift-invert mode if left and right are zeros
                               or smallest if preconditioning is used
                               [default: 6]
     -t <tol>, --tol=<tol>     error/residual tolerance [default: 1e-10]
