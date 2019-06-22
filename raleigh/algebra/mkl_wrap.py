@@ -1,9 +1,8 @@
 # Copyright 2019 United Kingdom Research and Innovation 
 # Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
 # This software is distributed under a BSD licence, see ../../LICENSE.txt.
-"""MKL loader/wrapper.
 
-Created on Wed May 23 10:21:04 2018
+"""MKL loader/wrapper.
 """
 
 import ctypes

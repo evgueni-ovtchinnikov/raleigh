@@ -1,9 +1,8 @@
 # Copyright 2019 United Kingdom Research and Innovation 
 # Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
 # This software is distributed under a BSD licence, see ../../LICENSE.txt.
-"""CUDA Toolkit loader/wrapper.
 
-Created on Tue Jun 19 16:37:57 2018
+"""CUDA Toolkit loader/wrapper.
 """
 
 import ctypes

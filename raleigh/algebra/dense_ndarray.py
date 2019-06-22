@@ -1,9 +1,8 @@
 # Copyright 2019 United Kingdom Research and Innovation 
 # Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
 # This software is distributed under a BSD licence, see ../../LICENSE.txt.
-"""Base classes for ndarray implementation of Vectors and Matrix types.
 
-Created on Thu Jun 14 11:48:14 2018
+"""Base classes for ndarray implementation of Vectors and Matrix types.
 """
 
 import numbers
