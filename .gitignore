@@ -1,3 +1,8 @@
+# Distribution files
+build/
+dist/
+*.egg-info/
+
 # User-specific files
 *.pyd
 *.pyc
