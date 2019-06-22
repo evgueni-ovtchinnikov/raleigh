@@ -31,7 +31,7 @@ Options:
                               in shift-invert mode if left and right are zeros
                               or smallest if preconditioning is used
                               [default: 6]
-    -t <tol>, --tol=<tol>     error/residual tolerance [default: 1e-10]
+    -t <tol>, --tol=<tol>     error/residual tolerance [default: 1e-6]
     -v <vrb>, --verb=<vrb>    verbosity level (negative suppresses all output)
                               [default: 0]
     -I, --invop  first argument of partial_hevp is a SparseSymmetricSolver
