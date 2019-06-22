@@ -80,9 +80,12 @@ def norm(a, axis):
     return numpy.apply_along_axis(numpy.linalg.norm, axis, a)
 
 
-def vec_err(u, v):
-    w = v.copy()
-    q = numpy.dot(u.T, v)
+def vec_err(u, v, B=None):
+    if B is None:
+        w = v.copy()
+    else:
+        w = B.dot(v)
+    q = numpy.dot(u.T, w)
     w = numpy.dot(u, q) - v
     s = norm(w, axis = 0)
     return s
@@ -208,8 +211,8 @@ if check:
     right = min(rgt, rt)
     print('eigenvector errors:')
     if left > 0:
-        errs = vec_err(vecs[:, lft - left : lft], vcs[:, lt - left : lt])
+        errs = vec_err(vecs[:, lft - left : lft], vcs[:, lt - left : lt], B)
         print(errs)
     if right > 0:
-        errs = vec_err(vecs[:, lft : lft + right], vcs[:, lt : lt + right])
+        errs = vec_err(vecs[:, lft : lft + right], vcs[:, lt : lt + right], B)
         print(errs)
