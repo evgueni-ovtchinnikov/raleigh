@@ -1,15 +1,15 @@
-# -*- coding: utf-8 -*-
-'''Compares images with their PCA approximations.
+# Copyright 2019 United Kingdom Research and Innovation 
+# Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
+# This software is distributed under a BSD licence, see ../../../LICENSE.txt.
+
+'''Compares images with their PCA approximations computed by the script
+   compute_eigenimages.py.
 
 Usage:
     show_errors [--help | -h] <file>
 
 Arguments:
     file       images file (must end with .npy)
-
-Created on Wed Aug 22 11:13:17 2018
-
-@author: Evgueni Ovtchinnikov, UKRI-STFC
 '''
 
 try:

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 '''Unit tests for matrix and vectors algebra.
 
 Usage:
@@ -9,10 +8,6 @@ Arguments:
   n   matrix columns
   k   number of vectors
   t   data type (s/d/c/z)
-
-Created on Tue Aug 14 14:06:19 2018
-
-@author: Evgueni Ovtchinnikov, UKRI-STFC
 '''
 
 import numpy

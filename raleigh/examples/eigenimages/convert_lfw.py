@@ -1,4 +1,7 @@
-# -*- coding: utf-8 -*-
+# Copyright 2019 United Kingdom Research and Innovation 
+# Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
+# This software is distributed under a BSD licence, see ../../../LICENSE.txt.
+
 """Reads images from an lfw-style folder (visit http://vis-www.cs.umass.edu/lfw),
    optionally processes them and saves in .npy file.
 
@@ -25,10 +28,6 @@ Options:
                        erase most of the background to get closer to passport
                        photo format - ldeal case for PCA)
   -v, --view           view processed images
-
-Created on Tue Aug 21 14:34:18 2018
-
-@author: Evgueni Ovtchinnikov, UKRI-STFC
 """
 
 try:

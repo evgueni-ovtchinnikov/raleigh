@@ -1,8 +1,11 @@
 # Copyright 2019 United Kingdom Research and Innovation 
 # Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
-# This software is distributed under a BSD licence, see ../LICENSE.txt.
-"""
-Partial eigenvalue problem solver for a sparse symmetric/Hermitian matrix.
+# This software is distributed under a BSD licence, see ../../LICENSE.txt.
+"""Partial eigenvalue problem solver for a sparse symmetric/Hermitian matrix.
+
+--------------------------------------------------------------------------------
+Requires MKL 10.3 or later (needs mkl_rt.dll on Windows, libmkl_rt.so on Linux).
+--------------------------------------------------------------------------------
 """
 
 import numpy

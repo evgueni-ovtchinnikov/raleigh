@@ -1,6 +1,8 @@
-# -*- coding: utf-8 -*-
-"""
-Basic core solver usage demonstration.
+# Copyright 2019 United Kingdom Research and Innovation 
+# Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
+# This software is distributed under a BSD licence, see ../../LICENSE.txt.
+
+"""Basic core solver usage demonstration.
 
 Usage:
     core_solver [--help | -h | options]
@@ -17,10 +19,6 @@ Options:
     -v <vrb>, --verb=<vrb>     verbosity [default: 0]
     -P, --precond  with preconditioning
     -T, --doctest  with doctest (stay with defaults!)
-
-Created on Thu Aug  2 10:57:27 2018
-
-@author: Evgueni Ovtchinnikov, UKRI-STFC
 """
 
 import numpy

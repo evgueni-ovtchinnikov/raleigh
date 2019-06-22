@@ -1,9 +1,8 @@
 # Copyright 2019 United Kingdom Research and Innovation 
 # Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
-# This software is distributed under a BSD licence, see ../LICENSE.txt.
-"""Partial SVD of a matrix represented by a 2D ndarray.
+# This software is distributed under a BSD licence, see ../../LICENSE.txt.
 
-Created on Tue Feb 19 13:58:54 2019
+"""Partial SVD of a matrix represented by a 2D ndarray.
 """
 
 import copy

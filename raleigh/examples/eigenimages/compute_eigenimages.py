@@ -1,4 +1,7 @@
-# -*- coding: utf-8 -*-
+# Copyright 2019 United Kingdom Research and Innovation 
+# Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
+# This software is distributed under a BSD licence, see ../../../LICENSE.txt.
+
 '''Principal Component Analysis of 2D images.
 
 Computes Principal Components for a set of 2D images in small portions until
@@ -26,10 +29,6 @@ Options:
   -b <blk> , --bsize=<blk>   CG block size (< 0: auto) [default: -1]
   -t <tol> , --rtol=<tol>    residual tolerance [default: 1e-3]
   -a <arch>, --arch=<arch>   architecture [default: cpu]
-
-Created on Mon Jun 18 12:10:20 2018
-
-@author: Evgueni Ovtchinnikov, UKRI-STFC
 '''
 
 try:

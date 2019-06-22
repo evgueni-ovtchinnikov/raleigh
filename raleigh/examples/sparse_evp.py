@@ -1,5 +1,12 @@
-# -*- coding: utf-8 -*-
+# Copyright 2019 United Kingdom Research and Innovation 
+# Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
+# This software is distributed under a BSD licence, see ../../LICENSE.txt.
+
 """Computes several eigenvalues and eigenvectors of a real symmetric matrix.
+
+--------------------------------------------------------------------------------
+Requires MKL 10.3 or later (needs mkl_rt.dll on Windows, libmkl_rt.so on Linux).
+--------------------------------------------------------------------------------
 
 Visit https://sparse.tamu.edu/ to download matrices (in Matrix Market format)
 to test on. Recommended group: DNVS. Best performance compared to scipy eigsh
@@ -30,8 +37,6 @@ Options:
     -I, --invop  first argument of partial_hevp is a SparseSymmetricSolver
     -P, --ilutp  use mkl dcsrilut (incomplete ILU) as a preconditioner
     -C, --check  check the eigenvector errors by solving twice
-
-@author: Evgueni Ovtchinnikov, UKRI-STFC
 """
 
 try:
