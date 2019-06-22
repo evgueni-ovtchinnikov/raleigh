@@ -1,6 +1,6 @@
 # Copyright 2019 United Kingdom Research and Innovation 
 # Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
-# This software is distributed under a BSD licence, see ../LICENSE.txt.
+# This software is distributed under a BSD licence, see ../../LICENSE.txt.
 '''
 RALEIGH (RAL EIGensolvers for real symmetric and Hermitian problems) core
 solver.
@@ -582,7 +582,7 @@ class Solver:
         else:
             r = 0.5
             l = m//2
-        lr_ratio = r
+        left_ratio = r
         block_size = m
         left_block_size = l
 
@@ -1417,27 +1417,27 @@ class Solver:
             else:
                 shift_right = 0
             if shift_left + shift_right > ny:
-                shift_left = min(shift_left, int(round(lr_ratio*ny)))
+                shift_left = min(shift_left, int(round(left_ratio*ny)))
                 shift_right = min(shift_right, ny - shift_left)
             if left > 0 and lcon > 0 and self.lcon >= left:
                 if verb > 0:
-                    print('left side converged')
+                    print('left-hand side converged')
                 leftX_new = 0
                 l = left_block_size
                 rightX_new = min(nxy, l + rightX + shift_right)
                 left_block_size_new = l + rightX + shift_right - rightX_new
                 shift_left = -leftX - lcon
-                lr_ratio = 0.0
+                left_ratio = 0.0
                 ix_new = left_block_size_new
             elif right > 0 and rcon > 0 and self.rcon >= right:
                 if verb > 0:
-                    print('right side converged')
+                    print('right-hand side converged')
                 ix_new = ix - shift_left
                 leftX_new = min(nxy, block_size - ix_new)
                 rightX_new = 0
                 shift_right = -rightX - rcon
-                left_block_size_new = ix + leftX + rightX
-                lr_ratio = 1.0
+                left_block_size_new = ix_new + leftX_new
+                left_ratio = 1.0
             else:
                 leftX_new = leftX + shift_left
                 rightX_new = rightX + shift_right
