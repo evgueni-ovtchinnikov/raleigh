@@ -10,6 +10,8 @@ import glob
 import os
 from sys import platform
 
+from . import verbosity
+
 
 def _find_cuda_path(path):
     n = len(path)
@@ -48,9 +50,11 @@ try:
     v = ctypes.c_int()
     cuda.cudaRuntimeGetVersion(ctypes.byref(v))
     version = v.value
-    print('CUDA version: %d' % version)
+    if verbosity.level > 0:
+        print('CUDA version: %d' % version)
 except:
-    print('CUDA Toolkit not found, switching to cpu...')
+    if verbosity.level > 0:
+        print('CUDA Toolkit not found, switching to cpu...')
     raise RuntimeError('CUDA Toolkit not found')
 
 
@@ -153,14 +157,15 @@ memcpyD2D = ctypes.c_int(3)
 
 numDevices = ctypes.c_int()
 getDeviceCount(ctypes.byref(numDevices))
-print('devices found: %d' % numDevices.value)
 
-for x in range(numDevices.value):
-    devProp = CudaDeviceProp()
-    getDeviceProperties(ctypes.byref(devProp), x)
-    print('device: %s' % devProp.name)
-    print('memory: %d' % devProp.totalGlobalMem)
-    print('multiprocessors: %d' % devProp.multiProcessorCount)
-    print('threads per mp: %d' % devProp.maxThreadsPerMultiProcessor)
-    print('registers per block: %d'% devProp.regsPerBlock)
-    print('shared memory per block: %d' % devProp.sharedMemPerBlock)
+if verbosity.level > 1:
+    print('devices found: %d' % numDevices.value)
+    for x in range(numDevices.value):
+        devProp = CudaDeviceProp()
+        getDeviceProperties(ctypes.byref(devProp), x)
+        print('device: %s' % devProp.name)
+        print('memory: %d' % devProp.totalGlobalMem)
+        print('multiprocessors: %d' % devProp.multiProcessorCount)
+        print('threads per mp: %d' % devProp.maxThreadsPerMultiProcessor)
+        print('registers per block: %d'% devProp.regsPerBlock)
+        print('shared memory per block: %d' % devProp.sharedMemPerBlock)

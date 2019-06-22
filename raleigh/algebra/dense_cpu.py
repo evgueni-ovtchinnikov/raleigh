@@ -5,9 +5,14 @@
 """CPU dense algebra selector
 """
 
+from . import verbosity
+
+
 try:
     from .dense_cblas import Vectors, Matrix
-    print('using mkl cblas...')
+    if verbosity.level > 0:
+        print('using mkl cblas...')
 except:
-    print('mkl cblas not found, using numpy...')
+    if verbosity.level > 0:
+        print('mkl cblas not found, using numpy...')
     from .dense_numpy import Vectors, Matrix

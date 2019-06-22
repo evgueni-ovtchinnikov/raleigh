@@ -10,23 +10,27 @@ import multiprocessing
 import numpy
 from sys import platform
 
-#print(platform)
+from . import verbosity
 
-def _array_ptr(array, shift = 0):
+
+def _array_ptr(array, shift=0):
     return ctypes.c_void_p(array.ctypes.data + shift)
 
+
 def mkl_version(mkl):
-    str_v = numpy.ndarray((128,), dtype=numpy.uint8)
+    str_v = numpy.ndarray((256,), dtype=numpy.uint8)
     ptr_v = _array_ptr(str_v)
-    len_v = ctypes.c_int(128)
+    len_v = ctypes.c_int(256)
     mkl.mkl_get_version_string(ptr_v, len_v)
     return str_v.tostring().decode('ascii')
+
 
 if platform == 'win32':
     mkl = ctypes.CDLL('mkl_rt.dll', mode=ctypes.RTLD_GLOBAL)
 else:
     mkl = ctypes.CDLL('libmkl_rt.so', mode=ctypes.RTLD_GLOBAL)
-print('Loaded %s' % mkl_version(mkl))
+if verbosity.level > 1:
+    print('Loaded %s' % mkl_version(mkl).strip())
 
 # find the total number of threads    
 num_cpus = multiprocessing.cpu_count()
@@ -40,12 +44,11 @@ num_cores = mkl.mkl_get_max_threads()
 # to achieve slightly better performance
 if num_cpus == 2*num_cores:
     num_threads = num_cpus - 1
-    #mkl.mkl_set_dynamic(ctypes.byref(ctypes.c_int(0)))
-    #mkl.mkl_set_num_threads(ctypes.byref(ctypes.c_int(num_threads)))
     mkl.MKL_Set_Dynamic(0)
     mkl.MKL_Set_Num_Threads(num_threads)
 
-print('Using %d MKL threads' % mkl.mkl_get_max_threads())
+if verbosity.level > 1:
+    print('Using %d MKL threads' % mkl.mkl_get_max_threads())
 
 class Cblas:
     ColMajor = 102

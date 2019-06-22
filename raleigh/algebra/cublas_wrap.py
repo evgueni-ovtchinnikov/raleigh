@@ -10,6 +10,8 @@ import glob
 import numpy
 from sys import platform
 
+from . import verbosity
+
 
 POINTER = ctypes.POINTER
 
@@ -37,10 +39,12 @@ try:
     v = ctypes.c_int()
     err = cublasVersion(cublas_handle, ctypes.byref(v))
     version = v.value
-    print('CUBLAS version: %d' % version)
+    if verbosity.level > 0:
+        print('CUBLAS version: %d' % version)
     destroy(cublas_handle)
 except:
-    print('CUBLAS not found, switching to cpu...')
+    if verbosity.level > 0:
+        print('CUBLAS not found, switching to cpu...')
     raise RuntimeError('CUBLAS not found')
 
 

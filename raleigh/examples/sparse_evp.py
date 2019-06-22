@@ -56,9 +56,16 @@ raleigh_path = '../..'
 if raleigh_path not in sys.path:
     sys.path.append(raleigh_path)
 
-from raleigh.algebra.sparse_mkl import SparseSymmetricSolver
-from raleigh.algebra.sparse_mkl import IncompleteLU
-from raleigh.drivers.partial_hevp import partial_hevp
+from raleigh.algebra import verbosity
+verbosity.level = 1
+
+try:
+    from raleigh.algebra.sparse_mkl import SparseSymmetricSolver
+    from raleigh.algebra.sparse_mkl import IncompleteLU
+    from raleigh.drivers.partial_hevp import partial_hevp
+except:
+    print('This script requires MKL 10.3 or later, sorry!')
+    exit()
 
 
 def lap1d(n, a):
