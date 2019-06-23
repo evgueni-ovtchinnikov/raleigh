@@ -17,7 +17,7 @@ import time
 
 raleigh_path = '../../..'
 if raleigh_path not in sys.path:
-    sys.path.append(raleigh_path)
+    sys.path.insert(0, raleigh_path)
 
 
 def test(u, v):

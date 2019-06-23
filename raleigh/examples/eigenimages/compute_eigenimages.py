@@ -46,7 +46,7 @@ import time
 
 raleigh_path = os.path.dirname(os.path.abspath(__file__)) + '/../../..'
 if raleigh_path not in sys.path:
-    sys.path.append(raleigh_path)
+    sys.path.insert(0, raleigh_path)
 
 from raleigh.core.solver import Options
 from raleigh.drivers.partial_svd import pca
