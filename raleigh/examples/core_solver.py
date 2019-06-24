@@ -23,9 +23,11 @@ Options:
 import numpy
 import sys
 
+# in case this raleigh package is not pip installed (e.g. cloned from github)
 raleigh_path = '../..'
 if raleigh_path not in sys.path:
     sys.path.insert(0, raleigh_path)
+
 from raleigh.core.solver import Options, Problem, Solver
 from raleigh.core.solver import DefaultConvergenceCriteria
 from raleigh.algebra.dense_cpu import Vectors, Matrix
@@ -62,6 +64,7 @@ else:
     verbosity = 0
     with_prec = False
     with_doctest = True
+
 
 def test():
     '''

@@ -14,6 +14,7 @@ import numpy.linalg as nla
 import sys
 import time
 
+# in case this raleigh package is not pip installed (e.g. cloned from github)
 raleigh_path = '../../..'
 if raleigh_path not in sys.path:
     sys.path.insert(0, raleigh_path)
@@ -331,7 +332,7 @@ def test(u, v):
 
 
 narg = len(sys.argv)
-if narg < 2 or sys.argv[1] == '-h' or sys.argv[1] == '--help':
+if narg < 4 or sys.argv[1] == '-h' or sys.argv[1] == '--help':
     print('\nUsage:\n')
     print('python tests_algebra.py <vector_size> <number_of_vectors> <data_type>')
     exit()

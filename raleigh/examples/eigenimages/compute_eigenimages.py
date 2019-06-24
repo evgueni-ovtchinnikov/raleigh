@@ -43,7 +43,8 @@ import os
 import sys
 import time
 
-raleigh_path = os.path.dirname(os.path.abspath(__file__)) + '/../../..'
+# in case this raleigh package is not pip installed (e.g. cloned from github)
+raleigh_path = '../../..'
 if raleigh_path not in sys.path:
     sys.path.insert(0, raleigh_path)
 

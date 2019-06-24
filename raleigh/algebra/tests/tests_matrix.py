@@ -15,6 +15,7 @@ import numpy.linalg as nla
 import sys
 import time
 
+# in case this raleigh package is not pip installed (e.g. cloned from github)
 raleigh_path = '../../..'
 if raleigh_path not in sys.path:
     sys.path.insert(0, raleigh_path)
@@ -187,7 +188,7 @@ class cublasOperatorSVD:
 
 
 narg = len(sys.argv)
-if narg < 2 or sys.argv[1] == '-h' or sys.argv[1] == '--help':
+if narg < 5 or sys.argv[1] == '-h' or sys.argv[1] == '--help':
     print('\nUsage:\n')
     print('python tests_matrix.py <rows> <columns> <vector_size> <data_type>')
     exit()
@@ -195,7 +196,6 @@ n = int(sys.argv[1])
 m = int(sys.argv[2])
 k = int(sys.argv[3])
 dt = sys.argv[4]
-
 
 numpy.random.seed(1) # make results reproducible
 
