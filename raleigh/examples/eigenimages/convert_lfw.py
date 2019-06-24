@@ -1,6 +1,5 @@
 # Copyright 2019 United Kingdom Research and Innovation 
 # Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
-# This software is distributed under a BSD licence, see ../../../LICENSE.txt.
 
 """Reads images from an lfw-style folder (visit http://vis-www.cs.umass.edu/lfw),
    optionally processes them and saves in .npy file.
