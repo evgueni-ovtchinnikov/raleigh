@@ -39,7 +39,6 @@ except:
 
 import numpy
 import pylab
-import os
 import sys
 import time
 

@@ -505,9 +505,9 @@ class Solver:
         std = (self.__problem.type() == 's')
         pro = (self.__problem.type() == 'p')
 
-        opA = problem().A()
+        opA = self.problem().A()
         A = lambda x, y: opA.apply(x, y)
-        opB = problem().B()
+        opB = self.problem().B()
         if opB is not None:
             B = lambda x, y: opB.apply(x, y)
         data_type = eigenvectors.data_type()
