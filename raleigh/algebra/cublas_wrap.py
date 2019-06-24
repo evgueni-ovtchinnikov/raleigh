@@ -1,8 +1,7 @@
 # Copyright 2019 United Kingdom Research and Innovation 
 # Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
-# This software is distributed under a BSD licence, see ../../LICENSE.txt.
 
-"""CUBLAS wrapper.
+"""CUBLAS loader/wrapper.
 """
 
 import ctypes
@@ -49,9 +48,13 @@ except:
 
 
 class Cublas:
+    '''CUBLAS wrapper.
+    '''
+
     NoTrans = 0
     Trans = 1
     ConjTrans = 2
+
     def __init__(self, dt):
         self.handle = POINTER(ctypes.c_ubyte)()
         err = create(ctypes.byref(self.handle))

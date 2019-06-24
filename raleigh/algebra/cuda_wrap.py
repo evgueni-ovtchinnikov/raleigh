@@ -1,6 +1,5 @@
 # Copyright 2019 United Kingdom Research and Innovation 
 # Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
-# This software is distributed under a BSD licence, see ../../LICENSE.txt.
 
 """CUDA Toolkit loader/wrapper.
 """
@@ -43,9 +42,9 @@ try:
     if platform == 'win32':
         cuda_path = _find_cuda_path(os.environ['PATH'])
         cudart_dll = glob.glob(cuda_path + '/cudart64*')[0]
-        cuda = ctypes.CDLL(cudart_dll, mode = ctypes.RTLD_GLOBAL)
+        cuda = ctypes.CDLL(cudart_dll, mode=ctypes.RTLD_GLOBAL)
     else:
-        cuda = ctypes.CDLL('libcudart.so', mode = ctypes.RTLD_GLOBAL)
+        cuda = ctypes.CDLL('libcudart.so', mode=ctypes.RTLD_GLOBAL)
 
     v = ctypes.c_int()
     cuda.cudaRuntimeGetVersion(ctypes.byref(v))
@@ -157,7 +156,6 @@ memcpyD2D = ctypes.c_int(3)
 
 numDevices = ctypes.c_int()
 getDeviceCount(ctypes.byref(numDevices))
-
 if verbosity.level > 1:
     print('devices found: %d' % numDevices.value)
     for x in range(numDevices.value):

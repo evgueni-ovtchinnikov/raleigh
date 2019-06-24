@@ -1,6 +1,5 @@
 # Copyright 2019 United Kingdom Research and Innovation 
 # Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
-# This software is distributed under a BSD licence, see ../../LICENSE.txt.
 
 """MKL loader/wrapper.
 """
@@ -50,11 +49,16 @@ if num_cpus == 2*num_cores:
 if verbosity.level > 1:
     print('Using %d MKL threads' % mkl.mkl_get_max_threads())
 
+
 class Cblas:
+    '''MKL cblas wrapper.
+    '''
+
     ColMajor = 102
     NoTrans = 111
     Trans = 112
     ConjTrans = 113
+
     def __init__(self, dt):
         if dt == numpy.float32:
             self.dsize = 4
@@ -113,7 +117,11 @@ class Cblas:
         else:
             raise ValueError('data type %s not supported' % repr(dt))
 
+
 class SparseSymmetricMatrix:
+    '''MKL csr matrix wrapper.
+    '''
+
     def __init__(self, a, ia, ja):
         self.__a = a
         self.__ib = ia
@@ -151,6 +159,7 @@ class SparseSymmetricMatrix:
         self.__u = ctypes.c_char_p(self.__uplo.encode('utf-8'))
         self.__t = ctypes.c_char_p(self.__trans.encode('utf-8'))
         self.__d = ctypes.c_char_p(self.__descr.encode('utf-8'))
+
     def dot(self, x, y):
         ptr_x = _array_ptr(x)
         ptr_y = _array_ptr(y)
@@ -183,7 +192,11 @@ class SparseSymmetricMatrix:
             self.__one, self.__d, ptr_a, ptr_ja, ptr_ib, ptr_ie, \
             ptr_x, ptr_n, self.__zero, ptr_y, ptr_n)
 
+
 class ILUT:
+    '''MKL dscrilut wrapper.
+    '''
+
     def __init__(self, a, ia, ja):
         self.__a = a
         self.__ia = ia
@@ -205,6 +218,7 @@ class ILUT:
         self.__U = ctypes.c_char_p(self.__u.encode('utf-8'))
         self.__L = ctypes.c_char_p(self.__l.encode('utf-8'))
         self.__N = ctypes.c_char_p(self.__n.encode('utf-8'))
+
     def factorize(self, tol=1e-6, max_fill_rel=1):
         max_fill_abs = min(self.__rows - 1, self.__nnz * max_fill_rel)
         self.__ipar[30] = 1
@@ -232,6 +246,7 @@ class ILUT:
                      ctypes.byref(tol_c), ctypes.byref(mf_c), \
                      ptr_ipar, ptr_dpar, ctypes.byref(ierr_c))
         if ierr_c.value != 0: print(ierr_c.value)
+
     def solve(self, f, x):
         m, n = f.shape
         n = ctypes.c_int(self.__rows)
@@ -248,7 +263,11 @@ class ILUT:
             mkl.mkl_dcsrtrsv(self.__U, self.__N, self.__N, ctypes.byref(n), \
                              ptr_b, ptr_ib, ptr_jb, ptr_w, ptr_x)
 
+
 class ParDiSo:
+    '''MKL pardiso wrapper.
+    '''
+
     def __init__(self, dtype=numpy.float64, pos_def=False):
         self.__pardiso = mkl.pardiso
         self.__pt = numpy.ndarray((64,), dtype=numpy.int64)
@@ -279,6 +298,7 @@ class ParDiSo:
         self.__iparm[4] = 2
         if dtype == numpy.float32 or dtype == numpy.complex64:
             self.__iparm[27] = 1
+
     def __del__(self):
         step = ctypes.c_int(-1)
         maxf = ctypes.c_int(1)
@@ -295,12 +315,16 @@ class ParDiSo:
             ptr, ctypes.byref(m), self.__ptr_iparm, ctypes.byref(verb), \
             ptr, ptr, ctypes.byref(err))
         if err.value != 0: print(err.value)
+
     def handle(self):
         return self.__handle
+
     def iparm(self):
         return self.__iparm
+
     def perm(self):
         return self.__perm
+
     def analyse(self, a, ia, ja):
         self.__a = a
         self.__ia = ia
@@ -325,6 +349,7 @@ class ParDiSo:
                     ptr_perm, ctypes.byref(m), ptr_iparm, ctypes.byref(verb), \
                     self.__ptr, self.__ptr, ctypes.byref(err))
         if err.value != 0: print(err.value)
+
     def factorize(self):
         step = ctypes.c_int(22)
         maxf = ctypes.c_int(1)
@@ -345,6 +370,7 @@ class ParDiSo:
                     ptr_perm, ctypes.byref(m), ptr_iparm, ctypes.byref(verb), \
                     self.__ptr, self.__ptr, ctypes.byref(err))
         if err.value != 0: print(err.value)
+
     def solve(self, b, x, part = None):
         if len(b.shape) > 1:
             nrhs = b.shape[0]
@@ -378,6 +404,7 @@ class ParDiSo:
                     ptr_perm, ctypes.byref(m), ptr_iparm, ctypes.byref(verb), \
                     ptr_b, ptr_x, ctypes.byref(err))
         if err.value != 0: print(err.value)
+
     def diag(self):
         rows = self.__ia.shape[0] - 1
         perm = self.__perm - 1
@@ -411,6 +438,7 @@ class ParDiSo:
             d[0, i] = w[3, i]
             i += 1
         return d
+
     def inertia(self):
         if self.__real:
             return self.__iparm[22], self.__iparm[21]

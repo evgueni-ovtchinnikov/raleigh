@@ -1,6 +1,5 @@
 # Copyright 2019 United Kingdom Research and Innovation 
 # Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
-# This software is distributed under a BSD licence, see ../../LICENSE.txt.
 
 '''GPU implementation of RALEIGH dense algebra.
 '''
@@ -11,6 +10,7 @@ import numpy
 
 from . import cuda_wrap as cuda
 from .cublas_wrap import Cublas
+
 
 class Vectors:
     '''CUBLAS implementation of Vectors type.
@@ -47,7 +47,8 @@ class Vectors:
             if i + m > 0:
                 mn = ctypes.c_int((i + m)*n)
                 ptr_u = self.all_data_ptr()
-                self.__cublas.copy(self.__cublas.handle, mn, ptr_u, inc, data, inc)
+                self.__cublas.copy(self.__cublas.handle, mn, ptr_u, inc, data, \
+                                   inc)
             self.__vdata = vdata
             self.__mvec = mvec
         data = self.all_data_ptr()
@@ -231,7 +232,7 @@ class Vectors:
             c_n, c_m, c_k, one, dptr_v, c_n, dptr_q, ldq, zero, dptr_u, c_n)
         _try_calling(cuda.free(dptr_q))
 
-    def add(self, other, s, a = None):
+    def add(self, other, s, a=None):
         n = self.dimension()
         m = other.nvec()
         c_n = ctypes.c_int(n)
@@ -245,7 +246,8 @@ class Vectors:
                 nm = ctypes.c_int(n*m)
                 inc = ctypes.c_int(1)
                 self.__cublas.axpy \
-                    (self.__cublas.handle, nm, cublas_s, dptr_u, inc, dptr_v, inc)
+                    (self.__cublas.handle, nm, cublas_s, dptr_u, inc, dptr_v, \
+                     inc)
             else:
                 k = a.shape[1]
                 c_k = ctypes.c_int(k)
@@ -278,14 +280,13 @@ class Vectors:
                 dptr_v = _shifted_ptr(self.data_ptr(), i*vsize)
                 inc = ctypes.c_int(1)
                 cublas_s = self.__to_floats(s[i])
-                self.__cublas.axpy \
-                    (self.__cublas.handle, c_n, cublas_s, dptr_u, inc, dptr_v, inc)
+                self.__cublas.axpy(self.__cublas.handle, c_n, cublas_s, \
+                                   dptr_u, inc, dptr_v, inc)
 
     '''========== Other methods ====================================
     '''
 
     def __init__(self, arg, nvec=0, data_type=None, shallow=False):
-        #print('in Vectors constructor...')
         if isinstance(arg, Vectors):
             n = arg.dimension()
             m = arg.nvec()
@@ -306,7 +307,8 @@ class Vectors:
             size = n*m*dsize
             self.__vdata = _VectorsData(size)
             ptr = ctypes.c_void_p(arg.ctypes.data)
-            _try_calling(cuda.memcpy(self.all_data_ptr(), ptr, size, cuda.memcpyH2D))
+            _try_calling(cuda.memcpy(self.all_data_ptr(), ptr, size, \
+                                     cuda.memcpyH2D))
             self.__is_complex = \
                 (dtype == numpy.complex64 or dtype == numpy.complex128)
         elif isinstance(arg, numbers.Number):
@@ -346,9 +348,6 @@ class Vectors:
         self.__dsize = dsize
         self.__dtype = dtype
         self.__cublas = Cublas(dtype)
-
-#    def __del__(self):
-#        print('in Vectors destructor...')
 
     def __float(self):
         dt = self.data_type()
@@ -443,7 +442,7 @@ class Vectors:
     def data(self):
         m = self.nvec()
         n = self.dimension()
-        v = numpy.ndarray((m, n), dtype = self.data_type())
+        v = numpy.ndarray((m, n), dtype=self.data_type())
         if m < 1:
             return v
         hptr_v = ctypes.c_void_p(v.ctypes.data)
@@ -584,11 +583,9 @@ def _conjugate(a):
 
 class _VectorsData:
     def __init__(self, size):
-        #print('in _VectorsData constructor...')
         self.__data = ctypes.POINTER(ctypes.c_ubyte)()
         _try_calling(cuda.malloc(ctypes.byref(self.__data), size))
     def __del__(self):
-        #print('in _VectorsData destructor...')
         _try_calling(cuda.free(self.__data))
     def data_ptr(self):
         return self.__data

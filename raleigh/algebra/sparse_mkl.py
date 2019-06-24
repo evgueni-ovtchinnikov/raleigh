@@ -1,8 +1,8 @@
 # Copyright 2019 United Kingdom Research and Innovation 
 # Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
-# This software is distributed under a BSD licence, see ../../LICENSE.txt.
 
-"""Wrapper for MKL sparse symmetric/Hermitian matrices and solvers.
+"""Wrapper for MKL sparse symmetric/Hermitian matrices and solvers working with
+   SciPy sparse matrices.
 """
 
 import numpy
@@ -14,6 +14,7 @@ from .mkl_wrap import ILUT
 
 
 class SparseSymmetricMatrix:
+
     def __init__(self, matrix):
         try:
             csr = matrix.csr()
@@ -28,12 +29,16 @@ class SparseSymmetricMatrix:
         self.__a = a
         self.__ia = ia
         self.__ja = ja
+
     def size(self):
         return self.__csr.shape[0]
+
     def data_type(self):
         return self.__a.dtype
+
     def csr(self):
         return self.__csr
+
     def apply(self, x, y):
         try:
             x = x.data()
@@ -44,9 +49,11 @@ class SparseSymmetricMatrix:
 
 
 class SparseSymmetricSolver:
+
     def __init__(self, dtype=numpy.float64, pos_def=False):
         self.__solver = SSS(dtype=dtype, pos_def=pos_def)
         self.__dtype = dtype
+
     def analyse(self, a, sigma=0, b=None):
         data = a.data
         if sigma != 0:
@@ -63,8 +70,10 @@ class SparseSymmetricSolver:
         self.__solver.analyse(data, ia, ja)
         self.__n = ia.shape[0] - 1
         self.__sigma = sigma
+
     def factorize(self):
         self.__solver.factorize()
+
     def solve(self, b, x):
         try:
             b = b.data()
@@ -72,29 +81,38 @@ class SparseSymmetricSolver:
         except:
             pass
         self.__solver.solve(b, x)
+
     def apply(self, b, x):
         self.solve(b, x)
+
     def inertia(self):
         return self.__solver.inertia()
+
     def size(self):
         return self.__n
+
     def data_type(self):
         return self.__dtype
+
     def sigma(self):
         return self.__sigma
+
     def solver(self):
         return self.__solver
 
 
 class IncompleteLU:
+
     def __init__(self, matrix):
         matrix = matrix.tocsr().sorted_indices()
         a = matrix.data
         ia = matrix.indptr + 1
         ja = matrix.indices + 1
         self.__ilut = ILUT(a, ia, ja)
+
     def factorize(self, tol=1e-6, max_fill=1):
         self.__ilut.factorize(tol=tol, max_fill_rel=max_fill)
+
     def apply(self, x, y):
         try:
             x = x.data()
@@ -105,8 +123,10 @@ class IncompleteLU:
 
 
 class Operator:
+
     def __init__(self, op):
         self.__op = op
+
     def apply(self, x, y):
         try:
             x = x.data()
@@ -114,5 +134,3 @@ class Operator:
         except:
             pass
         self.__op.apply(x, y)
-
-        
