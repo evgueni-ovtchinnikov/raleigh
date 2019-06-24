@@ -53,6 +53,7 @@ if have_docopt:
     with_prec = args['--precond']
     with_doctest = args['--doctest']
 else:
+    print('\n=== docopt not found, using default options...\n')
     problem = 'std'
     matrix = 'diag'
     n = 100

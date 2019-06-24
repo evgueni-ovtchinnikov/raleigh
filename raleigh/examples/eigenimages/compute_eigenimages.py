@@ -66,6 +66,7 @@ if have_docopt:
     tol = float(args['--rtol'])
     arch = args['--arch']
 else:
+    print('\n=== docopt not found, using default options...\n')
     file = sys.argv[1]
     ni = -1
     err_tol = 0

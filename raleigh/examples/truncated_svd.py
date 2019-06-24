@@ -106,6 +106,7 @@ if have_docopt:
     ptb = args['--ptb']
     do_pca = args['--pca']
 else:
+    print('\n=== docopt not found, using default options...\n')
     m = 3000
     n = 2000
     k = 1000

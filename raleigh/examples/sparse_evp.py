@@ -119,6 +119,7 @@ if have_docopt:
     ilutp = args['--ilutp']
     check = args['--check']
 else:
+    print('\n=== docopt not found, using default options...\n')
     matrix = 'lap3d'
     nx = 10
     mass = None
