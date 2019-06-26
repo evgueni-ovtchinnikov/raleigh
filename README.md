@@ -17,9 +17,9 @@ RALEIGH is a Python implementation of the block Jacobi-conjugated gradients algo
 
 ### Dependencies
 
-For best performance, install MKL 10.3 or later (or, on Windows, numpy+mkl). On Linux, the folder containing libmkl_rt.so must be in LD_LIBRARY_PATH. On Windows, the one containing mkl_rt.dll must be in PATH. Large sparse problems can only be solved if MKL is available, PCA and other dense problems can be solved without it.
+For best performance, install MKL 10.3 or later (or, on Windows, numpy+mkl). On Linux, the folder containing libmkl\_rt.so must be in LD\_LIBRARY\_PATH. On Windows, the one containing mkl\_rt.dll must be in PATH. Large sparse problems can only be solved if MKL is available, PCA and other dense problems can be solved without it.
 
-To use GPU (which must be CUDA-enabled), NVIDIA GPU Computing Toolkit needs to be installed. On Linux, the folder containing libcudart.so must be in LD_LIBRARY_PATH.
+To use GPU (which must be CUDA-enabled), NVIDIA GPU Computing Toolkit needs to be installed. On Linux, the folder containing libcudart.so must be in LD\_LIBRARY\_PATH.
 
 ### Basic usage
 
@@ -30,6 +30,10 @@ Subfolder _drivers_ contains user-friendly SciPy-like interfaces to core solver 
 Basic usage of the package is briefly described in docstrings of modules in folder _drivers_ (the best starting point to learn about RALEIGH usage) and example scripts. Advanced users will find the description of basic principles of RALEIGH's design in _core/solver.py_.
 
 The mathematical and numerical aspects of the algorithm implemented by RALEIGH are described in the papers by E. E. Ovtchinnikov in J. Comput. Phys. 227:9477-9497 and SIAM Numer. Anal. 46:2567-2619.
+
+### Issues
+
+Please use [GitHub issue tracker](https://github.com/evgueni-ovtchinnikov/raleigh/issues) to report bugs and request features.
 
 ### License
 
