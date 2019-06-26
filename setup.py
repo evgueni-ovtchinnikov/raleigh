@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="raleigh",
-    version="1.0.0",
+    version="1.0.1",
     author="Evgueni Ovtchinnikov",
     author_email="evgueni.ovtchinnikov@stfc.ac.uk",
     description="RAL eigensolver for real symmetric and Hermitian problems",
