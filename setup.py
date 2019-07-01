@@ -17,7 +17,7 @@ setuptools.setup(
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
-        "License :: OSI Approved :: BSD License",
+        "License :: OSI Approved :: BSD License (BSD-3-Clause)",
         "Natural Language :: English",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
