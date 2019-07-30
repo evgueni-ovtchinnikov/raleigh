@@ -558,8 +558,13 @@ class _DefaultLRAConvergenceCriteria:
     def set_tolerance(self, tolerance):
         self.tolerance = tolerance
     def satisfied(self, solver, i):
-        err = solver.convergence_data('residual', i)
-        return err >= 0 and err <= self.tolerance
+        res = solver.convergence_data('residual', i)
+        lmd = solver.convergence_data('eigenvalue', i)
+        lmd_max = solver.convergence_data('max eigenvalue', i)
+        tol = (lmd/lmd_max)**1.5*self.tolerance
+        return res >= 0 and res*res <= tol
+#        err = solver.convergence_data('residual', i)
+#        return err >= 0 and err <= self.tolerance
 
 
 def _norm(a, axis):
