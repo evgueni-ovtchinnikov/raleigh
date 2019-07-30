@@ -354,6 +354,11 @@ class Solver:
                 max_lmd = max(max_lmd, numpy.amax(abs(self.eigenvalues)))
             return self.res[which]/max_lmd
         elif what.find('val') > -1:
+            if what.find('max') > -1:
+                max_lmd = numpy.amax(abs(self.lmd))
+                if self.lcon + self.rcon > 0:
+                    max_lmd = max(max_lmd, numpy.amax(abs(self.eigenvalues)))
+                return max_lmd
             if what.find('err') > -1:
                 err = self.err_lmd[:, which]
                 if what.find('k'):
