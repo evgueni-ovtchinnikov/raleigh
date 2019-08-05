@@ -106,6 +106,7 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=0, arch='cpu'):
     computes m by k matrix L and k by n matrix R such that k < min(m, n),
     and the product L R approximates A - e a, where e = numpy.ones((m, 1)
     and a = numpy.mean(A, axis=0).
+
     The rows of R (principal components) are orhonormal, the columns of L
     (reduced features) are in the descending order of their norms.
 
@@ -132,7 +133,7 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=0, arch='cpu'):
     mpc : int
         Maximal number of PCs to compute. Ignored if negative, otherwise
         if mpc < min(m, n), then the required accuracy of approximation
-        may not be achieved.
+        might not be achieved.
     arch : string
         'cpu' : run on CPU,
         'gpu' : run on GPU if available, otherwise on CPU,
@@ -165,14 +166,17 @@ class LowerRankApproximation:
         self.mean = None
         self.iterations = -1
     def compute(self, A, opt=Options(), rank=-1, tol=-1, norm='f', max_rank=-1,\
-                rtol=1e-3, shift=False, arch='cpu'):
+                svtol=1e-3, shift=False, arch='cpu'):
         '''
         For a given m by n data matrix A (m data samples n features each)
-        computes m by k matrix L and k by n matrix R such that k < min(m, n),
-        and the product L R approximates A if shift=False or else A - e a,
-        where e = numpy.ones((A.shape[0], 1) and a = numpy.mean(A, axis=0).
+        computes m by k matrix L and k by n matrix R such that k <= min(m, n),
+        and the product L R approximates A if shift is False or else A - e a,
+        where e = numpy.ones((m, 1)) and a = numpy.mean(A, axis=0).
+
         The rows of R are orhonormal, the columns of L are in the descending
         order of their norms.
+
+        Below A_ stands for A if shift is False and for A - e a otherwise.
 
         Parameters
         ----------
@@ -187,8 +191,8 @@ class LowerRankApproximation:
             approximation or interactively by the user.
         tol : float
             Approximation tolerance in the case rank < 0: if tol > 0, then the
-            norm of the difference D between A (or A - e a) and L R is going
-            to be not greater than the norm of A multiplied by tol, otherwise
+            norm of the difference D between A_ and L R is going to be not
+            greater than the norm of A multiplied by tol, otherwise
             the user will be asked repeatedly whether the approximation
             achieved so far is acceptable.
         norm : character
@@ -199,34 +203,34 @@ class LowerRankApproximation:
         max_rank : int
             Maximal acceptable rank of L and R. Ignored if negatide, otherwise
             if max_rank < min(m, n), then the required accuracy of approximation
-            may not be achieved.
-        rtol : float
-            Residual tolerance for singular vectors (see Notes below).
+            might not be achieved.
+        svtol : float
+            Error tolerance for singular values (see Notes below).
             A singular vector is considered converged if the residual 2-norm
             is not greater than rtol multiplied by the largest singular value.
         shift : bool
-            Specifies whether L R approximates A (shift=False) or A - e a
+            Specifies whether L R approximates A (shift=False) or A_ = A - e a
             (shift=True, see the above description of the method).
         arch : string
             'cpu' : run on CPU,
             'gpu' : run on GPU if available, otherwise on CPU,
-            'gpu!' : run on GPU, throw RuntimError if GPU is not present.
+            'gpu!' : run on GPU, throw RuntimeError if GPU is not present.
 
         Notes
         -----
-        The rows of R are approximate right singular values of A.
-        The columns of L are approximate left singular values of A multiplied
+        The rows of R are approximate right singular values of A_.
+        The columns of L are approximate left singular values of A_ multiplied
         by respective singular values.
         Singular values and vectors are computed by applying block
-        Jacobi-Conjugated Gradient algorithm to A.T A or A A.T, whichever is
-        smaller.
+        Jacobi-Conjugated Gradient algorithm to A_.T A_ or A_ A_.T, whichever
+        is smaller in size.
         '''
         m, n = A.shape
         opt = copy.deepcopy(opt)
         if opt.block_size < 1:
             opt.block_size = 128
         if opt.convergence_criteria is None:
-            opt.convergence_criteria = _DefaultLRAConvergenceCriteria(rtol)
+            opt.convergence_criteria = _DefaultLRAConvergenceCriteria(svtol)
         if opt.stopping_criteria is None and rank < 0:
             opt.stopping_criteria = \
                 DefaultStoppingCriteria(A, tol, norm, max_rank)
@@ -558,8 +562,13 @@ class _DefaultLRAConvergenceCriteria:
     def set_tolerance(self, tolerance):
         self.tolerance = tolerance
     def satisfied(self, solver, i):
-        err = solver.convergence_data('residual', i)
-        return err >= 0 and err <= self.tolerance
+        res = solver.convergence_data('residual', i)
+        lmd = solver.convergence_data('eigenvalue', i)
+        lmd_max = solver.convergence_data('max eigenvalue', i)
+        tol = (lmd/lmd_max)**1.5*self.tolerance
+        return res >= 0 and res*res <= tol
+#        err = solver.convergence_data('residual', i)
+#        return err >= 0 and err <= self.tolerance
 
 
 def _norm(a, axis):
