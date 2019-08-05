@@ -133,7 +133,7 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=0, arch='cpu'):
     mpc : int
         Maximal number of PCs to compute. Ignored if negative, otherwise
         if mpc < min(m, n), then the required accuracy of approximation
-        may not be achieved.
+        might not be achieved.
     arch : string
         'cpu' : run on CPU,
         'gpu' : run on GPU if available, otherwise on CPU,
@@ -203,7 +203,7 @@ class LowerRankApproximation:
         max_rank : int
             Maximal acceptable rank of L and R. Ignored if negatide, otherwise
             if max_rank < min(m, n), then the required accuracy of approximation
-            may not be achieved.
+            might not be achieved.
         svtol : float
             Error tolerance for singular values (see Notes below).
             A singular vector is considered converged if the residual 2-norm
