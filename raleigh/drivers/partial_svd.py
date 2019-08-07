@@ -42,10 +42,14 @@ def truncated_svd(A, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
         If negative, implicitely defined by the required truncation tolerance
         or interactively by the user.
     tol : float
-        Truncation tolerance in the case nsv < 0: if tol > 0, then the norm of
-        D = A - U S V' is going to be not greater than the norm of A multiplied 
-        by tol, otherwise the user will be asked repeatedly whether the 
-        truncation error achieved so far is small enough.
+        Truncation tolerance in the case nsv < 0. If tol is non-zero, then the 
+        computation of singular values and vectors will stop when the norm of 
+        D = A - U S V' becomes not greater than eps, where eps is the norm of 
+        A multiplied by tol if tol > 0 and eps = -tol if tol < 0. If tol is 
+        zero, then the user will be asked repeatedly whether the computation
+        should continue (the number of computed singular values and the 
+        relative truncation error, the ratio of the norm of D to that of A, are
+        displayed).
     norm : character
         The norm to be used for evaluating the truncation error:
         's' : the largest singular value of D,
@@ -98,7 +102,7 @@ def truncated_svd(A, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
     return u, sigma, v.T
 
 
-def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=0, arch='cpu'):
+def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, arch='cpu'):
     '''Performs principal component analysis for the set of data items
     represented by rows of a dense matrix A.
 
@@ -121,13 +125,19 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=0, arch='cpu'):
         If negative, implicitely defined by the required accuracy of
         approximation or interactively by the user.
     tol : float
-        Approximation tolerance in the case rank < 0: if tol > 0, then the
-        norm of D = A - e a - L R is going to be not greater than the norm
-        of A multiplied by tol, otherwise the user will be asked repeatedly
-        whether the approximation achieved so far is acceptable.
+        Approximation tolerance in the case rank < 0. If tol is non-zero, then 
+        the computation of principal components will stop when the norm of 
+        D = A - e a - L R becomes not greater than eps, where eps is the norm
+        of A multiplied by tol if tol > 0 and eps = -tol if tol < 0. Otherwise
+        the user will be asked repeatedly whether the computation should 
+        continue (the number of computed principal components and the relative 
+        truncation error, the ratio of the norm of D to that of A, are 
+        displayed).
     norm : character
         The norm to be used for evaluating the approximation error:
-        's' : the largest singular value of D,
+        's' : the largest singular value of D (if tol > 0, then the largest
+              singular value of A - e a will be used instead of the norm of A
+              for evaluating the relative truncation error),
         'f' : Frobenius norm of D,
         'm' : the largest norm of a row of D.
     mpc : int
@@ -190,14 +200,19 @@ class LowerRankApproximation:
             If negative, implicitely defined by the required accuracy of
             approximation or interactively by the user.
         tol : float
-            Approximation tolerance in the case rank < 0: if tol > 0, then the
-            norm of the difference D between A_ and L R is going to be not
-            greater than the norm of A multiplied by tol, otherwise
-            the user will be asked repeatedly whether the approximation
-            achieved so far is acceptable.
+            Approximation tolerance in the case rank < 0. If tol is non-zero, 
+            then the computation of the lower rank approximation will stop
+            when the norm of the difference D = A_ - L R becomes not greater
+            than eps, where eps is the norm of A multiplied by tol if tol > 0
+            and eps = -tol if tol < 0. Otherwise the user will be asked 
+            repeatedly whether the computation should continue (the number of
+            computed principal components and the relative truncation error, 
+            the ratio of the norm of D to that of A, are displayed).
         norm : character
             The norm to be used for evaluating the approximation error:
-            's' : the largest singular value of D,
+            's' : the largest singular value of D (if tol > 0, then the largest
+                  singular value of A - e a will be used instead of the norm of
+                  A for evaluating the relative truncation error),
             'f' : Frobenius norm of D,
             'm' : the largest norm of a row of D.
         max_rank : int
@@ -438,6 +453,8 @@ class DefaultStoppingCriteria:
         self.elapsed_time = 0
         self.err_calc = PSVDErrorCalculator(a)
         self.norms = self.err_calc.norms
+        self.max_norm = numpy.amax(self.norms)
+        self.f_norm = math.sqrt(numpy.sum(self.norms*self.norms))
         self.err_tol = err_tol
         self.max_nsv = max_nsv
         self.norm = norm
@@ -458,11 +475,14 @@ class DefaultStoppingCriteria:
         si_rel = si/self.sigma
         if self.norm == 'm':
             self.err = self.err_calc.update_errors()
-            err_rel = numpy.amax(self.err)/numpy.amax(self.norms)
+            err_abs = numpy.amax(self.err)
+            err_rel = err_abs/self.max_norm
         elif self.norm == 'f':
             self.f -= numpy.sum(sigma*sigma)
-            err_rel = math.sqrt(abs(self.f)/numpy.sum(self.norms*self.norms))
+            err_abs = math.sqrt(abs(self.f))
+            err_rel = err_abs/self.f_norm
         else:
+            err_abs = si
             err_rel = si_rel
         now = time.time()
         elapsed_time = now - self.start_time
@@ -474,9 +494,12 @@ class DefaultStoppingCriteria:
             msg = '%.2f sec: sigma[%d] = %e = %.2e*sigma[0]' % \
                 (self.elapsed_time, self.ncon + i, si, si_rel)
         self.ncon = solver.rcon
-        if self.err_tol > 0:
+        if self.err_tol != 0:
             print(msg)
-            done = err_rel <= self.err_tol
+            if self.err_tol > 0:
+                done = err_rel <= self.err_tol
+            else:
+                done = err_abs <= abs(self.err_tol)
         else:
             done = (input(msg + ', more? ') == 'n')
         self.iteration = solver.iteration
