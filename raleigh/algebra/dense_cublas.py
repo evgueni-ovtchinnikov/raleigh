@@ -475,6 +475,9 @@ class Matrix:
         ptr = ctypes.c_void_p(a.ctypes.data)
         _try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
 
+    def __del__(self):
+        _try_calling(cuda.free(self.__data))
+
     def __floats(self):
         dt = self.__dtype
         if dt == numpy.float32:
