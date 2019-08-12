@@ -42,7 +42,7 @@ class Vectors:
             mvec = ((nvec - 1)//Vectors.MIN_INC + 1)*Vectors.MIN_INC
 #            print('allocating %d vectors...' % mvec)
             size = mvec * vsize
-            vdata = _VectorsData(size)
+            vdata = _Data(size)
             data = vdata.data_ptr()
             if i + m > 0:
                 mn = ctypes.c_int((i + m)*n)
@@ -297,7 +297,7 @@ class Vectors:
                 self.__vdata = arg.vectors_data()
             else:
                 size = n*m*dsize
-                self.__vdata = _VectorsData(size)
+                self.__vdata = _Data(size)
                 _try_calling(cuda.memcpy(self.all_data_ptr(), arg.data_ptr(), \
                                          size, cuda.memcpyD2D))
         elif isinstance(arg, numpy.ndarray):
@@ -305,7 +305,7 @@ class Vectors:
             dtype = arg.dtype.type
             dsize = arg.itemsize
             size = n*m*dsize
-            self.__vdata = _VectorsData(size)
+            self.__vdata = _Data(size)
             ptr = ctypes.c_void_p(arg.ctypes.data)
             _try_calling(cuda.memcpy(self.all_data_ptr(), ptr, size, \
                                      cuda.memcpyH2D))
@@ -334,7 +334,7 @@ class Vectors:
             assert m >= 0
             if nvec > 0:
                 size = n*m*dsize
-                self.__vdata = _VectorsData(size)
+                self.__vdata = _Data(size)
                 _try_calling(cuda.memset(self.all_data_ptr(), 0, size))
             else:
                 self.__vdata = None
@@ -466,22 +466,37 @@ class Vectors:
 
 class Matrix:
 
-    def __init__(self, array):
-        self.__data = ctypes.POINTER(ctypes.c_ubyte)()
-        self.__shape = array.shape
-        self.__dtype = array.dtype.type
-        self.__dsize = array.itemsize
-        self.__is_complex = (array.dtype.kind == 'c')
+    def __init__(self, arg):
+        if isinstance(arg, Vectors):
+            n = arg.dimension()
+            m = arg.nvec()
+            self.__shape = (m, n)
+            self.__dtype = arg.data_type()
+            self.__dsize = arg.data_size()
+            self.__is_complex = arg.is_complex()
+            self.__order = 'C_CONTIGUOUS'
+            self.__mdata = arg.vectors_data()
+        elif isinstance(arg, numpy.ndarray):
+            self.__shape = arg.shape
+            self.__dtype = arg.dtype.type
+            self.__dsize = arg.itemsize
+            self.__is_complex = (arg.dtype.kind == 'c')
+            if arg.flags['C_CONTIGUOUS']:
+                self.order = 'C_CONTIGUOUS'
+            elif arg.flags['F_CONTIGUOUS']:
+                self.order = 'F_CONTIGUOUS'
+            else:
+                msg = 'Matrix data must be either C- or F-contiguous'
+                raise ValueError(msg)
+            m, n = self.__shape
+            size = n*m*self.__dsize
+            self.__mdata = _Data(size)
+            ptr = ctypes.c_void_p(arg.ctypes.data)
+            _try_calling(cuda.memcpy(self.data_ptr(), ptr, size, cuda.memcpyH2D))
+        else:
+            raise ValueError \
+                ('wrong argument %s in constructor' % repr(type(arg)))
         self.__cublas = Cublas(self.__dtype)
-        self.__flags = array.flags
-        m, n = self.__shape
-        size = n*m*self.__dsize
-        _try_calling(cuda.malloc(ctypes.byref(self.__data), size))
-        ptr = ctypes.c_void_p(array.ctypes.data)
-        _try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
-
-    def __del__(self):
-        _try_calling(cuda.free(self.__data))
 
     def __floats(self):
         dt = self.__dtype
@@ -512,7 +527,7 @@ class Matrix:
         return s
         
     def data_ptr(self):
-        return self.__data
+        return self.__mdata.data_ptr()
 
     def shape(self):
         return self.__shape
@@ -527,7 +542,7 @@ class Matrix:
         m, n = self.__shape
         size = n*m*self.__dsize
         ptr = ctypes.c_void_p(data.ctypes.data)
-        _try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
+        _try_calling(cuda.memcpy(self.data_ptr(), ptr, size, cuda.memcpyH2D))
 
     def apply(self, x, y, transp=False):
         if x.data_type() != self.__dtype or y.data_type() != self.__dtype:
@@ -546,7 +561,7 @@ class Matrix:
         nx = ctypes.c_int(x.dimension())
         ny = ctypes.c_int(y.dimension())
         conj = False
-        if self.__flags['C_CONTIGUOUS']:
+        if self.__order == 'C_CONTIGUOUS':
             if transp:
                 if self.__is_complex:
                     x.conjugate()
@@ -555,7 +570,7 @@ class Matrix:
             else:
                 Trans = Cublas.Trans
             lda = ctypes.c_int(n)
-        elif self.__flags['F_CONTIGUOUS']:
+        elif self.__order == 'F_CONTIGUOUS':
             if transp:
                 if self.__is_complex:
                     Trans = Cublas.ConjTrans
@@ -566,7 +581,7 @@ class Matrix:
             lda = ctypes.c_int(m)
         one = self.__to_floats(1.0)
         zero = self.__to_floats(0.0)
-        dptr_a = self.__data
+        dptr_a = self.data_ptr()
         dptr_x = x.data_ptr()
         dptr_y = y.data_ptr()
         x.cublas().gemm(x.cublas_handle(), Trans, Cublas.NoTrans, \
@@ -593,7 +608,7 @@ def _conjugate(a):
         return a
 
 
-class _VectorsData:
+class _Data:
 
     def __init__(self, size):
         self.__data = ctypes.POINTER(ctypes.c_ubyte)()

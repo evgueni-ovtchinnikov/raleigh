@@ -54,7 +54,9 @@ def test(u, v):
         mv, nv = v.shape
         u_cublas = cublasVectors(nu, mu, u.dtype)
         v_cublas = cublasVectors(nv, mv, v.dtype)
-        a_cublas = cublasMatrix(ones)
+        w_cublas = cublasVectors(ones)
+        a_cublas = cublasMatrix(w_cublas)
+#        a_cublas = cublasMatrix(ones)
         start = time.time()
         u_cublas.fill(u)
         v_cublas.fill(v)
