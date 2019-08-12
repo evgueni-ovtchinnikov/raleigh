@@ -106,6 +106,13 @@ class Vectors(NDArrayVectors):
         v = Vectors(self, shallow=True)
         return v
 
+    def orthogonalize(self, other):
+        if other.is_complex():
+            q = numpy.dot(other.data().conj(), self.data().T)
+        else:
+            q = numpy.dot(other.data(), self.data().T)
+        self.data()[:,:] -= numpy.dot(q.T, other.data())
+
     def apply(self, A, output, transp=False):
         a = A.data()
         if transp:

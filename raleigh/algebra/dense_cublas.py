@@ -429,6 +429,30 @@ class Vectors:
         ptr = _shifted_ptr(self.data_ptr(), self.data_size()//2)
         self.cublas().fscal(self.cublas().handle, m*n, s, ptr, inc)
 
+    def orthogonalize(self, other):
+        m = self.nvec()
+        n = self.dimension()
+        k = other.nvec()
+        q = self.new_vectors(k, m)
+        c_n = ctypes.c_int(n)
+        c_m = ctypes.c_int(m)
+        c_k = ctypes.c_int(k)
+        dptr_u = other.data_ptr()
+        dptr_v = self.data_ptr()
+        dptr_q = q.data_ptr()
+        if self.is_complex():
+            Trans = Cublas.ConjTrans
+        else:
+            Trans = Cublas.Trans
+        zero = self.__to_floats(0.0)
+        pl_one = self.__to_floats(1.0)
+        mn_one = self.__to_floats(-1.0)
+        self.__cublas.gemm(self.__cublas.handle, Trans, Cublas.NoTrans, \
+            c_k, c_m, c_n, pl_one, dptr_u, c_n, dptr_v, c_n, zero, dptr_q, c_k)
+        self.__cublas.gemm(self.__cublas.handle, Cublas.NoTrans, Cublas.NoTrans, \
+            c_n, c_m, c_k, mn_one, dptr_u, c_n, dptr_q, c_k, pl_one, dptr_v, c_n)
+        return q
+
     def zero(self):
         m = self.nvec()
         if m < 1:

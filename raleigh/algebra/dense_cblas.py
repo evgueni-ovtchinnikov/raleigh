@@ -225,6 +225,30 @@ class Vectors(NDArrayVectors):
         v = Vectors(self, shallow=True)
         return v
 
+    def orthogonalize(self, other):
+        m = self.nvec()
+        n = self.dimension()
+        k = other.nvec()
+        q = self.new_vectors(k, m)
+        c_n = ctypes.c_int(n)
+        c_m = ctypes.c_int(m)
+        c_k = ctypes.c_int(k)
+        ptr_u = _array_ptr(other.data())
+        ptr_v = _array_ptr(self.data())
+        ptr_q = _array_ptr(q.data())
+        if self.is_complex():
+            Trans = Cblas.ConjTrans
+        else:
+            Trans = Cblas.Trans
+        zero = self.__to_float(0.0)
+        pl_one = self.__to_float(1.0)
+        mn_one = self.__to_float(-1.0)
+        self.__cblas.gemm(Cblas.ColMajor, Trans, Cblas.NoTrans, \
+            c_k, c_m, c_n, pl_one, ptr_u, c_n, ptr_v, c_n, zero, ptr_q, c_k)
+        self.__cblas.gemm(Cblas.ColMajor, Cblas.NoTrans, Cblas.NoTrans, \
+            c_n, c_m, c_k, mn_one, ptr_u, c_n, ptr_q, c_k, pl_one, ptr_v, c_n)
+        return q
+
     def apply(self, A, output, transp=False):
         a = A.data()
         if transp:

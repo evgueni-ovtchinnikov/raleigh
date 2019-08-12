@@ -38,17 +38,42 @@ def test(u, v):
     except:
         have_cublas = False
 
-    u_numpy = numpyVectors(u)
-    v_numpy = numpyVectors(v)
+    u_numpy = numpyVectors(u.copy())
+    v_numpy = numpyVectors(v.copy())
+    w_numpy = numpyVectors(v.copy())
+    x_numpy = numpyVectors(v.copy())
+
+    print('----\n testing numpy orthogonalize...')
+    w_numpy.fill_orthogonal()
+    s = w_numpy.dots(w_numpy)
+    s = numpy.sqrt(s)
+    w_numpy.scale(s)
+    q0 = x_numpy.dot(x_numpy)
+    q_numpy = x_numpy.orthogonalize(w_numpy)
+    q = x_numpy.dot(w_numpy)
+    print('error: %e' % (nla.norm(q)/nla.norm(q0)))
 
     if have_cblas:
         u_cblas = cblasVectors(u.copy())
         v_cblas = cblasVectors(v.copy())
+        print('----\n testing cblas orthogonalize...')
+        w_cblas = cblasVectors(w_numpy.data())
+        x_cblas = cblasVectors(v.copy())
+        q0 = x_cblas.dot(x_cblas)
+        q_cblas = x_cblas.orthogonalize(w_cblas)
+        q = w_cblas.dot(x_cblas)
+        print('error: %e' % (nla.norm(q)/nla.norm(q0)))
 
     if have_cublas:
         u_cublas = cublasVectors(u)
         v_cublas = cublasVectors(v)
-        w_cublas = cublasVectors(v)
+        w_cublas = cublasVectors(w_numpy.data())
+        x_cublas = cublasVectors(v)
+        print('----\n testing cublas orthogonalize...')
+        q0 = v_cublas.dot(v_cublas)
+        q_cublas = v_cublas.orthogonalize(w_cublas)
+        q = w_cublas.dot(v_cublas)
+        print('error: %e' % (nla.norm(q)/nla.norm(q0)))
         print('----\n testing cublasVectors.zero...')
         w_cublas.zero()
         t = nla.norm(w_cublas.data())
