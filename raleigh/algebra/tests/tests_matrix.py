@@ -68,7 +68,9 @@ def test(u, v):
         y_cublas = cublasVectors(v_cublas)    
 
     if have_cblas:
-        a_cblas = cblasMatrix(ones)
+        w_cblas = cblasVectors(ones)
+        a_cblas = cblasMatrix(w_cblas)
+#        a_cblas = cblasMatrix(ones)
     if have_cublas:
         cuda.synchronize()
         start = time.time()

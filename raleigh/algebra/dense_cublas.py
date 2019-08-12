@@ -495,7 +495,7 @@ class Matrix:
             _try_calling(cuda.memcpy(self.data_ptr(), ptr, size, cuda.memcpyH2D))
         else:
             raise ValueError \
-                ('wrong argument %s in constructor' % repr(type(arg)))
+                ('wrong argument %s in Matrix constructor' % repr(type(arg)))
         self.__cublas = Cublas(self.__dtype)
 
     def __floats(self):

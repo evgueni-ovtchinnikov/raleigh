@@ -104,7 +104,14 @@ class NDArrayVectors(object):
 
 class NDArrayMatrix:
 
-    def __init__(self, data):
+    def __init__(self, arg):
+        if isinstance(arg, NDArrayVectors):
+            data = arg.data()
+        elif isinstance(arg, numpy.ndarray):
+            data = arg
+        else:
+            raise ValueError \
+                ('wrong argument %s in Matrix constructor' % repr(type(arg)))
         self.__data = data
         self.__shape = data.shape
         self.__dtype = data.dtype.type
