@@ -96,6 +96,8 @@ class Cublas:
             self.axpy.restype = ctypes.c_int
             self.scal = cublas.cublasCscal_v2
             self.scal.restype = ctypes.c_int
+            self.fscal = cublas.cublasSscal_v2
+            self.fscal.restype = ctypes.c_int
             self.norm = cublas.cublasScnrm2_v2
             self.norm.restype = ctypes.c_int
             self.dot = cublas.cublasCdotc_v2
@@ -110,6 +112,8 @@ class Cublas:
             self.axpy.restype = ctypes.c_int
             self.scal = cublas.cublasZscal_v2
             self.scal.restype = ctypes.c_int
+            self.fscal = cublas.cublasDscal_v2
+            self.fscal.restype = ctypes.c_int
             self.norm = cublas.cublasDznrm2_v2
             self.norm.restype = ctypes.c_int
             self.dot = cublas.cublasZdotc_v2

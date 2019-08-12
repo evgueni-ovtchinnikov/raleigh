@@ -419,6 +419,16 @@ class Vectors:
     def is_complex(self):
         return self.__is_complex
 
+    def conjugate(self):
+        if not self.is_complex():
+            return
+        s = self.__to_floats(-1.0)
+        m = self.nvec()
+        n = self.dimension()
+        inc = ctypes.c_int(2)
+        ptr = _shifted_ptr(self.data_ptr(), self.data_size()//2)
+        self.cublas().fscal(self.cublas().handle, m*n, s, ptr, inc)
+
     def zero(self):
         m = self.nvec()
         if m < 1:
@@ -462,17 +472,12 @@ class Matrix:
         self.__dtype = array.dtype.type
         self.__dsize = array.itemsize
         self.__is_complex = (array.dtype.kind == 'c')
-        if self.__is_complex and not array.flags['F_CONTIGUOUS']:
-            print('copying to F-contiguous array...')
-            a = numpy.ndarray(array.shape, dtype = array.dtype, order = 'F')
-            a[:,:] = array.copy()
-        else:
-            a = array
-        self.__flags = a.flags
+        self.__cublas = Cublas(self.__dtype)
+        self.__flags = array.flags
         m, n = self.__shape
         size = n*m*self.__dsize
         _try_calling(cuda.malloc(ctypes.byref(self.__data), size))
-        ptr = ctypes.c_void_p(a.ctypes.data)
+        ptr = ctypes.c_void_p(array.ctypes.data)
         _try_calling(cuda.memcpy(self.__data, ptr, size, cuda.memcpyH2D))
 
     def __del__(self):
@@ -505,7 +510,7 @@ class Matrix:
         else:
             raise ValueError('data type %s not supported' % repr(dt))
         return s
-
+        
     def data_ptr(self):
         return self.__data
 
@@ -540,14 +545,15 @@ class Matrix:
         k = ctypes.c_int(k)
         nx = ctypes.c_int(x.dimension())
         ny = ctypes.c_int(y.dimension())
+        conj = False
         if self.__flags['C_CONTIGUOUS']:
             if transp:
+                if self.__is_complex:
+                    x.conjugate()
+                    conj = True
                 Trans = Cublas.NoTrans
             else:
-                if self.__is_complex:
-                    raise ValueError('Complex matrix must be F-contiguous')
-                else:
-                    Trans = Cublas.Trans
+                Trans = Cublas.Trans
             lda = ctypes.c_int(n)
         elif self.__flags['F_CONTIGUOUS']:
             if transp:
@@ -565,11 +571,14 @@ class Matrix:
         dptr_y = y.data_ptr()
         x.cublas().gemm(x.cublas_handle(), Trans, Cublas.NoTrans, \
             ny, k, nx, one, dptr_a, lda, dptr_x, nx, zero, dptr_y, ny)
+        if conj:
+            x.conjugate()
+            y.conjugate()
 
 
 def _try_calling(err):
     if err != 0:
-        raise RuntimeError('cuda error')
+        raise RuntimeError('cuda error %d' % err)
 
 
 def _shifted_ptr(dev_ptr, shift=0):
@@ -585,10 +594,13 @@ def _conjugate(a):
 
 
 class _VectorsData:
+
     def __init__(self, size):
         self.__data = ctypes.POINTER(ctypes.c_ubyte)()
         _try_calling(cuda.malloc(ctypes.byref(self.__data), size))
+
     def __del__(self):
         _try_calling(cuda.free(self.__data))
+
     def data_ptr(self):
         return self.__data
