@@ -541,9 +541,9 @@ class Matrix:
             self.__dsize = arg.itemsize
             self.__is_complex = (arg.dtype.kind == 'c')
             if arg.flags['C_CONTIGUOUS']:
-                self.order = 'C_CONTIGUOUS'
+                self.__order = 'C_CONTIGUOUS'
             elif arg.flags['F_CONTIGUOUS']:
-                self.order = 'F_CONTIGUOUS'
+                self.__order = 'F_CONTIGUOUS'
             else:
                 msg = 'Matrix data must be either C- or F-contiguous'
                 raise ValueError(msg)

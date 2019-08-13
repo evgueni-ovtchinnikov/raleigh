@@ -161,9 +161,9 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, arch='cpu'):
     lra = LowerRankApproximation()
     lra.compute(A, opt=opt, rank=npc, tol=tol, norm=norm, max_rank=mpc, \
                 shift=True, arch=arch)
-    trans = lra.left # transfomed (reduced-features) data
-    comps = lra.right # principal components
-    return lra.mean, trans, comps
+    trans = lra.left() # transfomed (reduced-features) data
+    comps = lra.right() # principal components
+    return lra.mean(), trans, comps
 
 
 class LowerRankApproximation:
@@ -171,10 +171,14 @@ class LowerRankApproximation:
     a dense matrix, see method compute below for details.
     '''
     def __init__(self):
-        self.left = None
-        self.right = None
-        self.mean = None
+        self.__left = None
+        self.__right = None
+        self.__mean = None
+        self.__left_v = None
+        self.__right_v = None
+        self.__mean_v = None
         self.iterations = -1
+
     def compute(self, A, opt=Options(), rank=-1, tol=-1, norm='f', max_rank=-1,\
                 svtol=1e-3, shift=False, arch='cpu'):
         '''
@@ -251,13 +255,41 @@ class LowerRankApproximation:
                 DefaultStoppingCriteria(A, tol, norm, max_rank)
         psvd = PartialSVD()
         psvd.compute(A, opt=opt, nsv=(0, rank), shift=shift, arch=arch)
-        self.left = psvd.sigma*psvd.left() # left multiplier L
-        self.right = psvd.right().T # right multiplier R
-        self.mean = psvd.mean() # bias
-        if max_rank > 0 and self.left.shape[1] > max_rank:
-            self.left = self.left[:, : max_rank]
-            self.right = self.right[: max_rank, :]
+        self.__left_v = psvd.left_v()
+        self.__left_v.scale(psvd.sigma, multiply=True) # left multiplier L
+        self.__right_v = psvd.right_v() # right multiplier R
+        self.__mean_v = psvd.mean_v() # bias
+        if max_rank > 0 and self.__left_v.nvec() > max_rank:
+            self.__left_v.select(max_rank)
+            self.__right_v.select(max_rank)
         self.iterations = psvd.iterations
+
+    def mean(self):
+        if self.__mean is None:
+            if self.__mean_v is not None:
+                self.__mean = self.__mean_v.data()
+        return self.__mean
+
+    def left(self):
+        if self.__left is None:
+            if self.__left_v is not None:
+                self.__left = self.__left_v.data().T
+        return self.__left
+
+    def right(self):
+        if self.__right is None:
+            if self.__right_v is not None:
+                self.__right = self.__right_v.data()
+        return self.__right
+
+    def mean_v(self):
+        return self.__mean_v
+
+    def left_v(self):
+        return self.__left_v
+
+    def right_v(self):
+        return self.__right_v
 
 
 ''' The rest is for advanced users only.

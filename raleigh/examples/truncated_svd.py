@@ -159,8 +159,8 @@ if not ptb and nsv > 0:
     print('\nmax singular vector error: %.1e' % numpy.amax(err_vec))
     print('max singular value error: %.1e' % numpy.amax(err_val))
 D = A - numpy.dot(sigma[:nsv]*u[:, :nsv], vt[:nsv, :])
-err = norm(D, axis=1)/norm(A, axis=1)
-print('truncation error %.1e' % numpy.amax(err))
+err = numpy.amax(norm(D, axis=1))/numpy.amax(norm(A, axis=1))
+print('\ntruncation error %.1e' % err)
 
 if do_pca:
     print('\n--- solving with pca...\n')
@@ -171,13 +171,13 @@ if do_pca:
     accurate scipy svds).
     '''
     start = time.time()
-    mean, trans, comp = pca(A, opt, npc=rank, tol=th, arch=arch)
+    mean, trans, comps = pca(A, opt, npc=rank, tol=th, arch=arch, norm='m')
     stop = time.time()
     time_pca = stop - start
     print('\npca time: %.1e' % time_pca)
     e = numpy.ones((trans.shape[0], 1), dtype=dtype)
-    D = A - numpy.dot(trans, comp) - numpy.dot(e, mean)
-    err = norm(D, axis=1)/norm(A, axis=1)
-    print('\npca error %.1e' % numpy.amax(err))
+    D = A - numpy.dot(trans, comps) - numpy.dot(e, mean)
+    err = numpy.amax(norm(D, axis=1))/numpy.amax(norm(A, axis=1))
+    print('\npca error %.1e' % err)
 
 print('\ndone')
