@@ -29,12 +29,44 @@ class Vectors:
     def clone(self):
         return Vectors(self)
 
-    def append(self, other):
+    def append(self, other, axis=0):
         if other.nvec() < 1:
             return
         inc = ctypes.c_int(1)
         n = self.__vdim
         vsize = self.__dsize * n
+        if axis == 1:
+            m, n = self.shape()
+            l, n_other = other.shape()
+            if m != l:
+                msg = 'Cannot append %d vectors to %d vectors' % (l, m)
+                raise ValueError(msg)
+            type_self = self.data_type()
+            type_other = other.data_type()
+            if type_self != type_other:
+                rs = repr(type_self)
+                ro = repr(type_other)
+                msg = 'Cannot append %s vectors to %s vectors' % (ro, rs)
+                raise ValueError(msg)
+            vsize_other = self.__dsize * n_other
+            n_new = n + n_other
+            vsize_new = vsize + vsize_other
+            vdata = _Data(m * vsize_new)
+            ptr_n = vdata.data_ptr()
+            ptr_s = self.data_ptr()
+            ptr_o = other.data_ptr()
+            ldn = ctypes.c_int(vsize_new)
+            lds = ctypes.c_int(vsize)
+            ldo = ctypes.c_int(vsize_other)
+            h = ctypes.c_int(m)
+            _try_calling(cuda.memcpy2D(ptr_n, ldn, ptr_s, lds, lds, h, \
+                         cuda.memcpyD2D))
+            ptr = _shifted_ptr(ptr_n, vsize)
+            _try_calling(cuda.memcpy2D(ptr, ldn, ptr_o, ldo, ldo, h, \
+                         cuda.memcpyD2D))
+            self.__vdata = vdata
+            self.__vdim = n_new
+            return
         i, m = self.selected()
         j, l = other.selected()
         nvec = i + m + l
@@ -385,6 +417,9 @@ class Vectors:
         else:
             raise ValueError('data type %s not supported' % repr(dt))
         return s
+
+    def shape(self):
+        return (self.__nvec, self.__vdim)
 
     def all_data_ptr(self):
         return self.__vdata.data_ptr()

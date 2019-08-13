@@ -20,7 +20,7 @@ if raleigh_path not in sys.path:
     sys.path.insert(0, raleigh_path)
 
 from raleigh.algebra import verbosity
-verbosity.level = 1
+verbosity.level = 2
 
 
 def test(u, v):
@@ -52,6 +52,16 @@ def test(u, v):
     q_numpy = x_numpy.orthogonalize(w_numpy)
     q = x_numpy.dot(w_numpy)
     print('error: %e' % (nla.norm(q)/nla.norm(q0)))
+    print('----\n testing numpy append axis=1...')
+    w_numpy.copy(x_numpy)
+    s = x_numpy.dots(x_numpy)
+    print(nla.norm(s))
+    x_numpy.append(w_numpy, axis=1)
+    s = x_numpy.dots(x_numpy)
+    print(nla.norm(s))
+    x_numpy.append(w_numpy, axis=1)
+    s = x_numpy.dots(x_numpy)
+    print(nla.norm(s))
 
     if have_cblas:
         u_cblas = cblasVectors(u.copy())
@@ -63,6 +73,17 @@ def test(u, v):
         q_cblas = x_cblas.orthogonalize(w_cblas)
         q = w_cblas.dot(x_cblas)
         print('error: %e' % (nla.norm(q)/nla.norm(q0)))
+        print('----\n testing cblas append axis=1...')
+        w_cblas.copy(x_cblas)
+        s = x_cblas.dots(x_cblas)
+        print(nla.norm(s))
+        x_cblas.append(w_cblas, axis=1)
+        s = x_cblas.dots(x_cblas)
+        print(nla.norm(s))
+        x_cblas.append(w_cblas, axis=1)
+        s = x_cblas.dots(x_cblas)
+        print(nla.norm(s))
+        x_cblas.append(w_cblas, axis=1)
 
     if have_cublas:
         u_cublas = cublasVectors(u)
@@ -70,10 +91,20 @@ def test(u, v):
         w_cublas = cublasVectors(w_numpy.data())
         x_cublas = cublasVectors(v)
         print('----\n testing cublas orthogonalize...')
-        q0 = v_cublas.dot(v_cublas)
-        q_cublas = v_cublas.orthogonalize(w_cublas)
-        q = w_cublas.dot(v_cublas)
+        q0 = x_cublas.dot(x_cublas)
+        q_cublas = x_cublas.orthogonalize(w_cublas)
+        q = w_cublas.dot(x_cublas)
         print('error: %e' % (nla.norm(q)/nla.norm(q0)))
+        print('----\n testing cublas append axis=1...')
+        w_cublas.copy(x_cublas)
+        s = w_cublas.dots(w_cublas)
+        print(nla.norm(s))
+        w_cublas.append(x_cublas, axis=1)
+        s = w_cublas.dots(w_cublas)
+        print(nla.norm(s))
+        w_cublas.append(x_cublas, axis=1)
+        s = w_cublas.dots(w_cublas)
+        print(nla.norm(s))
         print('----\n testing cublasVectors.zero...')
         w_cublas.zero()
         t = nla.norm(w_cublas.data())
