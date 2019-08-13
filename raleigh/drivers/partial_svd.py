@@ -92,8 +92,8 @@ def truncated_svd(A, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
             DefaultStoppingCriteria(A, tol, norm, msv)
     psvd = PartialSVD()
     psvd.compute(A, opt, nsv=(0, nsv), arch=arch)
-    u = psvd.u
-    v = psvd.v
+    u = psvd.left()
+    v = psvd.right()
     sigma = psvd.sigma
     if msv > 0 and u.shape[1] > msv:
         u = u[:, : msv]
@@ -251,9 +251,9 @@ class LowerRankApproximation:
                 DefaultStoppingCriteria(A, tol, norm, max_rank)
         psvd = PartialSVD()
         psvd.compute(A, opt=opt, nsv=(0, rank), shift=shift, arch=arch)
-        self.left = psvd.sigma*psvd.u # left multiplier L
-        self.right = psvd.v.T # right multiplier R
-        self.mean = psvd.mean # bias
+        self.left = psvd.sigma*psvd.left() # left multiplier L
+        self.right = psvd.right().T # right multiplier R
+        self.mean = psvd.mean() # bias
         if max_rank > 0 and self.left.shape[1] > max_rank:
             self.left = self.left[:, : max_rank]
             self.right = self.right[: max_rank, :]
@@ -265,9 +265,12 @@ class LowerRankApproximation:
 class PartialSVD:
     def __init__(self):
         self.sigma = None
-        self.u = None
-        self.v = None
-        self.mean = None
+        self.__left = None
+        self.__right = None
+        self.__mean = None
+        self.__left_v = None
+        self.__right_v = None
+        self.__mean_v = None
         self.iterations = -1
     def compute(self, a, opt=Options(), nsv=(-1, -1), shift=False, \
                 refine=False, arch='cpu'):
@@ -347,29 +350,53 @@ class PartialSVD:
                 w.copy(u)
             sigma = numpy.sqrt(abs(u.dots(u)))
             u.scale(sigma)
-            if refine:
-                u = u.data().T
-                v = v.data().T
-            else:
+            if not refine:
+                w = u.new_vectors(nv)
                 ind = numpy.argsort(-sigma)
                 sigma = sigma[ind]
-                u = u.data().T[:, ind]
-                v = v.data().T[:, ind]
+                u.copy(w, ind)
+                w.copy(u)
+                w = v.new_vectors(nv)
+                v.copy(w, ind)
+                w.copy(v)
         else:
             sigma = numpy.ndarray((0,), dtype=v.data_type())
-            u = None
-            v = None
         self.sigma = sigma
-        self.mean = opSVD.mean()
+        self.__mean_v = opSVD.mean_v()
         self.iterations = solver.iteration
         if transp:
-            self.u = v
-            self.v = u
-            return sigma, v, _conj(u.T)
+            self.__left_v = v
+            self.__right_v = u
         else:
-            self.u = u
-            self.v = v
-            return sigma, u, _conj(v.T)
+            self.__left_v = u
+            self.__right_v = v
+
+    def mean(self):
+        if self.__mean is None:
+            if self.__mean_v is not None:
+                self.__mean = self.__mean_v.data()
+        return self.__mean
+
+    def left(self):
+        if self.__left is None:
+            if self.__left_v is not None:
+                self.__left = self.__left_v.data().T
+        return self.__left
+
+    def right(self):
+        if self.__right is None:
+            if self.__right_v is not None:
+                self.__right = self.__right_v.data().T
+        return self.__right
+
+    def mean_v(self):
+        return self.__mean_v
+
+    def left_v(self):
+        return self.__left_v
+
+    def right_v(self):
+        return self.__right_v
 
 
 class PSVDErrorCalculator:
@@ -565,6 +592,11 @@ class _OperatorSVD:
     def mean(self):
         if self.shift:
             return self.aves.data()
+        else:
+            return None
+    def mean_v(self):
+        if self.shift:
+            return self.aves
         else:
             return None
 
