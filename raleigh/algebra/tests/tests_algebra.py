@@ -130,8 +130,7 @@ def test(u, v):
         stop = time.time()
         elapsed = stop - start
         t = nla.norm(v_cblas.data() - v_numpy.data())/s
-        print('error: %e' % t)
-        print('time: %.2e' % elapsed)
+        print('error: %e, time: %.2e' % (t, elapsed))
 
     if have_cublas:
         print('----\n testing cublas copy...')
@@ -141,8 +140,7 @@ def test(u, v):
         stop = time.time()
         elapsed = stop - start
         t = nla.norm(v_cublas.data() - v_numpy.data())/s
-        print('error: %e' % t)
-        print('time: %.2e' % elapsed)
+        print('error: %e, time: %.2e' % (t, elapsed))
 
     m = u_numpy.nvec()
     ind = numpy.arange(m)
@@ -165,8 +163,7 @@ def test(u, v):
         stop = time.time()
         elapsed = stop - start
         t = nla.norm(v_cblas.data() - v_numpy.data())/s
-        print('error: %e' % t)
-        print('time: %.2e' % elapsed)
+        print('error: %e, time: %.2e' % (t, elapsed))
 
     if have_cublas:
         print('----\n testing cublas indexed copy...')
@@ -176,8 +173,7 @@ def test(u, v):
         stop = time.time()
         elapsed = stop - start
         t = nla.norm(v_cublas.data() - v_numpy.data())/s
-        print('error: %e' % t)
-        print('time: %.2e' % elapsed)
+        print('error: %e, time: %.2e' % (t, elapsed))
 
     scale = numpy.ones(m)*2.0
     multiply = True
@@ -197,8 +193,7 @@ def test(u, v):
         stop = time.time()
         elapsed = stop - start
         t = nla.norm(u_cblas.data() - u_numpy.data())/s
-        print('error: %e' % t)
-        print('time: %.2e' % elapsed)
+        print('error: %e, time: %.2e' % (t, elapsed))
 
     if have_cublas:
         print('----\n testing cublas scale...')
@@ -208,8 +203,7 @@ def test(u, v):
         stop = time.time()
         elapsed = stop - start
         t = nla.norm(u_cublas.data() - u_numpy.data())/s
-        print('error: %e' % t)
-        print('time: %.2e' % elapsed)
+        print('error: %e, time: %.2e' % (t, elapsed))
 
     print('----\n testing numpy dots...')
     start = time.time()
@@ -225,8 +219,8 @@ def test(u, v):
         q = u_cblas.dots(v_cblas)
         stop = time.time()
         elapsed = stop - start
-        print('error: %e' % (nla.norm(q - p)/s))
-        print('time: %.2e' % elapsed)
+        t = nla.norm(q - p)/s
+        print('error: %e, time: %.2e' % (t, elapsed))
 
     if have_cublas:
         print('----\n testing cublas dots...')
@@ -235,8 +229,8 @@ def test(u, v):
         cuda.synchronize()
         stop = time.time()
         elapsed = stop - start
-        print('error: %e' % (nla.norm(q - p)/s))
-        print('time: %.2e' % elapsed)
+        t = nla.norm(q - p)/s
+        print('error: %e, time: %.2e' % (t, elapsed))
 
     print('----\n testing numpy transposed dots...')
     start = time.time()
@@ -252,8 +246,8 @@ def test(u, v):
         q = u_cblas.dots(v_cblas, transp=True)
         stop = time.time()
         elapsed = stop - start
-        print('error: %e' % (nla.norm(q - p)/s))
-        print('time: %.2e' % elapsed)
+        t = nla.norm(q - p)/s
+        print('error: %e, time: %.2e' % (t, elapsed))
 
     if have_cublas:
         print('----\n testing cublas transposed dots...')
@@ -262,8 +256,8 @@ def test(u, v):
         cuda.synchronize()
         stop = time.time()
         elapsed = stop - start
-        print('error: %e' % (nla.norm(q - p)/s))
-        print('time: %.2e' % elapsed)
+        t = nla.norm(q - p)/s
+        print('error: %e, time: %.2e' % (t, elapsed))
 
     print('----\n testing numpy dot...')
     start = time.time()
@@ -279,8 +273,8 @@ def test(u, v):
         q = u_cblas.dot(v_cblas)
         stop = time.time()
         elapsed = stop - start
-        print('error: %e' % (nla.norm(q - p)/s))
-        print('time: %.2e' % elapsed)
+        t = nla.norm(q - p)/s
+        print('error: %e, time: %.2e' % (t, elapsed))
 
     if have_cublas:
         print('----\n testing cublas dot...')
@@ -289,8 +283,8 @@ def test(u, v):
         cuda.synchronize()
         stop = time.time()
         elapsed = stop - start
-        print('error: %e' % (nla.norm(q - p)/s))
-        print('time: %.2e' % elapsed)
+        t = nla.norm(q - p)/s
+        print('error: %e, time: %.2e' % (t, elapsed))
 
     print('----\n testing numpy multiply...')
     start = time.time()
@@ -306,9 +300,8 @@ def test(u, v):
         u_cblas.multiply(p, v_cblas)
         stop = time.time()
         elapsed = stop - start
-        print('time: %.2e' % elapsed)
         t = nla.norm(v_cblas.data() - v_numpy.data())/s
-        print('error: %e' % t)
+        print('error: %e, time: %.2e' % (t, elapsed))
 
     if have_cublas:
         print('----\n testing cublas multiply...')
@@ -317,18 +310,16 @@ def test(u, v):
         cuda.synchronize()
         stop = time.time()
         elapsed = stop - start
-        print('time: %.2e' % elapsed)
         t = nla.norm(v_cublas.data() - v_numpy.data())/s
-        print('error: %e' % t)
+        print('error: %e, time: %.2e' % (t, elapsed))
 
     print('----\n testing numpy add...')
     start = time.time()
     v_numpy.add(u_numpy, -1.0, p)
     stop = time.time()
     elapsed = stop - start
-    print('time: %.2e' % elapsed)
     t = nla.norm(v_numpy.data())/s
-    print('error: %e' % t)
+    print('error: %e, time: %.2e' % (t, elapsed))
 
     if have_cblas:
         print('----\n testing cblas add...')
@@ -336,9 +327,8 @@ def test(u, v):
         v_cblas.add(u_cblas, -1.0, p)
         stop = time.time()
         elapsed = stop - start
-        print('time: %.2e' % elapsed)
         t = nla.norm(v_cblas.data())/s
-        print('error: %e' % t)
+        print('error: %e, time: %.2e' % (t, elapsed))
 
     if have_cublas:
         print('----\n testing cublas add...')
@@ -346,9 +336,8 @@ def test(u, v):
         v_cublas.add(u_cublas, -1.0, p)
         stop = time.time()
         elapsed = stop - start
-        print('time: %.2e' % elapsed)
         t = nla.norm(v_cublas.data())/s
-        print('error: %e' % t)
+        print('error: %e, time: %.2e' % (t, elapsed))
 
     nv = u_numpy.nvec()//2
     z_numpy = u_numpy.reference()
