@@ -231,14 +231,14 @@ class LowerRankApproximation:
             Specifies whether L R approximates A (shift=False) or A_ = A - e a
             (shift=True, see the above description of the method).
         arch : string
-            'cpu' : run on CPU,
-            'gpu' : run on GPU if available, otherwise on CPU,
+            'cpu'  : run on CPU,
+            'gpu'  : run on GPU if available, otherwise on CPU,
             'gpu!' : run on GPU, throw RuntimeError if GPU is not present.
 
         Notes
         -----
-        The rows of R are approximate right singular values of A_.
-        The columns of L are approximate left singular values of A_ multiplied
+        The rows of R are approximate right singular vectors of A_.
+        The columns of L are approximate left singular vectors of A_ multiplied
         by respective singular values.
         Singular values and vectors are computed by applying block
         Jacobi-Conjugated Gradient algorithm to A_.T A_ or A_ A_.T, whichever
@@ -256,27 +256,27 @@ class LowerRankApproximation:
         psvd = PartialSVD()
         psvd.compute(A, opt=opt, nsv=(0, rank), shift=shift, arch=arch)
         self.__left_v = psvd.left_v()
-        self.__left_v.scale(psvd.sigma, multiply=True) # left multiplier L
-        self.__right_v = psvd.right_v() # right multiplier R
-        self.__mean_v = psvd.mean_v() # bias
+        self.__left_v.scale(psvd.sigma, multiply=True)
+        self.__right_v = psvd.right_v()
+        self.__mean_v = psvd.mean_v()
         if max_rank > 0 and self.__left_v.nvec() > max_rank:
             self.__left_v.select(max_rank)
             self.__right_v.select(max_rank)
         self.iterations = psvd.iterations
 
-    def mean(self):
+    def mean(self): # mean row of A (aka bias)
         if self.__mean is None:
             if self.__mean_v is not None:
                 self.__mean = self.__mean_v.data()
         return self.__mean
 
-    def left(self):
+    def left(self): # left multiplier L
         if self.__left is None:
             if self.__left_v is not None:
                 self.__left = self.__left_v.data().T
         return self.__left
 
-    def right(self):
+    def right(self): # right multiplier R
         if self.__right is None:
             if self.__right_v is not None:
                 self.__right = self.__right_v.data()
