@@ -171,12 +171,30 @@ class LowerRankApproximation:
     a dense matrix, see method compute below for details.
     '''
     def __init__(self):
-        self.__left = None
-        self.__right = None
-        self.__mean = None
-        self.__left_v = None
-        self.__right_v = None
-        self.__mean_v = None
+        self.reset()
+
+    def reset(self, left=None, right=None, mean=None):
+        self.__left = left
+        self.__right = right
+        self.__mean = mean
+        if left is None:
+            self.__left_v = None
+        elif self.__left_v is not None:
+            m, n = left.shape
+            self.__left_v = self.__left_v.new_vectors(m, n)
+            self.__left_v.fill(left)
+        if right is None:
+            self.__right_v = None
+        elif self.__right_v is not None:
+            m, n = right.shape
+            self.__right_v = self.__right_v.new_vectors(m, n)
+            self.__right_v.fill(right)
+        if mean is None:
+            self.__mean_v = None
+        elif self.__mean_v is not None:
+            m, n = mean.shape
+            self.__mean_v = self.__mean_v.new_vectors(m, n)
+            self.__mean_v.fill(mean)
         self.iterations = -1
 
     def compute(self, A, opt=Options(), rank=-1, tol=-1, norm='f', max_rank=-1,\
@@ -336,7 +354,7 @@ class PartialSVD:
         solver = Solver(problem)
     
         try:
-            opt.stopping_criteria.err_calc.set_up(op, solver, v, shift)
+            opt.stopping_criteria.err_calc.set_up(opSVD, solver, v, shift)
             if opt.verbosity > 0:
                 print('partial SVD error calculation set up')
         except:
@@ -446,17 +464,13 @@ class PSVDErrorCalculator:
         self.err = self.norms.copy()
         self.aves = None
     def set_up(self, op, solver, eigenvectors, shift=False):
-        self.op = op
+        self.op = op.op
         self.solver = solver
         self.eigenvectors = eigenvectors
         self.shift = shift
         if shift:
-            self.ones = eigenvectors.new_vectors(1, self.m)
-            ones = numpy.ones((1, self.m), dtype=self.dt)
-            self.ones.fill(ones)
-            self.aves = eigenvectors.new_vectors(1, self.n)
-            self.op.apply(self.ones, self.aves, transp=True)
-            self.aves.scale(self.m*numpy.ones((1,)))
+            self.ones = op.ones
+            self.aves = op.aves
             s = self.aves.dots(self.aves)
             vb = eigenvectors.new_vectors(1, self.m)
             self.op.apply(self.aves, vb)
