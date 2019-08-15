@@ -18,7 +18,10 @@ class Vectors(NDArrayVectors):
     '''========== Methods required by RALEIGH core solver ==========
     '''
 
-    def new_vectors(self, nv=0, dim=None):
+    def new_vectors(self, arg=0, dim=None):
+        if isinstance(arg, numpy.ndarray):
+            return Vectors(arg)
+        nv = arg
         if dim is None:
             dim = self.dimension()
         return Vectors(dim, nv, self.data_type())
@@ -229,7 +232,7 @@ class Vectors(NDArrayVectors):
         m = self.nvec()
         n = self.dimension()
         k = other.nvec()
-        q = self.new_vectors(k, m)
+        q = self.new_vectors(m, k)
         c_n = ctypes.c_int(n)
         c_m = ctypes.c_int(m)
         c_k = ctypes.c_int(k)

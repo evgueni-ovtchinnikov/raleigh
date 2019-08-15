@@ -476,7 +476,7 @@ class Vectors:
         m = self.nvec()
         n = self.dimension()
         k = other.nvec()
-        q = self.new_vectors(k, m)
+        q = self.new_vectors(m, k)
         c_n = ctypes.c_int(n)
         c_m = ctypes.c_int(m)
         c_k = ctypes.c_int(k)

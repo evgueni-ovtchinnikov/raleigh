@@ -177,24 +177,25 @@ class LowerRankApproximation:
         self.__left = left
         self.__right = right
         self.__mean = mean
-        if left is None:
+        if left is None or self.__v is None:
             self.__left_v = None
-        elif self.__left_v is not None:
-            m, n = left.shape
-            self.__left_v = self.__left_v.new_vectors(m, n)
-            self.__left_v.fill(left)
-        if right is None:
+        else:
+            self.__left_v = self.__v.new_vectors(left)
+        if right is None or self.__v is None:
             self.__right_v = None
-        elif self.__right_v is not None:
-            m, n = right.shape
-            self.__right_v = self.__right_v.new_vectors(m, n)
-            self.__right_v.fill(right)
-        if mean is None:
+        else:
+            self.__right_v = self.__v.new_vectors(right)
+        if mean is None or self.__v is None:
             self.__mean_v = None
-        elif self.__mean_v is not None:
-            m, n = mean.shape
-            self.__mean_v = self.__mean_v.new_vectors(m, n)
-            self.__mean_v.fill(mean)
+        else:
+            self.__mean_v = self.__v.new_vectors(mean)
+        self.__rank = 0
+        self.__tol = -1
+        self.__svtol = -1
+        self.__norm = None
+        self.__arch = None
+        self.__dtype = None
+        self.__v = None
         self.iterations = -1
 
     def compute(self, A, opt=Options(), rank=-1, tol=-1, norm='f', max_rank=-1,\
@@ -277,10 +278,62 @@ class LowerRankApproximation:
         self.__left_v.scale(psvd.sigma, multiply=True)
         self.__right_v = psvd.right_v()
         self.__mean_v = psvd.mean_v()
+        self.__rank = self.__left_v.nvec()
+        self.__v = self.__left_v
         if max_rank > 0 and self.__left_v.nvec() > max_rank:
             self.__left_v.select(max_rank)
             self.__right_v.select(max_rank)
         self.iterations = psvd.iterations
+
+    def update(self, data, opt=Options(), rank=-1, max_rank=-1):
+        if self.__rank == 0:
+            self.compute(data, opt, rank, max_rank)
+            self.__tol = -1
+            self.__svtol = 1e-3
+            self.__norm = 'f'
+            self.__arch = 'cpu'
+            self.__dtype = data.dtype.type
+            self.__v = self.__left_v
+            return
+        if rank > 0 and rank <= self.__rank:
+            return
+        if max_rank > 0 and self.__rank <= max_rank:
+            return
+        maxl2norm = numpy.amax(_norm(data, axis=1))
+        if maxl2norm == 0.0:
+            return
+        dtype = self.__dtype
+        left0 = self.__left_v
+        right0 = self.__right_v
+        mean0 = self.__mean_v.data()
+        shift = mean0 is not None
+        sigma = numpy.sqrt(left0.dots(left0))
+        sigma0 = sigma[0]
+        n0 = left0.dimension()
+        e0 = numpy.ones((n0, 1), dtype=dtype)
+        n1 = data.shape[0]
+        e1 = numpy.ones((n1, 1), dtype=dtype)
+        n = n0 + n1
+        data = self.__v.new_vectors(data)
+        if shift:
+            mean1 = self.__v.new_vectors(1, data.dimension())
+            data.multiply(e1, mean1)
+            mean1 = mean1.data()/n1
+            mean = (n0/n)*mean0 + (n1/n)*mean1
+            diff = self.__v.new_vectors(mean0 - mean)
+            diff0 = diff.orthogonalize(right0)
+            diff0 = diff0.data()
+            s = nla.norm(diff0)*e0[:1]
+            diff.scale(s)
+            e0 = self.__v.new_vectors(e0.T)
+            left0.add(e0, 1.0, diff0)
+            e0.scale(s, multiply=True)
+            left0.append(e0)
+            right0.append(diff)
+            mean = self.__v.new_vectors(mean)
+            data.add(mean, -1.0, e1.T)
+        else:
+            mean = None
 
     def mean(self): # mean row of A (aka bias)
         if self.__mean is None:
