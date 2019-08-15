@@ -135,6 +135,7 @@ class Vectors(NDArrayVectors):
 
 
 class Matrix(NDArrayMatrix):
+
     def apply(self, x, y, transp=False):
         if transp:
             is_complex = self.is_complex()
@@ -146,6 +147,7 @@ class Matrix(NDArrayMatrix):
                 numpy.conj(y.data(), out=y.data())
         else:
             self.__apply(x, y)
+
     def __apply(self, x, y, transp=False):
         if transp:
             a = self.data().T
@@ -157,3 +159,7 @@ class Matrix(NDArrayMatrix):
         else:
             print('using non-optimized dot')
             y.data()[:,:] = numpy.dot(x.data(), a.T)
+
+    def dots(self):
+        v = Vectors(self, shallow=True)
+        return v.dots(v)

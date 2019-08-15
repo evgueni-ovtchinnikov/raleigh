@@ -332,6 +332,14 @@ class Vectors:
                 self.__vdata = _Data(size)
                 _try_calling(cuda.memcpy(self.all_data_ptr(), arg.data_ptr(), \
                                          size, cuda.memcpyD2D))
+        elif isinstance(arg, Matrix):
+            if arg.order() is not 'C_CONTIGUOUS':
+                raise ValueError('Vectors data must be C_CONTIGUOUS')
+            m, n = arg.shape
+            dtype = arg.data_type()
+            dsize = arg.data_size()
+            self.__is_complex = arg.is_complex()
+            self.__vdata = arg.matrix_data() #TODO: deep copy case
         elif isinstance(arg, numpy.ndarray):
             m, n = arg.shape
             dtype = arg.dtype.type
@@ -588,11 +596,20 @@ class Matrix:
     def data_ptr(self):
         return self.__mdata.data_ptr()
 
+    def matrix_data(self):
+        return self.__mdata
+
+    def order(self):
+        return self.__order
+
     def shape(self):
         return self.__shape
 
     def data_type(self):
         return self.__dtype
+
+    def data_size(self):
+        return self.__dsize
 
     def is_complex(self):
         return self.__is_complex
@@ -602,6 +619,10 @@ class Matrix:
         size = n*m*self.__dsize
         ptr = ctypes.c_void_p(data.ctypes.data)
         _try_calling(cuda.memcpy(self.data_ptr(), ptr, size, cuda.memcpyH2D))
+
+    def dots(self):
+        v = Vectors(self, shallow=True)
+        return v.dots(v)
 
     def apply(self, x, y, transp=False):
         if x.data_type() != self.__dtype or y.data_type() != self.__dtype:

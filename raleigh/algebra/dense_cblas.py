@@ -332,6 +332,10 @@ class Matrix(NDArrayMatrix):
             x.cblas().mkl_one, ptr_q, ldq, ptr_v, mkl_n, \
             x.cblas().mkl_zero, ptr_u, mkl_m)
 
+    def dots(self):
+        v = Vectors(self, shallow=True)
+        return v.dots(v)
+
 
 def _array_ptr(array, shift=0):
     return ctypes.c_void_p(array.ctypes.data + shift)

@@ -56,6 +56,13 @@ class NDArrayVectors(object):
                 self.__data = arg.__data[i : i + n, :]
             else:
                 self.__data = arg.__data[i : i + n, :].copy()
+        elif isinstance(arg, NDArrayMatrix):
+            if shallow:
+                self.__data = arg.data()
+            else:
+                self.__data = arg.data().copy()
+            if not self.__data.flags['C_CONTIGUOUS']:
+                raise ValueError('Vectors data must be C_CONTIGUOUS')
         elif isinstance(arg, numpy.ndarray):
             self.__data = arg
         elif isinstance(arg, numbers.Number):
