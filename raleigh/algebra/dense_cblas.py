@@ -339,6 +339,10 @@ class Matrix(NDArrayMatrix):
         v = Vectors(self, shallow=True)
         return v.dots(v)
 
+    def new_vectors(self, dim=None, nv=0):
+        if dim is None:
+            dim = self.shape()[1]
+        return Vectors(dim, nv, self.data_type())
 
 def _array_ptr(array, shift=0):
     return ctypes.c_void_p(array.ctypes.data + shift)

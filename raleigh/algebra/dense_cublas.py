@@ -21,10 +21,18 @@ class Vectors:
     '''========== Methods required by RALEIGH core solver ==========
     '''
 
-    def new_vectors(self, nv=0, dim=None):
+    def new_vectors(self, arg=0, dim=None):
+        if isinstance(arg, numpy.ndarray):
+            return Vectors(arg)
+        nv = arg
         if dim is None:
             dim = self.dimension()
         return Vectors(dim, nv, self.data_type())
+
+#    def new_vectors(self, nv=0, dim=None):
+#        if dim is None:
+#            dim = self.dimension()
+#        return Vectors(dim, nv, self.data_type())
 
     def clone(self):
         return Vectors(self)
@@ -623,6 +631,11 @@ class Matrix:
     def dots(self):
         v = Vectors(self, shallow=True)
         return v.dots(v)
+
+    def new_vectors(self, dim=None, nv=0):
+        if dim is None:
+            dim = self.shape()[1]
+        return Vectors(dim, nv, self.data_type())
 
     def apply(self, x, y, transp=False):
         if x.data_type() != self.__dtype or y.data_type() != self.__dtype:

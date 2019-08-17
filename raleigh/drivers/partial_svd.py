@@ -401,7 +401,8 @@ class PartialSVD:
         if transp:
             n, m = m, n
     
-        v = Vectors(n, data_type=dt)
+#        v = Vectors(n, data_type=dt)
+        v = op.new_vectors(n)
         opSVD = _OperatorSVD(op, v, gpu, transp, shift)
         problem = Problem(v, opSVD)
         solver = Solver(problem)
