@@ -91,7 +91,8 @@ def truncated_svd(A, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
         opt.stopping_criteria = \
             DefaultStoppingCriteria(A, tol, norm, msv)
     psvd = PartialSVD()
-    psvd.compute(A, opt, nsv=(0, nsv), arch=arch)
+    matrix = AMatrix(A, arch=arch)
+    psvd.compute(matrix, opt, nsv=(0, nsv))
     u = psvd.left()
     v = psvd.right()
     sigma = psvd.sigma
@@ -159,8 +160,9 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, arch='cpu'):
         Principal components.
     '''
     lra = LowerRankApproximation()
-    lra.compute(A, opt=opt, rank=npc, tol=tol, norm=norm, max_rank=mpc, \
-                shift=True, arch=arch)
+    matrix = AMatrix(A, arch=arch)
+    lra.compute(matrix, opt=opt, rank=npc, tol=tol, norm=norm, max_rank=mpc, \
+                shift=True)
     trans = lra.left() # transfomed (reduced-features) data
     comps = lra.right() # principal components
     return lra.mean(), trans, comps
@@ -198,8 +200,8 @@ class LowerRankApproximation:
         self.__v = None
         self.iterations = -1
 
-    def compute(self, A, opt=Options(), rank=-1, tol=-1, norm='f', max_rank=-1,\
-                svtol=1e-3, shift=False, arch='cpu'):
+    def compute(self, matrix, opt=Options(), rank=-1, tol=-1, norm='f',
+                max_rank=-1, svtol=1e-3, shift=False):
         '''
         For a given m by n data matrix A (m data samples n features each)
         computes m by k matrix L and k by n matrix R such that k <= min(m, n),
@@ -263,7 +265,7 @@ class LowerRankApproximation:
         Jacobi-Conjugated Gradient algorithm to A_.T A_ or A_ A_.T, whichever
         is smaller in size.
         '''
-        m, n = A.shape
+        m, n = matrix.shape()
         opt = copy.deepcopy(opt)
         if opt.block_size < 1:
             opt.block_size = 128
@@ -271,9 +273,9 @@ class LowerRankApproximation:
             opt.convergence_criteria = _DefaultLRAConvergenceCriteria(svtol)
         if opt.stopping_criteria is None and rank < 0:
             opt.stopping_criteria = \
-                DefaultStoppingCriteria(A, tol, norm, max_rank)
+                DefaultStoppingCriteria(matrix.data(), tol, norm, max_rank)
         psvd = PartialSVD()
-        psvd.compute(A, opt=opt, nsv=(0, rank), shift=shift, arch=arch)
+        psvd.compute(matrix, opt=opt, nsv=(0, rank), shift=shift)
         self.__left_v = psvd.left_v()
         self.__left_v.scale(psvd.sigma, multiply=True)
         self.__right_v = psvd.right_v()
@@ -375,38 +377,22 @@ class PartialSVD:
         self.__right_v = None
         self.__mean_v = None
         self.iterations = -1
-    def compute(self, a, opt=Options(), nsv=(-1, -1), shift=False, \
-                refine=False, arch='cpu'):
+    def compute(self, matrix, opt=Options(), nsv=(-1, -1), shift=False, \
+                refine=False):
     
-        if arch[:3] == 'gpu':
-            try:
-                from ..algebra import cuda_wrap as cuda
-                from ..algebra.dense_cublas import Vectors, Matrix
-                op = Matrix(a)
-                gpu = cuda
-            except:
-                if len(arch) > 3 and arch[3] == '!':
-                    raise RuntimeError('cannot use GPU')
-                gpu = None
-        else:
-            gpu = None
-        if gpu is None:
-            from ..algebra.dense_cpu import Vectors, Matrix
-            op = Matrix(a)
-    
-        m, n = a.shape
-        dt = a.dtype.type
+        op = matrix.operator()
+        m, n = matrix.shape()
     
         transp = m < n
         if transp:
             n, m = m, n
-    
-#        v = Vectors(n, data_type=dt)
+
         v = op.new_vectors(n)
-        opSVD = _OperatorSVD(op, v, gpu, transp, shift)
+        dt = v.data_type()
+        opSVD = _OperatorSVD(op, v, transp, shift)
         problem = Problem(v, opSVD)
         solver = Solver(problem)
-    
+
         try:
             opt.stopping_criteria.err_calc.set_up(opSVD, solver, v, shift)
             if opt.verbosity > 0:
@@ -415,22 +401,22 @@ class PartialSVD:
             if opt.verbosity > 0:
                 print('partial SVD error calculation not requested')
             pass
-    
+
         solver.solve(v, options=opt, which=nsv)
         if opt.verbosity > 0:
             print('operator application time: %.2e' % opSVD.time)
-    
+
         nv = v.nvec()
-        u = Vectors(m, nv, v.data_type())
+        u = v.new_vectors(nv, m)
         if nv > 0:
             op.apply(v, u, transp)
             if shift:
-                m, n = a.shape
+                m, n = op.shape()
                 dt = op.data_type()
                 ones = numpy.ones((1, m), dtype=dt)
-                e = Vectors(m, 1, data_type=dt)
+                e = v.new_vectors(1, m)
                 e.fill(ones)
-                w = Vectors(n, 1, data_type=dt)
+                w = v.new_vectors(1, n)
                 op.apply(e, w, transp=True)
                 w.scale(m*ones[0,:1])
                 if not transp:
@@ -501,6 +487,31 @@ class PartialSVD:
 
     def right_v(self):
         return self.__right_v
+
+
+class AMatrix:
+
+    def __init__(self, a, arch='cpu'):
+        self.__data = a
+        if arch[:3] == 'gpu':
+            try:
+                from ..algebra.dense_cublas import Matrix
+                self.__op = Matrix(a)
+            except:
+                if len(arch) > 3 and arch[3] == '!':
+                    raise RuntimeError('cannot use GPU')
+        else:
+            from ..algebra.dense_cpu import Matrix
+            self.__op = Matrix(a)
+
+    def operator(self):
+        return self.__op
+
+    def data(self):
+        return self.__data
+
+    def shape(self):
+        return self.__data.shape
 
 
 class PSVDErrorCalculator:
@@ -636,9 +647,8 @@ class DefaultStoppingCriteria:
 
 
 class _OperatorSVD:
-    def __init__(self, op, v, gpu, transp=False, shift=False):
+    def __init__(self, op, v, transp=False, shift=False):
         self.op = op
-        self.gpu = gpu
         self.transp = transp
         self.shift = shift
         self.time = 0
@@ -685,8 +695,8 @@ class _OperatorSVD:
                 s = z.dot(self.ones)
                 z.add(self.ones, -1.0/m, s)
             self.op.apply(z, y, transp=True)
-        if self.gpu is not None:
-            self.gpu.synchronize()
+#        if self.gpu is not None:
+#            self.gpu.synchronize()
         stop = time.time()
         self.time += stop - start
     def mean(self):
