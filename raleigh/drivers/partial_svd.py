@@ -278,33 +278,35 @@ class LowerRankApproximation:
             opt.stopping_criteria = \
                 DefaultStoppingCriteria(matrix, tol, norm, max_rank)
         psvd = PartialSVD()
-        psvd.compute(matrix, opt=opt, nsv=(0, rank), shift=shift)
+        psvd.compute(matrix, opt=opt, nsv=(0, rank), shift=shift, refine=True)
         self.__left_v = psvd.left_v()
         self.__left_v.scale(psvd.sigma, multiply=True)
         self.__right_v = psvd.right_v()
         self.__mean_v = psvd.mean_v()
         self.__rank = self.__left_v.nvec()
+        self.__tol = tol
+        self.__svtol = svtol
+        self.__norm = norm
+        self.__arch = matrix.arch()
+        self.__dtype = matrix.data_type()
+        self.A = matrix.as_vectors().data()
 #        self.__v = self.__left_v
         if max_rank > 0 and self.__left_v.nvec() > max_rank:
             self.__left_v.select(max_rank)
             self.__right_v.select(max_rank)
         self.iterations = psvd.iterations
 
-    def update(self, data, opt=Options(), rank=-1, max_rank=-1):
+    def update(self, matrix, opt=Options(), rank=-1, max_rank=-1):
         if self.__rank == 0:
-            self.compute(data, opt, rank, max_rank)
-            self.__tol = -1
-            self.__svtol = 1e-3
-            self.__norm = 'f'
-            self.__arch = 'cpu'
-            self.__dtype = data.dtype.type
-#            self.__v = self.__left_v
-            return
+            raise RuntimeError('update() can be only called after compute()')
         if rank > 0 and rank <= self.__rank:
             return
         if max_rank > 0 and self.__rank <= max_rank:
             return
-        maxl2norm = numpy.amax(_norm(data, axis=1))
+        op = matrix.as_operator()
+        v = matrix.as_vectors()
+        s = numpy.sqrt(v.dots(v))
+        maxl2norm = numpy.amax(s)
         if maxl2norm == 0.0:
             return
         dtype = self.__dtype
@@ -316,27 +318,44 @@ class LowerRankApproximation:
         sigma0 = sigma[0]
         n0 = left0.dimension()
         e0 = numpy.ones((n0, 1), dtype=dtype)
-        n1 = data.shape[0]
+        n1 = v.nvec()
         e1 = numpy.ones((n1, 1), dtype=dtype)
         n = n0 + n1
-        data = self.__v.new_vectors(data)
+
+        L = left0.data()
+        R = right0.data()
+        A0 = numpy.dot(L.T, R) + numpy.dot(e0, mean0)
+        d = v.new_vectors(A0)
+        s0 = numpy.sqrt(d.dots(d))
+
         if shift:
-            mean1 = self.__v.new_vectors(1, data.dimension())
-            data.multiply(e1, mean1)
+            mean1 = v.new_vectors(1, v.dimension())
+            v.multiply(e1, mean1)
             mean1 = mean1.data()/n1
             mean = (n0/n)*mean0 + (n1/n)*mean1
-            diff = self.__v.new_vectors(mean0 - mean)
-            diff0 = diff.orthogonalize(right0)
-            diff0 = diff0.data()
-            s = nla.norm(diff0)*e0[:1]
-            diff.scale(s)
-            e0 = self.__v.new_vectors(e0.T)
-            left0.add(e0, 1.0, diff0)
-            e0.scale(s, multiply=True)
-            left0.append(e0)
-            right0.append(diff)
-            mean = self.__v.new_vectors(mean)
-            data.add(mean, -1.0, e1.T)
+            diff = mean0 - mean
+            s = nla.norm(diff)
+            vdiff = v.new_vectors(diff)
+            vdiff0 = vdiff.orthogonalize(right0)
+            diff0 = vdiff0.data()
+            s = nla.norm(vdiff.data())*e0[:1]
+            vdiff.scale(s)
+            e00 = e0.copy()
+            e0v = v.new_vectors(e0.T)
+            left0.add(e0v, 1.0, diff0)
+            e0v.scale(s, multiply=True)
+            left0.append(e0v)
+            right0.append(vdiff)
+
+            L = left0.data()
+            R = right0.data()
+            D = numpy.dot(L.T, R) + numpy.dot(e00, mean) - A0
+            d = v.new_vectors(D)
+            s = numpy.sqrt(d.dots(d))
+            print(nla.norm(s/s0))
+
+            vmean = v.new_vectors(mean)
+            v.add(vmean, -1.0, e1.T)
         else:
             mean = None
 
@@ -383,7 +402,7 @@ class PartialSVD:
     def compute(self, matrix, opt=Options(), nsv=(-1, -1), shift=False, \
                 refine=False):
     
-        op = matrix.operator()
+        op = matrix.as_operator()
         m, n = matrix.shape()
     
         transp = m < n
@@ -495,19 +514,28 @@ class PartialSVD:
 class AMatrix:
 
     def __init__(self, a, arch='cpu'):
+        self.__arch = arch
         if arch[:3] == 'gpu':
             try:
-                from ..algebra.dense_cublas import Matrix
+                from ..algebra.dense_cublas import Matrix, Vectors
                 self.__op = Matrix(a)
             except:
                 if len(arch) > 3 and arch[3] == '!':
                     raise RuntimeError('cannot use GPU')
         else:
-            from ..algebra.dense_cpu import Matrix
+            from ..algebra.dense_cpu import Matrix, Vectors
             self.__op = Matrix(a)
 
-    def operator(self):
+        self.__vectors = Vectors(self.__op, shallow=True)
+
+    def as_operator(self):
         return self.__op
+
+    def as_vectors(self):
+        return self.__vectors
+
+    def arch(self):
+        return self.__arch
 
     def dots(self):
         return self.__op.dots()
