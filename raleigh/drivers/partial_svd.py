@@ -87,11 +87,11 @@ def truncated_svd(A, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
         opt.block_size = 128
     if opt.convergence_criteria is None:
         opt.convergence_criteria = _DefaultSVDConvergenceCriteria(vtol)
+    matrix = AMatrix(A, arch=arch)
     if opt.stopping_criteria is None and nsv < 0:
         opt.stopping_criteria = \
-            DefaultStoppingCriteria(A, tol, norm, msv)
+            DefaultStoppingCriteria(matrix, tol, norm, msv)
     psvd = PartialSVD()
-    matrix = AMatrix(A, arch=arch)
     psvd.compute(matrix, opt, nsv=(0, nsv))
     u = psvd.left()
     v = psvd.right()
@@ -172,25 +172,28 @@ class LowerRankApproximation:
     '''Class for handling the computation of a lower rank approximation of
     a dense matrix, see method compute below for details.
     '''
-    def __init__(self):
-        self.reset()
-
-    def reset(self, left=None, right=None, mean=None):
+    def __init__(self, left=None, right=None, mean=None):
+#        self.reset()
+#
+#    def reset(self, left=None, right=None, mean=None):
         self.__left = left
         self.__right = right
         self.__mean = mean
-        if left is None or self.__v is None:
-            self.__left_v = None
-        else:
-            self.__left_v = self.__v.new_vectors(left)
-        if right is None or self.__v is None:
-            self.__right_v = None
-        else:
-            self.__right_v = self.__v.new_vectors(right)
-        if mean is None or self.__v is None:
-            self.__mean_v = None
-        else:
-            self.__mean_v = self.__v.new_vectors(mean)
+        self.__left_v = None
+        self.__right_v = None
+        self.__mean_v = None
+#        if left is None or self.__v is None:
+#            self.__left_v = None
+#        else:
+#            self.__left_v = self.__v.new_vectors(left)
+#        if right is None or self.__v is None:
+#            self.__right_v = None
+#        else:
+#            self.__right_v = self.__v.new_vectors(right)
+#        if mean is None or self.__v is None:
+#            self.__mean_v = None
+#        else:
+#            self.__mean_v = self.__v.new_vectors(mean)
         self.__rank = 0
         self.__tol = -1
         self.__svtol = -1
@@ -273,7 +276,7 @@ class LowerRankApproximation:
             opt.convergence_criteria = _DefaultLRAConvergenceCriteria(svtol)
         if opt.stopping_criteria is None and rank < 0:
             opt.stopping_criteria = \
-                DefaultStoppingCriteria(matrix.data(), tol, norm, max_rank)
+                DefaultStoppingCriteria(matrix, tol, norm, max_rank)
         psvd = PartialSVD()
         psvd.compute(matrix, opt=opt, nsv=(0, rank), shift=shift)
         self.__left_v = psvd.left_v()
@@ -281,7 +284,7 @@ class LowerRankApproximation:
         self.__right_v = psvd.right_v()
         self.__mean_v = psvd.mean_v()
         self.__rank = self.__left_v.nvec()
-        self.__v = self.__left_v
+#        self.__v = self.__left_v
         if max_rank > 0 and self.__left_v.nvec() > max_rank:
             self.__left_v.select(max_rank)
             self.__right_v.select(max_rank)
@@ -295,7 +298,7 @@ class LowerRankApproximation:
             self.__norm = 'f'
             self.__arch = 'cpu'
             self.__dtype = data.dtype.type
-            self.__v = self.__left_v
+#            self.__v = self.__left_v
             return
         if rank > 0 and rank <= self.__rank:
             return
@@ -492,7 +495,6 @@ class PartialSVD:
 class AMatrix:
 
     def __init__(self, a, arch='cpu'):
-        self.__data = a
         if arch[:3] == 'gpu':
             try:
                 from ..algebra.dense_cublas import Matrix
@@ -507,25 +509,29 @@ class AMatrix:
     def operator(self):
         return self.__op
 
-    def data(self):
-        return self.__data
+    def dots(self):
+        return self.__op.dots()
+
+    def data_type(self):
+        return self.__op.data_type()
 
     def shape(self):
-        return self.__data.shape
+        return self.__op.shape()
 
 
 class PSVDErrorCalculator:
     def __init__(self, a):
+        m, n = a.shape()
+        self.dt = a.data_type()
+        s = a.dots()
+        self.norms = numpy.sqrt(s.reshape((m, 1)))
         self.solver = None
         self.err = None
         self.op = None
-        m, n = a.shape
         self.m = m
         self.n = n
-        self.dt = a.dtype.type
         self.shift = False
         self.ncon = 0
-        self.norms = _norm(a, axis=1).reshape((m, 1))
         self.err = self.norms.copy()
         self.aves = None
     def set_up(self, op, solver, eigenvectors, shift=False):
