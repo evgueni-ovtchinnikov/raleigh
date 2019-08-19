@@ -334,6 +334,7 @@ class LowerRankApproximation:
             A0 += numpy.dot(e0, mean0)
         d = v.new_vectors(A0)
         s0 = numpy.sqrt(d.dots(d))
+        e00 = e0.copy()
 
         if shift:
             mean0 = self.__mean_v.data()
@@ -344,10 +345,9 @@ class LowerRankApproximation:
             diff = mean0 - mean
             vdiff = v.new_vectors(diff)
             vdiff0 = vdiff.orthogonalize(right0)
-            diff0 = vdiff0.data()
+            diff0 = vdiff0.data().T
             s = nla.norm(vdiff.data())*e0[:1]
             vdiff.scale(s)
-            e00 = e0.copy()
             e0v = v.new_vectors(e0.T)
             left0.add(e0v, 1.0, diff0)
             e0v.scale(s, multiply=True)
@@ -366,7 +366,11 @@ class LowerRankApproximation:
         else:
             mean = None
 
+        print(left0.nvec())
+        print(left0.dimension())
         left1 = v.orthogonalize(right0)
+        print(left1.nvec())
+        print(left1.dimension())
 
     def mean(self): # mean row of A (aka bias)
         if self.__mean is None:
@@ -533,6 +537,7 @@ class AMatrix:
                     raise RuntimeError('cannot use GPU')
         else:
             from ..algebra.dense_cpu import Matrix, Vectors
+#            from ..algebra.dense_numpy import Matrix, Vectors
             self.__op = Matrix(a)
             #self.__vectors = Vectors(self.__op, shallow=False)
         self.__vectors = Vectors(self.__op, shallow=True)

@@ -120,6 +120,7 @@ class Vectors(NDArrayVectors):
         else:
             q = numpy.dot(other.data(), self.data().T)
         self.data()[:,:] -= numpy.dot(q.T, other.data())
+        return self.new_vectors(q)
 
     def apply(self, A, output, transp=False):
         a = A.data()

@@ -484,7 +484,7 @@ class Vectors:
         m = self.nvec()
         n = self.dimension()
         k = other.nvec()
-        q = self.new_vectors(m, k)
+        q = self.new_vectors(k, m)
         c_n = ctypes.c_int(n)
         c_m = ctypes.c_int(m)
         c_k = ctypes.c_int(k)
@@ -499,9 +499,9 @@ class Vectors:
         pl_one = self.__to_floats(1.0)
         mn_one = self.__to_floats(-1.0)
         self.__cublas.gemm(self.__cublas.handle, Trans, Cublas.NoTrans, \
-            c_k, c_m, c_n, pl_one, dptr_u, c_n, dptr_v, c_n, zero, dptr_q, c_k)
-        self.__cublas.gemm(self.__cublas.handle, Cublas.NoTrans, Cublas.NoTrans, \
-            c_n, c_m, c_k, mn_one, dptr_u, c_n, dptr_q, c_k, pl_one, dptr_v, c_n)
+            c_m, c_k, c_n, pl_one, dptr_v, c_n, dptr_u, c_n, zero, dptr_q, c_m)
+        self.__cublas.gemm(self.__cublas.handle, Cublas.NoTrans, Trans, \
+            c_n, c_m, c_k, mn_one, dptr_u, c_n, dptr_q, c_m, pl_one, dptr_v, c_n)
         return q
 
     def zero(self):
