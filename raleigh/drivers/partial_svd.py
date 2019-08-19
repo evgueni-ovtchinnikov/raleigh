@@ -8,7 +8,7 @@ import copy
 import math
 import numpy
 import numpy.linalg as nla
-import scipy
+import scipy.linalg as sla
 import time
 
 try:
@@ -290,17 +290,22 @@ class LowerRankApproximation:
         self.iterations = psvd.iterations
 
     def update(self, matrix, opt=Options(), rank=-1, max_rank=-1, \
-               tol=-1, norm='f', svtol=1e-3):
+               tol=0, norm='f', svtol=1e-3):
         if self.__rank == 0:
             raise RuntimeError('no existing LRA data to update')
         if rank > 0 and rank <= self.__rank:
             return
         if max_rank > 0 and self.__rank <= max_rank:
             return
-        op = matrix.as_operator()
+        if norm not in ['f', 'm', 's']:
+            msg = 'norm %s is not supported' % repr(norm)
+            raise ValueError(msg)
+        #op = matrix.as_operator()
         v = matrix.as_vectors() # reference to op
-        s = numpy.sqrt(v.dots(v))
-        maxl2norm = numpy.amax(s)
+        s = abs(v.dots(v))
+        fnorm = math.sqrt(numpy.sum(s))
+        maxl2norm = numpy.amax(numpy.sqrt(s))
+        print(fnorm, maxl2norm)
         if maxl2norm == 0.0:
             return
         dtype = self.__dtype
@@ -334,7 +339,7 @@ class LowerRankApproximation:
             A0 += numpy.dot(e0, mean0)
         d = v.new_vectors(A0)
         s0 = numpy.sqrt(d.dots(d))
-        e00 = e0.copy()
+        A1 = matrix.as_vectors().data().copy()
 
         if shift:
             mean0 = self.__mean_v.data()
@@ -354,23 +359,80 @@ class LowerRankApproximation:
             left0.append(e0v)
             right0.append(vdiff)
 
-            L = left0.data()
-            R = right0.data()
-            D = numpy.dot(L.T, R) + numpy.dot(e00, mean) - A0
-            d = v.new_vectors(D)
-            s = numpy.sqrt(d.dots(d))
-            print(nla.norm(s/s0))
+#            L = left0.data()
+#            R = right0.data()
+#            e00 = numpy.ones((n0, 1), dtype=dtype)
+#            D = numpy.dot(L.T, R) + numpy.dot(e00, mean) - A0
+#            d = v.new_vectors(D)
+#            s = numpy.sqrt(d.dots(d))
+#            print(nla.norm(s/s0))
 
             vmean = v.new_vectors(mean)
             v.add(vmean, -1.0, e1.T)
         else:
             mean = None
 
-        print(left0.nvec())
-        print(left0.dimension())
+        #print(left0.nvec(), left0.dimension())
         left1 = v.orthogonalize(right0)
-        print(left1.nvec())
-        print(left1.dimension())
+        #print(left1.nvec(), left1.dimension())
+        if norm == 'f':
+            update_tol = -tol*fnorm
+        elif norm == 'm':
+            update_tol = -tol*maxl2norm
+        else:
+            update_tol = -tol*sigma0
+
+        s = abs(v.dots(v))
+        fnorm = math.sqrt(numpy.sum(s))
+        maxl2norm = numpy.amax(numpy.sqrt(s))
+        print(fnorm, maxl2norm)
+        
+        lra = LowerRankApproximation()
+        lra.compute(matrix, opt, tol=update_tol, norm=norm)
+        left11 = lra.left_v()
+        right10 = lra.right_v()
+        #print(left11.nvec(), left11.dimension())
+        #print(right10.nvec(), right10.dimension())
+        
+        new = left11.nvec()
+        left01 = left0.new_vectors(new)
+        left01.zero()
+        left0.append(left01)
+        left1.append(left11)
+        left0.append(left1, axis=1)
+        right0.append(right10)
+        print(left0.nvec(), left0.dimension())
+        print(right0.nvec(), right0.dimension())
+
+        G = left0.dot(left0)
+        lmd, q = sla.eigh(-G)
+        sigma = numpy.sqrt(abs(lmd))
+        #print(sigma0, sigma[0])
+        #print(sigma/sigma[0])
+
+        w = left0.new_vectors(left0.nvec())
+        left0.multiply(q, w)
+        w.copy(left0)
+        w = right0.new_vectors(right0.nvec())
+        right0.multiply(q, w)
+        w.copy(right0)
+
+        L = left0.data()
+        R = right0.data()
+        e = numpy.ones((n, 1), dtype=dtype)
+        print(L.shape)
+        print(R.shape)
+        print(e.shape)
+        print(mean.shape)
+        print(A1.shape)
+        A = numpy.concatenate((A0, A1))
+        print(A.shape)
+        d = v.new_vectors(A)
+        s0 = numpy.sum(d.dots(d))
+        D = numpy.dot(L.T, R) + numpy.dot(e, mean) - A
+        d = v.new_vectors(D)
+        s = numpy.sum(d.dots(d))
+        print(math.sqrt(s/s0))
 
     def mean(self): # mean row of A (aka bias)
         if self.__mean is None:
@@ -466,7 +528,7 @@ class PartialSVD:
                     uu = -u.dot(u)
                 else:
                     uu = u.dot(u)
-                lmd, x = scipy.linalg.eigh(uu, vv) #, turbo=False)
+                lmd, x = sla.eigh(uu, vv) #, turbo=False)
                 w = v.new_vectors(nv)
                 v.multiply(x, w)
                 w.copy(v)
