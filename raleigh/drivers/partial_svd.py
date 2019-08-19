@@ -172,35 +172,30 @@ class LowerRankApproximation:
     '''Class for handling the computation of a lower rank approximation of
     a dense matrix, see method compute below for details.
     '''
-    def __init__(self, left=None, right=None, mean=None):
+#    def __init__(self, left=None, right=None, mean=None):
 #        self.reset()
 #
 #    def reset(self, left=None, right=None, mean=None):
-        self.__left = left
-        self.__right = right
-        self.__mean = mean
+    def __init__(self, lra=None):
+        if lra is None:
+            self.__left = None
+            self.__right = None
+            self.__mean = None
+            self.__rank = 0
+            self.__dtype = None
+        else:
+            self.__left = lra[0]
+            self.__right = lra[1]
+            self.__mean = lra[2]
+            self.__rank = self.__right.shape[0]
+            self.__dtype = self.__left.dtype.type
         self.__left_v = None
         self.__right_v = None
         self.__mean_v = None
-#        if left is None or self.__v is None:
-#            self.__left_v = None
-#        else:
-#            self.__left_v = self.__v.new_vectors(left)
-#        if right is None or self.__v is None:
-#            self.__right_v = None
-#        else:
-#            self.__right_v = self.__v.new_vectors(right)
-#        if mean is None or self.__v is None:
-#            self.__mean_v = None
-#        else:
-#            self.__mean_v = self.__v.new_vectors(mean)
-        self.__rank = 0
         self.__tol = -1
         self.__svtol = -1
         self.__norm = None
         self.__arch = None
-        self.__dtype = None
-        self.__v = None
         self.iterations = -1
 
     def compute(self, matrix, opt=Options(), rank=-1, tol=-1, norm='f',
@@ -289,31 +284,40 @@ class LowerRankApproximation:
         self.__norm = norm
         self.__arch = matrix.arch()
         self.__dtype = matrix.data_type()
-        self.A = matrix.as_vectors().data()
-#        self.__v = self.__left_v
         if max_rank > 0 and self.__left_v.nvec() > max_rank:
             self.__left_v.select(max_rank)
             self.__right_v.select(max_rank)
         self.iterations = psvd.iterations
 
-    def update(self, matrix, opt=Options(), rank=-1, max_rank=-1):
+    def update(self, matrix, opt=Options(), rank=-1, max_rank=-1, \
+               tol=-1, norm='f', svtol=1e-3):
         if self.__rank == 0:
-            raise RuntimeError('update() can be only called after compute()')
+            raise RuntimeError('no existing LRA data to update')
         if rank > 0 and rank <= self.__rank:
             return
         if max_rank > 0 and self.__rank <= max_rank:
             return
         op = matrix.as_operator()
-        v = matrix.as_vectors()
+        v = matrix.as_vectors() # reference to op
         s = numpy.sqrt(v.dots(v))
         maxl2norm = numpy.amax(s)
         if maxl2norm == 0.0:
             return
         dtype = self.__dtype
+        if self.__left_v is None:
+            left0 = v.new_vectors(self.__left)
+            right0 = v.new_vectors(self.__right)
+            if self.__mean is not None:
+                self.__mean_v = v.new_vectors(self.__mean)
+            else:
+                self.__mean_v = None
+            self.__arch = matrix.arch()
+        else:
+            if self.__arch != matrix.arch() or dtype != matrix.data_type():
+                raise ValueError('incompatible matrix type passed to update')
         left0 = self.__left_v
         right0 = self.__right_v
-        mean0 = self.__mean_v.data()
-        shift = mean0 is not None
+        shift = self.__mean_v is not None
         sigma = numpy.sqrt(left0.dots(left0))
         sigma0 = sigma[0]
         n0 = left0.dimension()
@@ -324,17 +328,20 @@ class LowerRankApproximation:
 
         L = left0.data()
         R = right0.data()
-        A0 = numpy.dot(L.T, R) + numpy.dot(e0, mean0)
+        A0 = numpy.dot(L.T, R)
+        if shift:
+            mean0 = self.__mean_v.data()
+            A0 += numpy.dot(e0, mean0)
         d = v.new_vectors(A0)
         s0 = numpy.sqrt(d.dots(d))
 
         if shift:
+            mean0 = self.__mean_v.data()
             mean1 = v.new_vectors(1, v.dimension())
             v.multiply(e1, mean1)
             mean1 = mean1.data()/n1
             mean = (n0/n)*mean0 + (n1/n)*mean1
             diff = mean0 - mean
-            s = nla.norm(diff)
             vdiff = v.new_vectors(diff)
             vdiff0 = vdiff.orthogonalize(right0)
             diff0 = vdiff0.data()
@@ -358,6 +365,8 @@ class LowerRankApproximation:
             v.add(vmean, -1.0, e1.T)
         else:
             mean = None
+
+        left1 = v.orthogonalize(right0)
 
     def mean(self): # mean row of A (aka bias)
         if self.__mean is None:
@@ -525,7 +534,7 @@ class AMatrix:
         else:
             from ..algebra.dense_cpu import Matrix, Vectors
             self.__op = Matrix(a)
-
+            #self.__vectors = Vectors(self.__op, shallow=False)
         self.__vectors = Vectors(self.__op, shallow=True)
 
     def as_operator(self):

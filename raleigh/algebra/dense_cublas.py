@@ -343,7 +343,7 @@ class Vectors:
         elif isinstance(arg, Matrix):
             if arg.order() is not 'C_CONTIGUOUS':
                 raise ValueError('Vectors data must be C_CONTIGUOUS')
-            m, n = arg.shape
+            m, n = arg.shape()
             dtype = arg.data_type()
             dsize = arg.data_size()
             self.__is_complex = arg.is_complex()
