@@ -172,11 +172,10 @@ class LowerRankApproximation:
     '''Class for handling the computation of a lower rank approximation of
     a dense matrix, see method compute below for details.
     '''
-#    def __init__(self, left=None, right=None, mean=None):
-#        self.reset()
-#
-#    def reset(self, left=None, right=None, mean=None):
     def __init__(self, lra=None):
+#        self.reset(lra)
+#
+#    def reset(self, lra=None):
         if lra is None:
             self.__left = None
             self.__right = None
@@ -213,7 +212,7 @@ class LowerRankApproximation:
 
         Parameters
         ----------
-        A : 2D numpy array
+        A : AMatrix
             Data matrix.
         opt : an object of class raleigh.solver.Options
             Solver options (see raleigh.solver).
@@ -249,10 +248,6 @@ class LowerRankApproximation:
         shift : bool
             Specifies whether L R approximates A (shift=False) or A_ = A - e a
             (shift=True, see the above description of the method).
-        arch : string
-            'cpu'  : run on CPU,
-            'gpu'  : run on GPU if available, otherwise on CPU,
-            'gpu!' : run on GPU, throw RuntimeError if GPU is not present.
 
         Notes
         -----
@@ -304,7 +299,6 @@ class LowerRankApproximation:
         s = abs(v.dots(v))
         fnorm = math.sqrt(numpy.sum(s))
         maxl2norm = numpy.amax(numpy.sqrt(s))
-        #print(fnorm, maxl2norm)
         if maxl2norm == 0.0:
             return
         dtype = self.__dtype
@@ -329,16 +323,6 @@ class LowerRankApproximation:
         n1 = v.nvec()
         e1 = numpy.ones((n1, 1), dtype=dtype)
         n = n0 + n1
-
-#        L = left0.data()
-#        R = right0.data()
-#        A0 = numpy.dot(L.T, R)
-#        if shift:
-#            mean0 = self.__mean_v.data()
-#            A0 += numpy.dot(e0, mean0)
-#        d = v.new_vectors(A0)
-#        s0 = numpy.sqrt(d.dots(d))
-#        A1 = matrix.as_vectors().data().copy()
 
         if shift:
             mean0 = self.__mean_v.data()
@@ -374,7 +358,6 @@ class LowerRankApproximation:
         s = abs(v.dots(v))
         fnorm = math.sqrt(numpy.sum(s))
         maxl2norm = numpy.amax(numpy.sqrt(s))
-        #print(fnorm, maxl2norm)
         
         lra = LowerRankApproximation()
         lra.compute(matrix, opt, tol=update_tol, norm=norm)
@@ -444,10 +427,13 @@ class LowerRankApproximation:
         ncomp -= i
         left0.select(ncomp)
         right0.select(ncomp)
+        self.__left = None
+        self.__right = None
+        self.__mean = None
         self.__left_v = left0
         self.__right_v = right0
         if shift:
-            self.__mean_v = mean
+            self.__mean_v = vmean
         self.__rank = self.__left_v.nvec()
         self.__tol = tol
         self.__svtol = svtol
@@ -459,20 +445,6 @@ class LowerRankApproximation:
             self.__right_v.select(max_rank)
         self.iterations += lra.iterations
         print('%d components computed' % ncomp)
-
-#        L = left0.data()
-#        R = right0.data()
-#        A = numpy.concatenate((A0, A1))
-#        D = numpy.dot(L.T, R) + numpy.dot(e, mean) - A
-#        if norm == 'f':
-#            s0 = nla.norm(A, ord='fro')
-#            s = nla.norm(D, ord='fro')
-#            #print(s0)
-#        elif norm == 'm':
-#            s0 = numpy.amax(_norm(A, axis=1))
-#            s = numpy.amax(_norm(D, axis=1))
-#            #print(s0)
-#        print(s/s0)
 
     def mean(self): # mean row of A (aka bias)
         if self.__mean is None:
