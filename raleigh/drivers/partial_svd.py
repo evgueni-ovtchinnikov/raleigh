@@ -500,7 +500,7 @@ class PartialSVD:
 
         v = op.new_vectors(n)
         dt = v.data_type()
-        opSVD = _OperatorSVD(op, v, transp, shift)
+        opSVD = _OperatorSVD(matrix, v, transp, shift)
         problem = Problem(v, opSVD)
         solver = Solver(problem)
 
@@ -606,8 +606,10 @@ class AMatrix:
         self.__arch = arch
         if arch[:3] == 'gpu':
             try:
+                from ..algebra import cuda_wrap as cuda
                 from ..algebra.dense_cublas import Matrix, Vectors
                 self.__op = Matrix(a)
+                self.__gpu = cuda
             except:
                 if len(arch) > 3 and arch[3] == '!':
                     raise RuntimeError('cannot use GPU')
@@ -615,6 +617,7 @@ class AMatrix:
             from ..algebra.dense_cpu import Matrix, Vectors
 #            from ..algebra.dense_numpy import Matrix, Vectors
             self.__op = Matrix(a)
+            self.__gpu = None
             #self.__vectors = Vectors(self.__op, shallow=False)
         self.__vectors = Vectors(self.__op, shallow=True)
 
@@ -626,6 +629,9 @@ class AMatrix:
 
     def arch(self):
         return self.__arch
+
+    def gpu(self):
+        return self.__gpu
 
     def dots(self):
         return self.__op.dots()
@@ -771,8 +777,9 @@ class DefaultStoppingCriteria:
 
 
 class _OperatorSVD:
-    def __init__(self, op, v, transp=False, shift=False):
-        self.op = op
+    def __init__(self, matrix, v, transp=False, shift=False):
+        self.op = matrix.as_operator()
+        self.gpu = matrix.gpu()
         self.transp = transp
         self.shift = shift
         self.time = 0
@@ -782,7 +789,7 @@ class _OperatorSVD:
         else:
             self.w = v.new_vectors(0, m)
         if shift:
-            dt = op.data_type()
+            dt = self.op.data_type()
             ones = numpy.ones((1, m), dtype=dt)
             self.ones = v.new_vectors(1, m)
             self.ones.fill(ones)
@@ -819,8 +826,8 @@ class _OperatorSVD:
                 s = z.dot(self.ones)
                 z.add(self.ones, -1.0/m, s)
             self.op.apply(z, y, transp=True)
-#        if self.gpu is not None:
-#            self.gpu.synchronize()
+        if self.gpu is not None:
+            self.gpu.synchronize()
         stop = time.time()
         self.time += stop - start
     def mean(self):
