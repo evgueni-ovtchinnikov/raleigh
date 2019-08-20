@@ -303,8 +303,12 @@ class LowerRankApproximation:
             return
         dtype = self.__dtype
         if self.__left_v is None:
-            left0 = v.new_vectors(self.__left)
-            right0 = v.new_vectors(self.__right)
+            left_data = self.__left.T
+            if not left_data.flags['C_CONTIGUOUS']:
+                left_data = numpy.ndarray(left_data.shape, dtype=dtype)
+                left_data[:,:] = self.__left.T.copy()
+            self.__left_v = v.new_vectors(left_data)
+            self.__right_v = v.new_vectors(self.__right)
             if self.__mean is not None:
                 self.__mean_v = v.new_vectors(self.__mean)
             else:
