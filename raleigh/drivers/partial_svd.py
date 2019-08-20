@@ -242,9 +242,8 @@ class LowerRankApproximation:
             if max_rank < min(m, n), then the required accuracy of approximation
             might not be achieved.
         svtol : float
-            Error tolerance for singular values (see Notes below).
-            A singular vector is considered converged if the residual 2-norm
-            is not greater than rtol multiplied by the largest singular value.
+            Error tolerance for singular values (see Notes below) relative to
+            the largest singular value.
         shift : bool
             Specifies whether L R approximates A (shift=False) or A_ = A - e a
             (shift=True, see the above description of the method).
