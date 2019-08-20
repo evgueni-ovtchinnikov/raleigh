@@ -423,15 +423,13 @@ class LowerRankApproximation:
             else:
                 s = sigma[ncomp - i]
             i += 1
-        print('dropping %d small components...' % i)
+#        print('dropping %d small components...' % i)
         ncomp -= i
         left0.select(ncomp)
         right0.select(ncomp)
         self.__left = None
         self.__right = None
         self.__mean = None
-        self.__left_v = left0
-        self.__right_v = right0
         if shift:
             self.__mean_v = vmean
         self.__rank = self.__left_v.nvec()
@@ -444,7 +442,7 @@ class LowerRankApproximation:
             self.__left_v.select(max_rank)
             self.__right_v.select(max_rank)
         self.iterations += lra.iterations
-        print('%d components computed' % ncomp)
+#        print('%d components computed' % ncomp)
 
     def mean(self): # mean row of A (aka bias)
         if self.__mean is None:
