@@ -300,12 +300,11 @@ class LowerRankApproximation:
         if norm not in ['f', 'm', 's']:
             msg = 'norm %s is not supported' % repr(norm)
             raise ValueError(msg)
-        #op = matrix.as_operator()
-        v = matrix.as_vectors() # reference to op
+        v = matrix.as_vectors() # reference to matrix
         s = abs(v.dots(v))
         fnorm = math.sqrt(numpy.sum(s))
         maxl2norm = numpy.amax(numpy.sqrt(s))
-        print(fnorm, maxl2norm)
+        #print(fnorm, maxl2norm)
         if maxl2norm == 0.0:
             return
         dtype = self.__dtype
@@ -331,15 +330,15 @@ class LowerRankApproximation:
         e1 = numpy.ones((n1, 1), dtype=dtype)
         n = n0 + n1
 
-        L = left0.data()
-        R = right0.data()
-        A0 = numpy.dot(L.T, R)
-        if shift:
-            mean0 = self.__mean_v.data()
-            A0 += numpy.dot(e0, mean0)
-        d = v.new_vectors(A0)
-        s0 = numpy.sqrt(d.dots(d))
-        A1 = matrix.as_vectors().data().copy()
+#        L = left0.data()
+#        R = right0.data()
+#        A0 = numpy.dot(L.T, R)
+#        if shift:
+#            mean0 = self.__mean_v.data()
+#            A0 += numpy.dot(e0, mean0)
+#        d = v.new_vectors(A0)
+#        s0 = numpy.sqrt(d.dots(d))
+#        A1 = matrix.as_vectors().data().copy()
 
         if shift:
             mean0 = self.__mean_v.data()
@@ -358,23 +357,13 @@ class LowerRankApproximation:
             e0v.scale(s, multiply=True)
             left0.append(e0v)
             right0.append(vdiff)
-
-#            L = left0.data()
-#            R = right0.data()
-#            e00 = numpy.ones((n0, 1), dtype=dtype)
-#            D = numpy.dot(L.T, R) + numpy.dot(e00, mean) - A0
-#            d = v.new_vectors(D)
-#            s = numpy.sqrt(d.dots(d))
-#            print(nla.norm(s/s0))
-
             vmean = v.new_vectors(mean)
             v.add(vmean, -1.0, e1.T)
         else:
             mean = None
+            vmean = None
 
-        #print(left0.nvec(), left0.dimension())
         left1 = v.orthogonalize(right0)
-        #print(left1.nvec(), left1.dimension())
         if norm == 'f':
             update_tol = -tol*fnorm
         elif norm == 'm':
@@ -385,14 +374,12 @@ class LowerRankApproximation:
         s = abs(v.dots(v))
         fnorm = math.sqrt(numpy.sum(s))
         maxl2norm = numpy.amax(numpy.sqrt(s))
-        print(fnorm, maxl2norm)
+        #print(fnorm, maxl2norm)
         
         lra = LowerRankApproximation()
         lra.compute(matrix, opt, tol=update_tol, norm=norm)
         left11 = lra.left_v()
         right10 = lra.right_v()
-        #print(left11.nvec(), left11.dimension())
-        #print(right10.nvec(), right10.dimension())
         
         new = left11.nvec()
         left01 = left0.new_vectors(new)
@@ -401,14 +388,10 @@ class LowerRankApproximation:
         left1.append(left11)
         left0.append(left1, axis=1)
         right0.append(right10)
-        print(left0.nvec(), left0.dimension())
-        print(right0.nvec(), right0.dimension())
 
         G = left0.dot(left0)
         lmd, q = sla.eigh(-G)
         sigma = numpy.sqrt(abs(lmd))
-        #print(sigma0, sigma[0])
-        #print(sigma/sigma[0])
 
         w = left0.new_vectors(left0.nvec())
         left0.multiply(q, w)
@@ -416,23 +399,66 @@ class LowerRankApproximation:
         w = right0.new_vectors(right0.nvec())
         right0.multiply(q, w)
         w.copy(right0)
-
-        L = left0.data()
-        R = right0.data()
+        ncomp = right0.nvec()
+        
         e = numpy.ones((n, 1), dtype=dtype)
-        print(L.shape)
-        print(R.shape)
-        print(e.shape)
-        print(mean.shape)
-        print(A1.shape)
-        A = numpy.concatenate((A0, A1))
-        print(A.shape)
-        d = v.new_vectors(A)
-        s0 = numpy.sum(d.dots(d))
-        D = numpy.dot(L.T, R) + numpy.dot(e, mean) - A
-        d = v.new_vectors(D)
-        s = numpy.sum(d.dots(d))
-        print(math.sqrt(s/s0))
+        if norm == 'f':
+            r = left0.dots(left0)
+            s = math.sqrt(numpy.sum(r))
+        elif norm == 'm':
+            r = left0.dots(left0, transp=True)
+            s = numpy.amax(numpy.sqrt(abs(r)))
+        else:
+            s = sigma[0]
+        if shift:
+            a = vmean.dot(vmean)
+            b = vmean.dot(right0)
+            p = left0.new_vectors(1)
+            left0.multiply(b, p)
+            if norm == 'f':
+                q = left0.new_vectors(e.T)
+                c = q.dot(p)
+                s = math.sqrt(s*s + 2*c + n*a)
+            elif norm == 'm':
+                p = p.data()
+                s = math.sqrt(numpy.amax(r + 2*p.T) + a)
+        #print(s)
+        lmd = sigma*sigma
+        eps = s*tol/4
+        if norm == 'm':
+            errs = numpy.zeros((1, n))
+        s = 0
+        i = 1
+        while s < eps and i < ncomp:
+            if norm == 'f':
+                s = math.sqrt(s*s + lmd[ncomp - i])
+            elif norm == 'm':
+                left0.select(1, ncomp - i)
+                lft = left0.data()
+                errs += lft * lft
+                s = numpy.amax(numpy.sqrt(errs))
+            else:
+                s = sigma[ncomp - i]
+            i += 1
+        print('dropping %d small components...' % i)
+        ncomp -= i
+        left0.select(ncomp)
+        right0.select(ncomp)
+        print('%d components computed' % ncomp)
+
+#        L = left0.data()
+#        R = right0.data()
+#        A = numpy.concatenate((A0, A1))
+#        D = numpy.dot(L.T, R) + numpy.dot(e, mean) - A
+#        if norm == 'f':
+#            s0 = nla.norm(A, ord='fro')
+#            s = nla.norm(D, ord='fro')
+#            #print(s0)
+#        elif norm == 'm':
+#            s0 = numpy.amax(_norm(A, axis=1))
+#            s = numpy.amax(_norm(D, axis=1))
+#            #print(s0)
+#        print(s/s0)
 
     def mean(self): # mean row of A (aka bias)
         if self.__mean is None:
