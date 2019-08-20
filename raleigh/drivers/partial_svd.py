@@ -444,6 +444,20 @@ class LowerRankApproximation:
         ncomp -= i
         left0.select(ncomp)
         right0.select(ncomp)
+        self.__left_v = left0
+        self.__right_v = right0
+        if shift:
+            self.__mean_v = mean
+        self.__rank = self.__left_v.nvec()
+        self.__tol = tol
+        self.__svtol = svtol
+        self.__norm = norm
+        self.__arch = matrix.arch()
+        self.__dtype = matrix.data_type()
+        if max_rank > 0 and self.__left_v.nvec() > max_rank:
+            self.__left_v.select(max_rank)
+            self.__right_v.select(max_rank)
+        self.iterations += lra.iterations
         print('%d components computed' % ncomp)
 
 #        L = left0.data()
