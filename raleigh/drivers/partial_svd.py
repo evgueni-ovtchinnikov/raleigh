@@ -375,16 +375,29 @@ class LowerRankApproximation:
         left0.append(left1, axis=1)
         right0.append(right10)
 
+        wl = left0.new_vectors(left0.nvec())
+        wr = right0.new_vectors(right0.nvec())
+        G = right0.dot(right0)
+        lmd, x = sla.eigh(G)
+        q = lmd[-1]/lmd[0]
+#        print(q)
+        epsilon = numpy.finfo(dtype).eps
+        qmax = 1 + epsilon**0.5
+        if q > qmax:
+            s = numpy.sqrt(lmd)
+            right0.multiply(x, wr)
+            wr.scale(s)
+            wr.copy(right0)
+            left0.multiply(x, wl)
+            wl.scale(s, multiply=True)
+            wl.copy(left0)
         G = left0.dot(left0)
-        lmd, q = sla.eigh(-G)
+        lmd, x = sla.eigh(-G)
         sigma = numpy.sqrt(abs(lmd))
-
-        w = left0.new_vectors(left0.nvec())
-        left0.multiply(q, w)
-        w.copy(left0)
-        w = right0.new_vectors(right0.nvec())
-        right0.multiply(q, w)
-        w.copy(right0)
+        left0.multiply(x, wl)
+        wl.copy(left0)
+        right0.multiply(x, wr)
+        wr.copy(right0)
         ncomp = right0.nvec()
         
         e = numpy.ones((n, 1), dtype=dtype)
@@ -542,15 +555,40 @@ class PartialSVD:
                 else:
                     uu = u.dot(u)
                 lmd, x = sla.eigh(uu, vv) #, turbo=False)
-                w = v.new_vectors(nv)
-                v.multiply(x, w)
-                w.copy(v)
-                w = u.new_vectors(nv)
-                u.multiply(x, w)
-                w.copy(u)
+                wv = v.new_vectors(nv)
+                v.multiply(x, wv)
+                wv.copy(v)
+                wu = u.new_vectors(nv)
+                u.multiply(x, wu)
+                wu.copy(u)
             sigma = numpy.sqrt(abs(u.dots(u)))
             u.scale(sigma)
-            if not refine:
+            if refine:
+                uu = u.dot(u)
+                lmd, x = sla.eigh(uu)
+                q = lmd[-1]/lmd[0]
+#                print(q)
+                epsilon = numpy.finfo(dt).eps
+                qmax = 1 + epsilon**0.5
+                if q > qmax:
+                    u.multiply(x, wu)
+                    wu.copy(u)
+                    s = numpy.sqrt(abs(u.dots(u)))
+                    u.scale(s)
+                    dl = numpy.reshape(sigma, (nv, 1))
+                    dr = numpy.reshape(s, (1, nv))
+                    x = dl*x*dr
+                    xu, xs, xvt = sla.svd(x)
+                    u.multiply(xvt.T, wu)
+                    wu.copy(u)
+                    v.multiply(xu, wv)
+                    wv.copy(v)
+                    sigma = xs
+                    uu = u.dot(u)
+                    lmd, x = sla.eigh(uu)
+                    q = lmd[-1]/lmd[0]
+#                    print(q)
+            else:
                 w = u.new_vectors(nv)
                 ind = numpy.argsort(-sigma)
                 sigma = sigma[ind]
