@@ -195,6 +195,7 @@ class LowerRankApproximation:
         self.__svtol = -1
         self.__norm = None
         self.__arch = None
+        self.ortho = True
         self.iterations = -1
 
     def compute(self, matrix, opt=Options(), rank=-1, tol=-1, norm='f',
@@ -267,7 +268,8 @@ class LowerRankApproximation:
             opt.stopping_criteria = \
                 DefaultStoppingCriteria(matrix, tol, norm, max_rank)
         psvd = PartialSVD()
-        psvd.compute(matrix, opt=opt, nsv=(0, rank), shift=shift, refine=True)
+        psvd.compute(matrix, opt=opt, nsv=(0, rank), shift=shift, \
+            refine=self.ortho)
         self.__left_v = psvd.left_v()
         self.__left_v.scale(psvd.sigma, multiply=True)
         self.__right_v = psvd.right_v()
@@ -318,6 +320,16 @@ class LowerRankApproximation:
                 raise ValueError('incompatible matrix type passed to update')
         left0 = self.__left_v
         right0 = self.__right_v
+        if self.ortho is False:
+            wl = left0.new_vectors(left0.nvec())
+            wr = right0.new_vectors(right0.nvec())
+            G = left0.dot(left0)
+            H = right0.dot(right0)
+            lmd, x = sla.eigh(-G, H)
+            left0.multiply(nla.inv(x.T), wl)
+            wl.copy(left0)
+            right0.multiply(x, wr)
+            wr.copy(right0)
         shift = self.__mean_v is not None
         sigma = numpy.sqrt(left0.dots(left0))
         sigma0 = sigma[0]
