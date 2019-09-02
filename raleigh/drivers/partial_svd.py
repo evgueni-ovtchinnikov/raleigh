@@ -377,22 +377,9 @@ class LowerRankApproximation:
 
         wl = left0.new_vectors(left0.nvec())
         wr = right0.new_vectors(right0.nvec())
-        G = right0.dot(right0)
-        lmd, x = sla.eigh(G)
-        q = lmd[-1]/lmd[0]
-#        print(q)
-        epsilon = numpy.finfo(dtype).eps
-        qmax = 1 + epsilon**0.5
-        if q > qmax:
-            s = numpy.sqrt(lmd)
-            right0.multiply(x, wr)
-            wr.scale(s)
-            wr.copy(right0)
-            left0.multiply(x, wl)
-            wl.scale(s, multiply=True)
-            wl.copy(left0)
         G = left0.dot(left0)
-        lmd, x = sla.eigh(-G)
+        H = right0.dot(right0)
+        lmd, x = sla.eigh(-G, H)
         sigma = numpy.sqrt(abs(lmd))
         left0.multiply(x, wl)
         wl.copy(left0)
