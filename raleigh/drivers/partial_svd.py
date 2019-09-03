@@ -393,7 +393,7 @@ class LowerRankApproximation:
         H = right0.dot(right0)
         lmd, x = sla.eigh(-G, H)
         sigma = numpy.sqrt(abs(lmd))
-        left0.multiply(x, wl)
+        left0.multiply(nla.inv(x.T), wl)
         wl.copy(left0)
         right0.multiply(x, wr)
         wr.copy(right0)
@@ -500,7 +500,7 @@ class PartialSVD:
         self.__mean_v = None
         self.iterations = -1
     def compute(self, matrix, opt=Options(), nsv=(-1, -1), shift=False, \
-                refine=False):
+                refine=True):
     
         op = matrix.as_operator()
         m, n = matrix.shape()
@@ -548,46 +548,15 @@ class PartialSVD:
                     s = v.dot(e)
                     u.add(w, -1, s)
             if refine:
-                vv = v.dot(v)
-                if nsv[0] == 0:
-                    uu = -u.dot(u)
-                else:
-                    uu = u.dot(u)
-                lmd, x = sla.eigh(uu, vv) #, turbo=False)
+                u_data = u.data()
+                uu, sigma, uv = sla.svd(u_data.T, full_matrices=False)
+                u = u.new_vectors(uu.T)
                 wv = v.new_vectors(nv)
-                v.multiply(x, wv)
+                v.multiply(uv.T, wv)
                 wv.copy(v)
-                wu = u.new_vectors(nv)
-                u.multiply(x, wu)
-                wu.copy(u)
-            sigma = numpy.sqrt(abs(u.dots(u)))
-            u.scale(sigma)
-            if refine:
-                uu = u.dot(u)
-                lmd, x = sla.eigh(uu)
-                q = lmd[-1]/lmd[0]
-#                print(q)
-                epsilon = numpy.finfo(dt).eps
-                qmax = 1 + epsilon**0.5
-                if q > qmax:
-                    u.multiply(x, wu)
-                    wu.copy(u)
-                    s = numpy.sqrt(abs(u.dots(u)))
-                    u.scale(s)
-                    dl = numpy.reshape(sigma, (nv, 1))
-                    dr = numpy.reshape(s, (1, nv))
-                    x = dl*x*dr
-                    xu, xs, xvt = sla.svd(x)
-                    u.multiply(xvt.T, wu)
-                    wu.copy(u)
-                    v.multiply(xu, wv)
-                    wv.copy(v)
-                    sigma = xs
-                    uu = u.dot(u)
-                    lmd, x = sla.eigh(uu)
-                    q = lmd[-1]/lmd[0]
-#                    print(q)
             else:
+                sigma = numpy.sqrt(abs(u.dots(u)))
+                u.scale(sigma)
                 w = u.new_vectors(nv)
                 ind = numpy.argsort(-sigma)
                 sigma = sigma[ind]
