@@ -259,14 +259,21 @@ class LowerRankApproximation:
         is smaller in size.
         '''
         m, n = matrix.shape()
-        opt = copy.deepcopy(opt)
-        if opt.block_size < 1:
+        user_bs = opt.block_size
+        if user_bs < 1:
             opt.block_size = 128
         if opt.convergence_criteria is None:
+            no_cc = True
             opt.convergence_criteria = _DefaultLRAConvergenceCriteria(svtol)
+        else:
+            no_cc = False
         if opt.stopping_criteria is None and rank < 0:
+            no_sc = True
             opt.stopping_criteria = \
                 DefaultStoppingCriteria(matrix, tol, norm, max_rank)
+        else:
+            no_sc = False
+
         psvd = PartialSVD()
         psvd.compute(matrix, opt=opt, nsv=(0, rank), shift=shift, \
             refine=self.ortho)
@@ -275,6 +282,7 @@ class LowerRankApproximation:
         self.__right_v = psvd.right_v()
         self.__mean_v = psvd.mean_v()
         self.__rank = self.__left_v.nvec()
+        self.__opt = opt
         self.__tol = tol
         self.__svtol = svtol
         self.__norm = norm
@@ -284,15 +292,26 @@ class LowerRankApproximation:
             self.__left_v.select(max_rank)
             self.__right_v.select(max_rank)
         self.iterations = psvd.iterations
+        
+        # restore user opt to avoid side effects
+        opt.block_size = user_bs
+        if no_cc:
+            opt.convergence_criteria = None
+        if no_sc:
+            opt.stopping_criteria = None
 
-    def update(self, matrix, opt=Options(), rank=-1, max_rank=-1, \
-               tol=0, norm='f', svtol=1e-3):
+    def update(self, matrix, opt=None, rank=-1, max_rank=-1):
         if self.__rank == 0:
             raise RuntimeError('no existing LRA data to update')
         if rank > 0 and rank <= self.__rank:
             return
         if max_rank > 0 and self.__rank <= max_rank:
             return
+        if opt is None:
+            opt = self.__opt
+        tol = self.__tol
+        norm = self.__norm
+        svtol = self.__svtol
         if norm not in ['f', 'm', 's']:
             msg = 'norm %s is not supported' % repr(norm)
             raise ValueError(msg)
