@@ -103,7 +103,8 @@ def truncated_svd(A, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
     return u, sigma, v.T
 
 
-def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, arch='cpu'):
+def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, tcm=None, \
+        arch='cpu'):
     '''Performs principal component analysis for the set of data items
     represented by rows of a dense matrix A.
 
@@ -145,6 +146,11 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, arch='cpu'):
         Maximal number of PCs to compute. Ignored if negative, otherwise
         if mpc < min(m, n), then the required accuracy of approximation
         might not be achieved.
+    tcm : tuple
+        A tuple (trans0, comps0, mean0) of reduced features matrix trans0,
+        principal components matrix comps0 and mean row mean0 of a matrix A0 
+        of the same width as A. The computed PCA data will approximate those
+        for numpy.concatenate((A0, A)).
     arch : string
         'cpu' : run on CPU,
         'gpu' : run on GPU if available, otherwise on CPU,
@@ -155,14 +161,17 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, arch='cpu'):
     mean : numpy array of shape (1, n)
         The mean of rows of A.
     trans : numpy array of shape (m, k)
-        The reduced-features data set.
+        The reduced-features data matrix.
     comps : numpy array of shape (k, n)
-        Principal components.
+        Principal components matrix.
     '''
-    lra = LowerRankApproximation()
+    lra = LowerRankApproximation(tcm)
     matrix = AMatrix(A, arch=arch)
-    lra.compute(matrix, opt=opt, rank=npc, tol=tol, norm=norm, max_rank=mpc, \
-                shift=True)
+    if tcm is None:
+        lra.compute(matrix, opt=opt, rank=npc, tol=tol, norm=norm, max_rank=mpc, \
+                    shift=True)
+    else:
+        lra.update(matrix, opt=opt, rank=npc, tol=tol, norm=norm, max_rank=mpc)
     trans = lra.left() # transfomed (reduced-features) data
     comps = lra.right() # principal components
     return lra.mean(), trans, comps
@@ -213,8 +222,8 @@ class LowerRankApproximation:
 
         Parameters
         ----------
-        A : AMatrix
-            Data matrix.
+        matrix : AMatrix
+            Data matrix A.
         opt : an object of class raleigh.solver.Options
             Solver options (see raleigh.solver).
         rank : int
