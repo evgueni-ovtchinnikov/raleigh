@@ -103,7 +103,7 @@ def truncated_svd(A, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
     return u, sigma, v.T
 
 
-def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, tcm=None, \
+def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, mtc=None, \
         arch='cpu'):
     '''Performs principal component analysis for the set of data items
     represented by rows of a dense matrix A.
@@ -146,11 +146,11 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, tcm=None, \
         Maximal number of PCs to compute. Ignored if negative, otherwise
         if mpc < min(m, n), then the required accuracy of approximation
         might not be achieved.
-    tcm : tuple
-        A tuple (trans0, comps0, mean0) of reduced features matrix trans0,
-        principal components matrix comps0 and mean row mean0 of a matrix A0 
-        of the same width as A. The computed PCA data will approximate those
-        for numpy.concatenate((A0, A)).
+    mtc : tuple
+        A tuple (mean0, trans0, comps0) of mean row mean0, reduced features
+        matrix trans0 and principal components matrix comps0 of a data matrix
+        A0 of the same width as A. The computed PCA data will approximate
+        those for numpy.concatenate((A0, A)).
     arch : string
         'cpu' : run on CPU,
         'gpu' : run on GPU if available, otherwise on CPU,
@@ -165,9 +165,9 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, tcm=None, \
     comps : numpy array of shape (k, n)
         Principal components matrix.
     '''
-    lra = LowerRankApproximation(tcm)
+    lra = LowerRankApproximation(mtc)
     matrix = AMatrix(A, arch=arch)
-    if tcm is None:
+    if mtc is None:
         lra.compute(matrix, opt=opt, rank=npc, tol=tol, norm=norm, max_rank=mpc, \
                     shift=True)
     else:
@@ -181,20 +181,17 @@ class LowerRankApproximation:
     '''Class for handling the computation of a lower rank approximation of
     a dense matrix, see method compute below for details.
     '''
-    def __init__(self, lra=None):
-#        self.reset(lra)
-#
-#    def reset(self, lra=None):
-        if lra is None:
+    def __init__(self, mlr=None):
+        if mlr is None:
             self.__left = None
             self.__right = None
             self.__mean = None
             self.__rank = 0
             self.__dtype = None
         else:
-            self.__left = lra[0]
-            self.__right = lra[1]
-            self.__mean = lra[2]
+            self.__mean = mlr[0]
+            self.__left = mlr[1]
+            self.__right = mlr[2]
             self.__rank = self.__right.shape[0]
             self.__dtype = self.__left.dtype.type
         self.__left_v = None
