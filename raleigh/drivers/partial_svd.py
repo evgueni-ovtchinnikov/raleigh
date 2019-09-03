@@ -192,7 +192,7 @@ class LowerRankApproximation:
         self.__right_v = None
         self.__mean_v = None
         self.__tol = -1
-        self.__svtol = -1
+        self.__svtol = 1e-3
         self.__norm = None
         self.__arch = None
         self.ortho = True
@@ -300,7 +300,8 @@ class LowerRankApproximation:
         if no_sc:
             opt.stopping_criteria = None
 
-    def update(self, matrix, opt=None, rank=-1, max_rank=-1):
+    def update(self, matrix, opt=None, rank=-1, max_rank=-1, \
+            tol=None, norm=None, svtol=None):
         if self.__rank == 0:
             raise RuntimeError('no existing LRA data to update')
         if rank > 0 and rank <= self.__rank:
@@ -309,9 +310,12 @@ class LowerRankApproximation:
             return
         if opt is None:
             opt = self.__opt
-        tol = self.__tol
-        norm = self.__norm
-        svtol = self.__svtol
+        if tol is None:
+            tol = self.__tol
+        if norm is None:
+            norm = self.__norm
+        if svtol is None:
+            svtol = self.__svtol
         if norm not in ['f', 'm', 's']:
             msg = 'norm %s is not supported' % repr(norm)
             raise ValueError(msg)
