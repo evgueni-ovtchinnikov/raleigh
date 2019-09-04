@@ -103,13 +103,13 @@ def truncated_svd(A, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
     return u, sigma, v.T
 
 
-def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, mtc=None, \
-        arch='cpu'):
+def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, svtol=1e-3, \
+        have=None, arch='cpu'):
     '''Performs principal component analysis for the set of data items
     represented by rows of a dense matrix A.
 
     For a given m by n data matrix A (m data samples n features each)
-    computes m by k matrix L and k by n matrix R such that k < min(m, n),
+    computes m by k matrix L and k by n matrix R such that k <= min(m, n),
     and the product L R approximates A - e a, where e = numpy.ones((m, 1)
     and a = numpy.mean(A, axis=0).
 
@@ -146,11 +146,14 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, mtc=None, \
         Maximal number of PCs to compute. Ignored if negative, otherwise
         if mpc < min(m, n), then the required accuracy of approximation
         might not be achieved.
-    mtc : tuple
-        A tuple (mean0, trans0, comps0) of mean row mean0, reduced features
-        matrix trans0 and principal components matrix comps0 of a data matrix
-        A0 of the same width as A. The computed PCA data will approximate
-        those for numpy.concatenate((A0, A)).
+    svtol : float
+        Error tolerance for singular values (see Notes below) relative to
+        the largest singular value.
+    have : tuple (a0, L0, R0)
+        If not None, previously computed PCA approximation L0 R0 + e0 a0
+        to a data matrix A0 of the same width as A is to be updated, i.e.
+        PCA approximation L R + e a to numpy.concatenate((A0, A)) is to be
+        computed.
     arch : string
         'cpu' : run on CPU,
         'gpu' : run on GPU if available, otherwise on CPU,
@@ -164,14 +167,22 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, mtc=None, \
         The reduced-features data matrix.
     comps : numpy array of shape (k, n)
         Principal components matrix.
+
+    Notes
+    -----
+    If have is None, then the rows of R are approximate right singular
+    vectors of A - e a and the columns of L are approximate left singular
+    vectors of A - e a multiplied by respective singular values. If have is
+    not None, this is generally not the case.
     '''
-    lra = LowerRankApproximation(mtc)
+    lra = LowerRankApproximation(have)
     matrix = AMatrix(A, arch=arch)
-    if mtc is None:
-        lra.compute(matrix, opt=opt, rank=npc, tol=tol, norm=norm, max_rank=mpc, \
-                    shift=True)
+    if have is None:
+        lra.compute(matrix, opt=opt, rank=npc, tol=tol, norm=norm, \
+                    max_rank=mpc, svtol=svtol, shift=True)
     else:
-        lra.update(matrix, opt=opt, rank=npc, tol=tol, norm=norm, max_rank=mpc)
+        lra.update(matrix, opt=opt, rank=npc, tol=tol, norm=norm, \
+                   max_rank=mpc, svtol=svtol)
     trans = lra.left() # transfomed (reduced-features) data
     comps = lra.right() # principal components
     return lra.mean(), trans, comps
