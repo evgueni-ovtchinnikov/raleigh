@@ -19,11 +19,11 @@ except NameError:
 from ..core.solver import Problem, Solver, Options
 
 
-def truncated_svd(A, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
+def truncated_svd(matrix, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
                   vtol=1e-3, arch='cpu'):
     '''Computes truncated Singular Value Decomposition of a dense matrix A.
     
-    For a given m by n data matrix A computes m by k matrix U, k by k diagonal
+    For a given m by n matrix A computes m by k matrix U, k by k diagonal
     matrix S and n by k matrix V such that A V = U S, the columns of U and V
     are orthonirmal (orthogonal and of unit norm) and the largest singular
     value of A - U S V' is smallest possible for a given k (V' = V.T for a real
@@ -33,8 +33,8 @@ def truncated_svd(A, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
 
     Parameters
     ----------
-    A : 2D numpy array
-        Data matrix.
+    matrix : 2D numpy array
+        Matrix A.
     opt : an object of class raleigh.solver.Options
         Solver options (see raleigh.solver).
     nsv : int
@@ -87,7 +87,7 @@ def truncated_svd(A, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
         opt.block_size = 128
     if opt.convergence_criteria is None:
         opt.convergence_criteria = _DefaultSVDConvergenceCriteria(vtol)
-    matrix = AMatrix(A, arch=arch)
+    matrix = AMatrix(matrix, arch=arch)
     if opt.stopping_criteria is None and nsv < 0:
         opt.stopping_criteria = \
             DefaultStoppingCriteria(matrix, tol, norm, msv)
@@ -176,12 +176,12 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, svtol=1e-3, \
     not None, this is generally not the case.
     '''
     lra = LowerRankApproximation(have)
-    matrix = AMatrix(A, arch=arch)
+    data_matrix = AMatrix(A, arch=arch)
     if have is None:
-        lra.compute(matrix, opt=opt, rank=npc, tol=tol, norm=norm, \
+        lra.compute(data_matrix, opt=opt, rank=npc, tol=tol, norm=norm, \
                     max_rank=mpc, svtol=svtol, shift=True)
     else:
-        lra.update(matrix, opt=opt, rank=npc, tol=tol, norm=norm, \
+        lra.update(data_matrix, opt=opt, rank=npc, tol=tol, norm=norm, \
                    max_rank=mpc, svtol=svtol)
     trans = lra.left() # transfomed (reduced-features) data
     comps = lra.right() # principal components
@@ -215,7 +215,7 @@ class LowerRankApproximation:
         self.ortho = True
         self.iterations = -1
 
-    def compute(self, matrix, opt=Options(), rank=-1, tol=-1, norm='f',
+    def compute(self, data_matrix, opt=Options(), rank=-1, tol=-1, norm='f',
                 max_rank=-1, svtol=1e-3, shift=False):
         '''
         For a given m by n data matrix A (m data samples n features each)
@@ -230,7 +230,7 @@ class LowerRankApproximation:
 
         Parameters
         ----------
-        matrix : AMatrix
+        data_matrix : AMatrix
             Data matrix A.
         opt : an object of class raleigh.solver.Options
             Solver options (see raleigh.solver).
@@ -275,7 +275,7 @@ class LowerRankApproximation:
         Jacobi-Conjugated Gradient algorithm to A_.T A_ or A_ A_.T, whichever
         is smaller in size.
         '''
-        m, n = matrix.shape()
+        m, n = data_matrix.shape()
         user_bs = opt.block_size
         if user_bs < 1:
             opt.block_size = 128
@@ -287,12 +287,12 @@ class LowerRankApproximation:
         if opt.stopping_criteria is None and rank < 0:
             no_sc = True
             opt.stopping_criteria = \
-                DefaultStoppingCriteria(matrix, tol, norm, max_rank)
+                DefaultStoppingCriteria(data_matrix, tol, norm, max_rank)
         else:
             no_sc = False
 
         psvd = PartialSVD()
-        psvd.compute(matrix, opt=opt, nsv=(0, rank), shift=shift, \
+        psvd.compute(data_matrix, opt=opt, nsv=(0, rank), shift=shift, \
             refine=self.ortho)
         self.__left_v = psvd.left_v()
         self.__left_v.scale(psvd.sigma, multiply=True)
@@ -303,8 +303,8 @@ class LowerRankApproximation:
         self.__tol = tol
         self.__svtol = svtol
         self.__norm = norm
-        self.__arch = matrix.arch()
-        self.__dtype = matrix.data_type()
+        self.__arch = data_matrix.arch()
+        self.__dtype = data_matrix.data_type()
         if max_rank > 0 and self.__left_v.nvec() > max_rank:
             self.__left_v.select(max_rank)
             self.__right_v.select(max_rank)
@@ -317,8 +317,15 @@ class LowerRankApproximation:
         if no_sc:
             opt.stopping_criteria = None
 
-    def update(self, matrix, opt=None, rank=-1, max_rank=-1, \
+    def update(self, data_matrix, opt=None, rank=-1, max_rank=-1, \
             tol=None, norm=None, svtol=None):
+        '''
+        Updates previously computed Lower Rank Approximation of a data matrix
+        data_matrix0, i.e. computes Lower Rank Approximation of 
+        numpy.concatenate((data_matrix0, data_matrix))
+
+        Parameters have the same meaning as for compute().
+        '''
         if self.__rank == 0:
             raise RuntimeError('no existing LRA data to update')
         if rank > 0 and rank <= self.__rank:
@@ -336,7 +343,7 @@ class LowerRankApproximation:
         if norm not in ['f', 'm', 's']:
             msg = 'norm %s is not supported' % repr(norm)
             raise ValueError(msg)
-        v = matrix.as_vectors() # reference to matrix
+        v = data_matrix.as_vectors() # reference to data_matrix
         s = abs(v.dots(v))
         fnorm = math.sqrt(numpy.sum(s))
         maxl2norm = numpy.amax(numpy.sqrt(s))
@@ -354,9 +361,10 @@ class LowerRankApproximation:
                 self.__mean_v = v.new_vectors(self.__mean)
             else:
                 self.__mean_v = None
-            self.__arch = matrix.arch()
+            self.__arch = data_matrix.arch()
         else:
-            if self.__arch != matrix.arch() or dtype != matrix.data_type():
+            if self.__arch != data_matrix.arch() or \
+                dtype != data_matrix.data_type():
                 raise ValueError('incompatible matrix type passed to update')
         left0 = self.__left_v
         right0 = self.__right_v
@@ -415,7 +423,7 @@ class LowerRankApproximation:
         maxl2norm = numpy.amax(numpy.sqrt(s))
         
         lra = LowerRankApproximation()
-        lra.compute(matrix, opt, tol=update_tol, norm=norm)
+        lra.compute(data_matrix, opt, tol=update_tol, norm=norm)
         left11 = lra.left_v()
         right10 = lra.right_v()
         
@@ -478,7 +486,6 @@ class LowerRankApproximation:
             else:
                 s = sigma[ncomp - i]
             i += 1
-#        print('dropping %d small components...' % i)
         ncomp -= i
         left0.select(ncomp)
         right0.select(ncomp)
@@ -491,15 +498,14 @@ class LowerRankApproximation:
         self.__tol = tol
         self.__svtol = svtol
         self.__norm = norm
-        self.__arch = matrix.arch()
-        self.__dtype = matrix.data_type()
+        self.__arch = data_matrix.arch()
+        self.__dtype = data_matrix.data_type()
         if max_rank > 0 and self.__left_v.nvec() > max_rank:
             self.__left_v.select(max_rank)
             self.__right_v.select(max_rank)
         self.iterations += lra.iterations
-#        print('%d components computed' % ncomp)
 
-    def mean(self): # mean row of A (aka bias)
+    def mean(self): # mean row of A
         if self.__mean is None:
             if self.__mean_v is not None:
                 self.__mean = self.__mean_v.data()
@@ -530,6 +536,7 @@ class LowerRankApproximation:
 ''' The rest is for advanced users only.
 '''
 class PartialSVD:
+
     def __init__(self):
         self.sigma = None
         self.__left = None
@@ -539,6 +546,7 @@ class PartialSVD:
         self.__right_v = None
         self.__mean_v = None
         self.iterations = -1
+
     def compute(self, matrix, opt=Options(), nsv=(-1, -1), shift=False, \
                 refine=True):
     
@@ -908,8 +916,6 @@ class _DefaultLRAConvergenceCriteria:
         lmd_max = solver.convergence_data('max eigenvalue', i)
         tol = (lmd/lmd_max)**1.5*self.tolerance
         return res >= 0 and res*res <= tol
-#        err = solver.convergence_data('residual', i)
-#        return err >= 0 and err <= self.tolerance
 
 
 def _norm(a, axis):
