@@ -104,7 +104,7 @@ def truncated_svd(matrix, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
 
 
 def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, svtol=1e-3, \
-        have=None, arch='cpu'):
+        have=None, batch_size=None, arch='cpu'):
     '''Performs principal component analysis for the set of data items
     represented by rows of a dense matrix A.
 
@@ -176,13 +176,18 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, svtol=1e-3, \
     not None, this is generally not the case.
     '''
     lra = LowerRankApproximation(have)
-    data_matrix = AMatrix(A, arch=arch)
-    if have is None:
-        lra.compute(data_matrix, opt=opt, rank=npc, tol=tol, norm=norm, \
-                    max_rank=mpc, svtol=svtol, shift=True)
+    if batch_size is None:
+        if have is None:
+            data_matrix = AMatrix(A, arch=arch)
+            lra.compute(data_matrix, opt=opt, rank=npc, tol=tol, norm=norm, \
+                        max_rank=mpc, svtol=svtol, shift=True)
+        else:
+            data_matrix = AMatrix(A, arch=arch, copy_data=True)
+            lra.update(data_matrix, opt=opt, rank=npc, tol=tol, norm=norm, \
+                       max_rank=mpc, svtol=svtol)
     else:
-        lra.update(data_matrix, opt=opt, rank=npc, tol=tol, norm=norm, \
-                   max_rank=mpc, svtol=svtol)
+        lra.icompute(A, batch_size, opt=opt, rank=npc, tol=tol, norm=norm, \
+                        max_rank=mpc, svtol=svtol, shift=True, arch=arch)
     trans = lra.left() # transfomed (reduced-features) data
     comps = lra.right() # principal components
     return lra.mean(), trans, comps

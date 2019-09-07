@@ -38,8 +38,8 @@ class NDArrayVectors(object):
 
     def append(self, other, axis=0):
         if axis == 0:
-            self.__data = numpy.concatenate((self.__data, other.data()))
-            self.__nvec += other.nvec()
+            self.__data = numpy.concatenate((self.data(), other.data()))
+            self.__nvec = self.nvec() + other.nvec()
             self.select_all()
         else:
             self.__data = numpy.concatenate((self.__data, other.all_data()), \
