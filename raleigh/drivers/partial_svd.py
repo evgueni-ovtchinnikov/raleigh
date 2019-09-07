@@ -214,7 +214,7 @@ class LowerRankApproximation:
         self.__arch = None
         self.ortho = True
         self.iterations = -1
-
+        
     def compute(self, data_matrix, opt=Options(), rank=-1, tol=-1, norm='f',
                 max_rank=-1, svtol=1e-3, shift=False):
         '''
@@ -505,6 +505,49 @@ class LowerRankApproximation:
             self.__right_v.select(max_rank)
         self.iterations += lra.iterations
 
+    def icompute(self, data_matrix, batch_size, opt=Options(), rank=-1, \
+                 tol=-1, norm='f', max_rank=-1, svtol=1e-3, shift=False, \
+                 arch='cpu'):
+        '''
+        Computes Lower Rank Approximation of data_matix incrementally:
+            - computes LRA for the block data_matrix[:batch_size, :]
+            - in a loop updates LRA using subsequent blocks of data_matrix
+              batch_size rows high (or less, for the last block)
+
+        Parameters
+        ----------
+        data_matrix : 2D numpy array
+            Data matrix A.
+        batch_size : int
+            The batch size.
+
+        Remaining parameters have the same meaning as for compute().
+        '''
+        data_size = data_matrix.shape[0]
+        batch_size = min(batch_size, data_size)
+        batch = 0
+        if self.__rank == 0:
+            print('processing batch %d of size %d' % (batch, batch_size))
+            matrix = AMatrix(data_matrix[:batch_size, :], arch=arch)
+            self.compute(matrix, opt=opt, rank=rank, \
+                         tol=tol, norm=norm, max_rank=max_rank, svtol=svtol, \
+                         shift=shift)
+            del matrix # free memory
+            first = batch_size
+            batch += 1
+        else:
+            first = 0
+        while first < data_size:
+            next_ = min(data_size, first + batch_size)
+            print('processing batch %d of size %d' % (batch, next_ - first))
+            matrix = AMatrix(data_matrix[first : next_, :], arch=arch, \
+                             copy_data=True)
+            self.update(matrix, opt=opt, rank=rank, \
+                        tol=tol, norm=norm, max_rank=max_rank, svtol=svtol)
+            del matrix # free memory
+            first = next_
+            batch += 1
+
     def mean(self): # mean row of A
         if self.__mean is None:
             if self.__mean_v is not None:
@@ -655,7 +698,7 @@ class PartialSVD:
 
 class AMatrix:
 
-    def __init__(self, a, arch='cpu'):
+    def __init__(self, a, arch='cpu', copy_data=False):
         self.__arch = arch
         if arch[:3] == 'gpu':
             try:
@@ -669,7 +712,10 @@ class AMatrix:
         else:
             from ..algebra.dense_cpu import Matrix, Vectors
 #            from ..algebra.dense_numpy import Matrix, Vectors
-            self.__op = Matrix(a)
+            if copy_data:
+                self.__op = Matrix(a.copy())
+            else:
+                self.__op = Matrix(a)
             self.__gpu = None
             #self.__vectors = Vectors(self.__op, shallow=False)
         self.__vectors = Vectors(self.__op, shallow=True)
