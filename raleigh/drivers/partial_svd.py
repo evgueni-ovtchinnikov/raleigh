@@ -4,7 +4,6 @@
 """Partial SVD of a matrix represented by a 2D ndarray.
 """
 
-import copy
 import math
 import numpy
 import numpy.linalg as nla
@@ -84,15 +83,22 @@ def truncated_svd(matrix, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
     worth to try it first in interactive mode (nsv < 0, tol = 0), and if the
     computation is too slow, use scipy.linalg.svd instead.
     '''
-    opt = copy.deepcopy(opt)
-    if opt.block_size < 1 and (nsv < 0 or nsv > 100):
+    matrix = AMatrix(matrix, arch=arch)
+    user_bs = opt.block_size
+    if user_bs < 1 and (nsv < 0 or nsv > 100):
         opt.block_size = 128
     if opt.convergence_criteria is None:
+        no_cc = True
         opt.convergence_criteria = _DefaultSVDConvergenceCriteria(vtol)
-    matrix = AMatrix(matrix, arch=arch)
+    else:
+        no_cc = False
     if opt.stopping_criteria is None and nsv < 0:
+        no_sc = True
         opt.stopping_criteria = \
             DefaultStoppingCriteria(matrix, tol, norm, msv, verb)
+    else:
+        no_sc = False
+
     psvd = PartialSVD()
     psvd.compute(matrix, opt, nsv=(0, nsv))
     u = psvd.left()
@@ -102,6 +108,14 @@ def truncated_svd(matrix, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
         u = u[:, : msv]
         v = v[:, : msv]
         sigma = sigma[: msv]
+
+    # restore user opt to avoid side effects
+    opt.block_size = user_bs
+    if no_cc:
+        opt.convergence_criteria = None
+    if no_sc:
+        opt.stopping_criteria = None
+
     return u, sigma, v.T
 
 
