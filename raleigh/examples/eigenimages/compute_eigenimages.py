@@ -48,7 +48,7 @@ if raleigh_path not in sys.path:
     sys.path.insert(0, raleigh_path)
 
 from raleigh.core.solver import Options
-from raleigh.drivers.partial_svd import pca
+from raleigh.drivers.pca import pca
 
 
 def _norm(a, axis):
