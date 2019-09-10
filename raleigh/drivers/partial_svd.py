@@ -20,7 +20,7 @@ from ..core.solver import Problem, Solver, Options
 
 
 def truncated_svd(matrix, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
-                  vtol=1e-3, arch='cpu'):
+                  vtol=1e-3, arch='cpu', verb=0):
     '''Computes truncated Singular Value Decomposition of a dense matrix A.
     
     For a given m by n matrix A computes m by k matrix U, k by k diagonal
@@ -65,6 +65,8 @@ def truncated_svd(matrix, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
         'cpu' : run on CPU,
         'gpu' : run on GPU if available, otherwise on CPU,
         'gpu!' : run on GPU, throw RuntimError if GPU is not present.
+    verb : int
+        Verbosity level.
 
     Returns
     -------
@@ -90,7 +92,7 @@ def truncated_svd(matrix, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
     matrix = AMatrix(matrix, arch=arch)
     if opt.stopping_criteria is None and nsv < 0:
         opt.stopping_criteria = \
-            DefaultStoppingCriteria(matrix, tol, norm, msv)
+            DefaultStoppingCriteria(matrix, tol, norm, msv, verb)
     psvd = PartialSVD()
     psvd.compute(matrix, opt, nsv=(0, nsv))
     u = psvd.left()
@@ -104,7 +106,7 @@ def truncated_svd(matrix, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
 
 
 def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, svtol=1e-3, \
-        have=None, batch_size=None, arch='cpu'):
+        have=None, batch_size=None, arch='cpu', verb=0):
     '''Performs principal component analysis for the set of data items
     represented by rows of a dense matrix A.
 
@@ -158,6 +160,8 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, svtol=1e-3, \
         'cpu' : run on CPU,
         'gpu' : run on GPU if available, otherwise on CPU,
         'gpu!' : run on GPU, throw RuntimError if GPU is not present.
+    verb : int
+        Verbosity level.
 
     Returns
     -------
@@ -180,14 +184,15 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, svtol=1e-3, \
         if have is None:
             data_matrix = AMatrix(A, arch=arch)
             lra.compute(data_matrix, opt=opt, rank=npc, tol=tol, norm=norm, \
-                        max_rank=mpc, svtol=svtol, shift=True)
+                        max_rank=mpc, svtol=svtol, shift=True, verb=verb)
         else:
             data_matrix = AMatrix(A, arch=arch, copy_data=True)
             lra.update(data_matrix, opt=opt, rank=npc, tol=tol, norm=norm, \
                        max_rank=mpc, svtol=svtol)
     else:
         lra.icompute(A, batch_size, opt=opt, rank=npc, tol=tol, norm=norm, \
-                        max_rank=mpc, svtol=svtol, shift=True, arch=arch)
+                        max_rank=mpc, svtol=svtol, shift=True, arch=arch, \
+                        verb=verb)
     trans = lra.left() # transfomed (reduced-features) data
     comps = lra.right() # principal components
     return lra.mean(), trans, comps
@@ -221,7 +226,7 @@ class LowerRankApproximation:
         self.iterations = -1
         
     def compute(self, data_matrix, opt=Options(), rank=-1, tol=-1, norm='f',
-                max_rank=-1, svtol=1e-3, shift=False):
+                max_rank=-1, svtol=1e-3, shift=False, verb=0):
         '''
         For a given m by n data matrix A (m data samples n features each)
         computes m by k matrix L and k by n matrix R such that k <= min(m, n),
@@ -270,6 +275,8 @@ class LowerRankApproximation:
         shift : bool
             Specifies whether L R approximates A (shift=False) or A_ = A - e a
             (shift=True, see the above description of the method).
+        verb : int
+            Verbosity level.
 
         Notes
         -----
@@ -292,7 +299,7 @@ class LowerRankApproximation:
         if opt.stopping_criteria is None and rank < 0:
             no_sc = True
             opt.stopping_criteria = \
-                DefaultStoppingCriteria(data_matrix, tol, norm, max_rank)
+                DefaultStoppingCriteria(data_matrix, tol, norm, max_rank, verb)
         else:
             no_sc = False
 
@@ -323,7 +330,7 @@ class LowerRankApproximation:
             opt.stopping_criteria = None
 
     def update(self, data_matrix, opt=None, rank=-1, max_rank=-1, \
-            tol=None, norm=None, svtol=None):
+            tol=None, norm=None, svtol=None, verb=0):
         '''
         Updates previously computed Lower Rank Approximation of a data matrix
         data_matrix0, i.e. computes Lower Rank Approximation of 
@@ -428,7 +435,7 @@ class LowerRankApproximation:
         maxl2norm = numpy.amax(numpy.sqrt(s))
         
         lra = LowerRankApproximation()
-        lra.compute(data_matrix, opt, tol=update_tol, norm=norm)
+        lra.compute(data_matrix, opt, tol=update_tol, norm=norm, verb=verb)
         left11 = lra.left_v()
         right10 = lra.right_v()
         
@@ -475,7 +482,7 @@ class LowerRankApproximation:
                 s = math.sqrt(numpy.amax(r + 2*p.T) + a)
         #print(s)
         lmd = sigma*sigma
-        eps = s*tol/10
+        eps = s*tol/7
         if norm == 'm':
             errs = numpy.zeros((1, n))
         s = 0
@@ -513,7 +520,7 @@ class LowerRankApproximation:
 
     def icompute(self, data_matrix, batch_size, opt=Options(), rank=-1, \
                  tol=-1, norm='f', max_rank=-1, svtol=1e-3, shift=False, \
-                 arch='cpu'):
+                 arch='cpu', verb=0):
         '''
         Computes Lower Rank Approximation of data_matix incrementally:
             - computes LRA for the block data_matrix[:batch_size, :]
@@ -537,7 +544,7 @@ class LowerRankApproximation:
             matrix = AMatrix(data_matrix[:batch_size, :], arch=arch)
             self.compute(matrix, opt=opt, rank=rank, \
                          tol=tol, norm=norm, max_rank=max_rank, svtol=svtol, \
-                         shift=shift)
+                         shift=shift, verb=verb)
             del matrix # free memory
             first = batch_size
             batch += 1
@@ -548,8 +555,8 @@ class LowerRankApproximation:
             print('processing batch %d of size %d' % (batch, next_ - first))
             matrix = AMatrix(data_matrix[first : next_, :], arch=arch, \
                              copy_data=True)
-            self.update(matrix, opt=opt, rank=rank, \
-                        tol=tol, norm=norm, max_rank=max_rank, svtol=svtol)
+            self.update(matrix, opt=opt, rank=rank, tol=tol, norm=norm, \
+                        max_rank=max_rank, svtol=svtol, verb=verb)
             del matrix # free memory
             first = next_
             batch += 1
@@ -818,7 +825,12 @@ class PSVDErrorCalculator:
 
 
 class DefaultStoppingCriteria:
-    def __init__(self, a, err_tol=0, norm='f', max_nsv=0):
+
+    def __init__(self, a, err_tol=0, norm='f', max_nsv=0, verb=0):
+        self.err_tol = err_tol
+        self.norm = norm
+        self.max_nsv = max_nsv
+        self.verb = verb
         self.ncon = 0
         self.sigma = 1
         self.iteration = 0
@@ -828,10 +840,8 @@ class DefaultStoppingCriteria:
         self.norms = self.err_calc.norms
         self.max_norm = numpy.amax(self.norms)
         self.f_norm = math.sqrt(numpy.sum(self.norms*self.norms))
-        self.err_tol = err_tol
-        self.max_nsv = max_nsv
-        self.norm = norm
         self.f = 0
+
     def satisfied(self, solver):
         self.norms = self.err_calc.norms
         if solver.rcon <= self.ncon:
@@ -868,7 +878,8 @@ class DefaultStoppingCriteria:
                 (self.elapsed_time, self.ncon + i, si, si_rel)
         self.ncon = solver.rcon
         if self.err_tol != 0:
-            print(msg)
+            if self.verb > 0:
+                print(msg)
             if self.err_tol > 0:
                 done = err_rel <= self.err_tol
             else:
