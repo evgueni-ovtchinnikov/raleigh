@@ -155,6 +155,9 @@ memcpyH2H = ctypes.c_int(0)
 memcpyH2D = ctypes.c_int(1)
 memcpyD2H = ctypes.c_int(2)
 memcpyD2D = ctypes.c_int(3)
+createStream = cuda.cudaStreamCreate
+createStream.restype = ctypes.c_int
+deleteStream = cuda.cudaStreamDestroy
 
 numDevices = ctypes.c_int()
 getDeviceCount(ctypes.byref(numDevices))

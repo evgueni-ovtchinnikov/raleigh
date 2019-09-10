@@ -204,16 +204,23 @@ class Vectors:
         data_u = self.all_data_ptr()
         data_v = other.all_data_ptr()
         w = numpy.ndarray((m,), dtype=self.data_type())
+#        ns = self.__cublas.stream.shape[0]
         for i in range(m):
             ptr_u = _shifted_ptr(data_u, (iu + i)*vsize)
             ptr_v = _shifted_ptr(data_v, (iv + i)*vsize)
             s = self.__floats()
+#            err = self.__cublas.setStream(self.__cublas.handle, \
+#                self.__cublas.stream[i%ns])
+#            if err != 0:
+#                print(err)
             self.__cublas.dot \
                 (self.__cublas.handle, n, ptr_v, inc, ptr_u, inc, s)
             if self.is_complex():
                 w[i] = s[0] + 1j * s[1]
             else:
                 w[i] = s[0]
+#        stream = ctypes.c_int(0)
+#        self.__cublas.setStream(self.__cublas.handle, stream)
         return w
 
     def dot(self, other):

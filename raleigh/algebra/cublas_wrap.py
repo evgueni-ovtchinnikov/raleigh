@@ -58,6 +58,9 @@ class Cublas:
     DeviceMode = ctypes.c_int(1)
 
     def __init__(self, dt):
+
+#        from .cuda_wrap import createStream
+
         self.handle = POINTER(ctypes.c_ubyte)()
         err = create(ctypes.byref(self.handle))
         if err != 0:
@@ -66,6 +69,16 @@ class Cublas:
         self.getPointerMode.restype = ctypes.c_int
         self.setPointerMode = cublas.cublasSetPointerMode_v2
         self.setPointerMode.restype = ctypes.c_int
+        self.setStream = cublas.cublasSetStream_v2
+        self.setStream.restype = ctypes.c_int
+#        ns = 100
+#        self.stream = numpy.ndarray((ns,), dtype=object)
+#        for i in range(ns):
+#            self.stream[i] = POINTER(ctypes.c_ubyte)()
+# #           print('creating stream %d' % (i + 1))
+#            err = createStream(ctypes.byref(self.stream[i]))
+#            if err != 0:
+#                print(err)
         if dt == numpy.float32:
             self.dsize = 4
             self.copy = cublas.cublasScopy_v2
@@ -128,5 +141,12 @@ class Cublas:
             self.gemm.restype = ctypes.c_int
         else:
             raise ValueError('data type %s not supported' % repr(dt))
+
     def __del__(self):
+
+#        from .cuda_wrap import deleteStream
+#        ns = self.stream.shape[0]
+#        for i in range(ns):
+##            print('deleting stream %d' % (i + 1))
+#            deleteStream(self.stream[i])
         destroy(self.handle)
