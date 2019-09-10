@@ -54,12 +54,18 @@ class Cublas:
     NoTrans = 0
     Trans = 1
     ConjTrans = 2
+    HostMode = ctypes.c_int(0)
+    DeviceMode = ctypes.c_int(1)
 
     def __init__(self, dt):
         self.handle = POINTER(ctypes.c_ubyte)()
         err = create(ctypes.byref(self.handle))
         if err != 0:
             raise RuntimeError('cublasCreate failure')
+        self.getPointerMode = cublas.cublasGetPointerMode_v2
+        self.getPointerMode.restype = ctypes.c_int
+        self.setPointerMode = cublas.cublasSetPointerMode_v2
+        self.setPointerMode.restype = ctypes.c_int
         if dt == numpy.float32:
             self.dsize = 4
             self.copy = cublas.cublasScopy_v2
