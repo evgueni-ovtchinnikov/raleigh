@@ -54,13 +54,19 @@ try:
 except:
     have_docopt = False
 
-#import math
+import math
 import numpy
 import numpy.linalg as nla
 import pylab
 import scipy.linalg as sla
 import sys
 import time
+
+try:
+    from sklearn.decomposition import PCA
+    have_sklearn = True
+except:
+    have_sklearn = False
 
 # in case this raleigh package is not pip installed (e.g. cloned from github)
 raleigh_path = '../..'
@@ -173,14 +179,85 @@ opt.block_size = block_size
 #opt.verbosity = verb
 # do pca
 start = time.time()
-mean, trans, comps = pca(A, opt, npc=rank, tol=atol, norm=norm, svtol=vtol, \
+mean_r, trans_r, comps_r = pca(A, opt, npc=rank, tol=atol, norm=norm, svtol=vtol, \
                          arch=arch, verb=verb)
 stop = time.time()
-time_pca = stop - start
-print('\npca time: %.1e' % time_pca)
-D = A - numpy.dot(trans, comps) - numpy.dot(e, mean)
+time_r = stop - start
+ncomp = comps_r.shape[0]
+print('\n%d principal components computed in %.1e sec' % (ncomp, time_r))
+D = A - numpy.dot(trans_r, comps_r) - numpy.dot(e, mean_r)
 err_max = numpy.amax(_norm(D, axis=1))/numpy.amax(_norm(A, axis=1))
 err_f = numpy.amax(nla.norm(D, ord='fro'))/numpy.amax(nla.norm(A, ord='fro'))
 print('\npca error: max %.1e, Frobenius %.1e' % (err_max, err_f))
+
+if have_sklearn:
+    if atol > 0:
+        print('\n--- solving with restarted sklearn.decomposition.PCA...\n')
+    else:
+        print('\n--- solving with sklearn.decomposition.PCA...\n')
+    if rank <= 0:
+        rank = max(1, min(m, n)//10)
+    A0 = None
+    norms = nla.norm(A, axis=1)
+    start = time.time()
+    skl_pca = PCA(rank)
+    sigma_skl = numpy.ndarray((0,), dtype=dtype)
+    comps_skl = numpy.ndarray((0, n), dtype=dtype)
+    As = A - numpy.dot(e, a)
+    if norm == 'f':
+        nrms = nla.norm(As, axis=1)
+        norm_fro2 = numpy.sum(norms*norms)
+        err_fro2 = numpy.sum(nrms*nrms)
+    while True:
+        skl_pca.fit(A)
+        sigma = skl_pca.singular_values_
+        comps = skl_pca.components_
+        if sigma_skl.shape[0] == 0:
+            sigma_max = sigma[0]
+        sigma_skl = numpy.concatenate((sigma_skl, sigma))
+        comps_skl = numpy.concatenate((comps_skl, comps))
+        stop = time.time()
+        time_s = stop - start
+        pcs = comps_skl.shape[0]
+        err_sgm = sigma[-1]/sigma_max
+        if norm == 'f':
+            err_fro2 -= numpy.sum(sigma*sigma)
+            err_fro = math.sqrt(err_fro2/norm_fro2)
+        print('%.2f sec: last singular value: sigma[%d] = %e = %.2e*sigma[0]' \
+            % (time_s, pcs - 1, sigma[-1], err_sgm))
+        if atol <= 0 or norm not in ['f', 'm'] and err_sgm < atol \
+            or norm == 'f' and err_fro < atol:
+            break
+        print('deflating...')
+        if A0 is None:
+            A0 = A.copy()
+        A -= numpy.dot(numpy.dot(As, comps.T), comps)
+        As = A - numpy.dot(e, a)
+        errs = nla.norm(As, axis = 1)
+        err_max = numpy.amax(errs)/numpy.amax(norms)
+        err_ave = math.sqrt(numpy.sum(errs*errs)/numpy.sum(norms*norms))
+        print('PCA error max l2: %.2e, Frobenius: %.2e, max sv: %.2e' % \
+            (err_max, err_ave, err_sgm))
+        if norm == 'f':
+            err = err_ave
+        elif norm == 'm':
+            err = err_max
+        else:
+            err = err_sgm
+        if err <= atol:
+            break
+        print('restarting...')
+    if A0 is None:
+        A0 = A
+    As = A0 - numpy.dot(e, a)
+    trans_skl = numpy.dot(As, comps_skl.T)
+    stop = time.time()
+    time_k = stop - start
+    print('sklearn time: %.1e' % time_k)
+    As -= numpy.dot(trans_skl, comps_skl)
+    errs = nla.norm(As, axis = 1)
+    err_max = numpy.amax(errs)/numpy.amax(norms)
+    err_ave = nla.norm(As, ord='fro')/nla.norm(A0, ord='fro')
+    print('PCA error max l2: %.2e, Frobenius: %.2e' % (err_max, err_ave))
 
 print('\ndone')
