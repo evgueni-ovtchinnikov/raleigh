@@ -4,7 +4,7 @@
 """Truncated SVD and PCA for a randomly generated matrix.
 
 The singular spectrum of the randomly generated test matrix imitates that
-encountered in Principal Component Analyisis or Tensor Network Theory
+encountered in Principal Component Analyisis of Tensor Network Theory
 applications (ascending-ordered singular values quickly approach zero).
 
 Usage:
@@ -12,7 +12,7 @@ Usage:
 
 Arguments:
   m  number of rows
-  n  number of rows
+  n  number of columns
   k  number of non-zero singular values
 
 Options:
@@ -140,7 +140,7 @@ if ptb:
 # set raleigh solver options
 opt = Options()
 opt.block_size = block_size
-opt.verbosity = verb
+#opt.verbosity = verb
 
 print('\n--- solving with truncated_svd...\n')
 start = time.time()
@@ -172,7 +172,8 @@ if do_pca:
     accurate scipy svds).
     '''
     start = time.time()
-    mean, trans, comps = pca(A, opt, npc=rank, tol=th, arch=arch, norm='m')
+    mean, trans, comps = pca(A, opt, npc=rank, tol=th, arch=arch, norm='m', \
+                             verb=verb)
     stop = time.time()
     time_pca = stop - start
     print('\npca time: %.1e' % time_pca)

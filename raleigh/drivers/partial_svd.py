@@ -218,6 +218,7 @@ class PSVDErrorCalculator:
         ncon = self.eigenvectors.nvec()
         new = ncon - self.ncon
         if new > 0:
+            err = self.err*self.err 
             x = self.eigenvectors
             sel = x.selected()
             x.select(new, self.ncon)
@@ -235,6 +236,8 @@ class PSVDErrorCalculator:
                     s = z.dot(self.aves)
                     y.add(self.ones, -1, s)
                 q = x.dots(y, transp=True)
+                q[q < 0] = 0
+                err[q <= 0] = 0
             else:
                 y = x.new_vectors(new, m)
                 self.op.apply(x, y)
@@ -245,9 +248,10 @@ class PSVDErrorCalculator:
                     s = y.dot(self.ones)
                     y.add(self.ones, -1.0/m, s)
                 q = y.dots(y, transp=True)
-            s = self.err*self.err - q.reshape((m, 1))
-            s[s < 0] = 0
-            self.err = numpy.sqrt(s)
+            q = q.reshape((m, 1))
+            err -= q
+            err[err < 0] = 0
+            self.err = numpy.sqrt(err)
             self.eigenvectors.select(sel[1], sel[0])
             self.ncon = ncon
         return self.err
