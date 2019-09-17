@@ -51,6 +51,7 @@ class Cublas:
     '''CUBLAS wrapper.
     '''
 
+    CtypesPtr = ctypes.POINTER(ctypes.c_ubyte)
     NoTrans = 0
     Trans = 1
     ConjTrans = 2
@@ -93,6 +94,8 @@ class Cublas:
             self.dot.restype = ctypes.c_int
             self.gemm = cublas.cublasSgemm_v2
             self.gemm.restype = ctypes.c_int
+            self.gemm_batched = cublas.cublasSgemmBatched
+            self.gemm_batched.restype = ctypes.c_int
         elif dt == numpy.float64:
             self.dsize = 8
             self.copy = cublas.cublasDcopy_v2
@@ -107,6 +110,8 @@ class Cublas:
             self.dot.restype = ctypes.c_int
             self.gemm = cublas.cublasDgemm_v2
             self.gemm.restype = ctypes.c_int
+            self.gemm_batched = cublas.cublasDgemmBatched
+            self.gemm_batched.restype = ctypes.c_int
         elif dt == numpy.complex64:
             self.dsize = 8
             self.copy = cublas.cublasCcopy_v2
@@ -123,6 +128,8 @@ class Cublas:
             self.dot.restype = ctypes.c_int
             self.gemm = cublas.cublasCgemm_v2
             self.gemm.restype = ctypes.c_int
+            self.gemm_batched = cublas.cublasCgemmBatched
+            self.gemm_batched.restype = ctypes.c_int
         elif dt == numpy.complex128:
             self.dsize = 16
             self.copy = cublas.cublasZcopy_v2
@@ -139,6 +146,8 @@ class Cublas:
             self.dot.restype = ctypes.c_int
             self.gemm = cublas.cublasZgemm_v2
             self.gemm.restype = ctypes.c_int
+            self.gemm_batched = cublas.cublasZgemmBatched
+            self.gemm_batched.restype = ctypes.c_int
         else:
             raise ValueError('data type %s not supported' % repr(dt))
 

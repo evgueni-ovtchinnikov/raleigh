@@ -174,24 +174,51 @@ class Vectors:
 
     def dots(self, other, transp=False):
         if transp:
-            dptr_u = self.data_ptr()
-            dptr_v = other.data_ptr()
             m = self.nvec()
             n = self.dimension()
-            u = numpy.ndarray((m, n), dtype=self.data_type())
-            v = numpy.ndarray((m, n), dtype=self.data_type())
+            c_n = ctypes.c_int(n)
+            c_m = ctypes.c_int(m)
+            c_k = ctypes.c_int(1)
+            d_pu = self.data_ptr()
+            d_pv = other.data_ptr()
+            size_dptr = ctypes.sizeof(d_pu)
+            alpha = self.__to_floats(1.0)
+            beta = self.__to_floats(0.0)
+            size_w = n*self.__dsize
             w = numpy.ndarray((n,), dtype=self.data_type())
-            hptr_u = ctypes.c_void_p(u.ctypes.data)
-            hptr_v = ctypes.c_void_p(v.ctypes.data)
-            size = m*n*self.__dsize
-            _try_calling(cuda.memcpy(hptr_u, dptr_u, size, cuda.memcpyD2H))
-            _try_calling(cuda.memcpy(hptr_v, dptr_v, size, cuda.memcpyD2H))
-            if other.is_complex():
-                for i in range(n):
-                    w[i] = numpy.dot(v[:, i].conj(), u[:, i])
+            h_pw = ctypes.c_void_p(w.ctypes.data)
+            d_pw = Cublas.CtypesPtr()
+            _try_calling(cuda.malloc(ctypes.byref(d_pw), size_w))
+            iota = numpy.arange(n)*self.__dsize
+            ptr_u = ctypes.cast(d_pu, ctypes.c_void_p)
+            ptr_v = ctypes.cast(d_pv, ctypes.c_void_p)
+            ptr_w = ctypes.cast(d_pw, ctypes.c_void_p)
+            h_ppu = iota + ptr_u.value
+            h_ppv = iota + ptr_v.value
+            h_ppw = iota + ptr_w.value
+            size_pp = n*size_dptr
+            d_ppu = Cublas.CtypesPtr()
+            d_ppv = Cublas.CtypesPtr()
+            d_ppw = Cublas.CtypesPtr()
+            _try_calling(cuda.malloc(ctypes.byref(d_ppu), size_pp))
+            _try_calling(cuda.malloc(ctypes.byref(d_ppv), size_pp))
+            _try_calling(cuda.malloc(ctypes.byref(d_ppw), size_pp))
+            _try_calling(cuda.memcpy(d_ppu, h_ppu.ctypes.data, size_pp, cuda.memcpyH2D))
+            _try_calling(cuda.memcpy(d_ppv, h_ppv.ctypes.data, size_pp, cuda.memcpyH2D))
+            _try_calling(cuda.memcpy(d_ppw, h_ppw.ctypes.data, size_pp, cuda.memcpyH2D))
+            if self.__is_complex:
+                Trans = Cublas.ConjTrans
             else:
-                for i in range(n):
-                    w[i] = numpy.dot(v[:, i], u[:, i])
+                Trans = Cublas.Trans
+            _try_calling(self.__cublas.gemm_batched(self.__cublas.handle, \
+                Cublas.NoTrans, Trans, \
+                c_k, c_k, c_m, alpha, d_ppu, c_n, d_ppv, c_n, \
+                beta, d_ppw, c_k, c_n))
+            _try_calling(cuda.memcpy(h_pw, d_pw, size_w, cuda.memcpyD2H))
+            _try_calling(cuda.free(d_ppu))
+            _try_calling(cuda.free(d_ppv))
+            _try_calling(cuda.free(d_ppw))
+            _try_calling(cuda.free(d_pw))
             return w
         iu = self.first()
         iv = other.first()
