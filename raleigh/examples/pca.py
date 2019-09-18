@@ -26,7 +26,6 @@ Arguments:
 
 Options:
   -a <arch>, --arch=<arch>   architecture [default: cpu]
-  -b <blk> , --bsize=<blk>   block CG block size (<0: auto) [default: -1]
   -e <atol>, --atol=<atol >  pca approximation error [default: 0]
   -m <nrm> , --norm=<nrm>    approximation error norm to use:
                              f: Frobenius norm of the error matrix
@@ -57,7 +56,6 @@ except:
 import math
 import numpy
 import numpy.linalg as nla
-import pylab
 import scipy.linalg as sla
 import sys
 import time
@@ -76,7 +74,6 @@ if raleigh_path not in sys.path:
 from raleigh.algebra import verbosity
 verbosity.level = 2
 
-from raleigh.core.solver import Options
 from raleigh.drivers.pca import pca
 
 
@@ -121,7 +118,6 @@ if have_docopt:
     k = int(args['<r>'])
     alpha = float(args['--alpha'])
     arch = args['--arch']
-    block_size = int(args['--bsize'])
     norm = args['--norm']
     rank = int(args['--rank'])
     atol = float(args['--atol'])
@@ -136,7 +132,6 @@ else:
     k = 1000
     alpha = 100
     arch = 'cpu'
-    block_size = -1
     rank = -1
     norm = 'f'
     atol = 0
@@ -153,85 +148,89 @@ else:
     dtype = numpy.float32
 
 print('\n--- generating the matrix...')
-f_sigma = lambda t: t**(-alpha) #.astype(dtype)
-#f_sigma = lambda t: 2**(-alpha*t).astype(dtype)
+f_sigma = lambda t: t**(-alpha)
 sigma0, u0, v0, A = random_matrix_for_svd(m, n, k, f_sigma, dtype)
 if ptb:
     a = 2*numpy.random.rand(m, n).astype(dtype) - 1
     s = 10*_norm(a, axis=1)
     A += numpy.reshape(sigma0[-1]/s, (m, 1))*a
 
-pylab.figure()
-pylab.plot(numpy.arange(1, k + 1, 1), sigma0)
-pylab.xscale('log')
-pylab.yscale('log')
-pylab.grid()
-pylab.title('singular values')
-pylab.show()
-
 e = numpy.ones((m, 1), dtype=dtype)
 a = numpy.dot(e.T, A)/m
 
 print('\n--- solving with raleigh pca...\n')
-# set raleigh solver options
-opt = Options()
-opt.block_size = block_size
-#opt.verbosity = verb
-# do pca
 start = time.time()
-mean_r, trans_r, comps_r = pca(A, opt, npc=rank, tol=atol, norm=norm, svtol=vtol, \
+mean_r, trans_r, comps_r = pca(A, npc=rank, tol=atol, norm=norm, svtol=vtol, \
                          arch=arch, verb=verb)
 stop = time.time()
 time_r = stop - start
 ncomp = comps_r.shape[0]
 print('\n%d principal components computed in %.1e sec' % (ncomp, time_r))
+
+# check the accuracy of PCA approximation L R + e a to A
 D = A - numpy.dot(trans_r, comps_r) - numpy.dot(e, mean_r)
 err_max = numpy.amax(_norm(D, axis=1))/numpy.amax(_norm(A, axis=1))
 err_f = numpy.amax(nla.norm(D, ord='fro'))/numpy.amax(nla.norm(A, ord='fro'))
 print('\npca error: max %.1e, Frobenius %.1e' % (err_max, err_f))
 
 if have_sklearn:
+
+    # sklearn PCA needs to be given the number of wanted components;
+    # since it is generally unknown in advance, one has to apply deflation:
+    # a certain number of components is computed, and if the PCA error
+    # (the difference A - e a - L R) is not small enough, computed L R
+    # is subtracted from A and further PCs are computed
+
+    if rank <= 0:
+        # a guess of how many PCs are needed
+        rank = max(1, min(m, n)//10)
+    A0 = A.copy() # A will be changed, save a copy
+    norms = nla.norm(A, axis=1)
+
     if atol > 0:
         print('\n--- solving with restarted sklearn.decomposition.PCA...\n')
     else:
         print('\n--- solving with sklearn.decomposition.PCA...\n')
-    if rank <= 0:
-        rank = max(1, min(m, n)//10)
-    A0 = None
-    norms = nla.norm(A, axis=1)
     start = time.time()
     skl_pca = PCA(rank)
     sigma_skl = numpy.ndarray((0,), dtype=dtype)
     comps_skl = numpy.ndarray((0, n), dtype=dtype)
+    trans_skl = numpy.ndarray((m, 0), dtype=dtype)
     As = A - numpy.dot(e, a)
     if norm == 'f':
+        # compute Frobenius norms of A and initial PCA error
         nrms = nla.norm(As, axis=1)
         norm_fro2 = numpy.sum(norms*norms)
         err_fro2 = numpy.sum(nrms*nrms)
     while True:
+        # compute next portion of PCs
         skl_pca.fit(A)
         sigma = skl_pca.singular_values_
         comps = skl_pca.components_
+        trans = numpy.dot(As, comps.T)
         if sigma_skl.shape[0] == 0:
             sigma_max = sigma[0]
         sigma_skl = numpy.concatenate((sigma_skl, sigma))
         comps_skl = numpy.concatenate((comps_skl, comps))
+        trans_skl = numpy.concatenate((trans_skl, trans), axis=1)
         stop = time.time()
         time_s = stop - start
         pcs = comps_skl.shape[0]
         err_sgm = sigma[-1]/sigma_max
         if norm == 'f':
+            # update Frobenius norm of PCA error
             err_fro2 -= numpy.sum(sigma*sigma)
             err_fro = math.sqrt(err_fro2/norm_fro2)
         print('%.2f sec: last singular value: sigma[%d] = %e = %.2e*sigma[0]' \
             % (time_s, pcs - 1, sigma[-1], err_sgm))
         if atol <= 0 or norm not in ['f', 'm'] and err_sgm < atol \
             or norm == 'f' and err_fro < atol:
+            # desired accuracy achieved, quit the loop
             break
         print('deflating...')
-        if A0 is None:
-            A0 = A.copy()
-        A -= numpy.dot(numpy.dot(As, comps.T), comps)
+        # subtract computed approximation from A
+        A -= numpy.dot(trans, comps)
+        # compute PCA errors
         As = A - numpy.dot(e, a)
         errs = nla.norm(As, axis = 1)
         err_max = numpy.amax(errs)/numpy.amax(norms)
@@ -245,15 +244,15 @@ if have_sklearn:
         else:
             err = err_sgm
         if err <= atol:
+            # desired accuracy achieved, quit the loop
             break
         print('restarting...')
-    if A0 is None:
-        A0 = A
-    As = A0 - numpy.dot(e, a)
-    trans_skl = numpy.dot(As, comps_skl.T)
     stop = time.time()
     time_k = stop - start
-    print('sklearn time: %.1e' % time_k)
+    print('\n---\nsklearn time: %.1e' % time_k)
+
+    # check the accuracy of PCA approximation
+    As = A0 - numpy.dot(e, a)
     As -= numpy.dot(trans_skl, comps_skl)
     errs = nla.norm(As, axis = 1)
     err_max = numpy.amax(errs)/numpy.amax(norms)
