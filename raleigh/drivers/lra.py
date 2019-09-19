@@ -107,7 +107,7 @@ class LowerRankApproximation:
         '''
         m, n = data_matrix.shape()
         user_bs = opt.block_size
-        if user_bs < 1:
+        if user_bs < 1 and (rank < 0 or rank > 100):
             opt.block_size = 128
         if opt.convergence_criteria is None:
             no_cc = True
@@ -158,10 +158,10 @@ class LowerRankApproximation:
         '''
         if self.__rank == 0:
             raise RuntimeError('no existing LRA data to update')
-        if rank > 0 and rank <= self.__rank:
-            return
-        if max_rank > 0 and self.__rank <= max_rank:
-            return
+#        if rank > 0 and rank <= self.__rank:
+#            return
+#        if max_rank > 0 and self.__rank <= max_rank:
+#            return
         if opt is None:
             opt = self.__opt
         if tol is None:
@@ -241,19 +241,25 @@ class LowerRankApproximation:
             vmean = None
 
         left1 = v.orthogonalize(right0)
-        if norm == 'f':
-            update_tol = -tol*fnorm
-        elif norm == 'm':
-            update_tol = -tol*maxl2norm
-        else:
-            update_tol = -tol*sigma0
 
-        s = abs(v.dots(v))
-        fnorm = math.sqrt(numpy.sum(s))
-        maxl2norm = numpy.amax(numpy.sqrt(s))
-        
         lra = LowerRankApproximation()
-        lra.compute(data_matrix, opt, tol=update_tol, norm=norm, verb=verb)
+        if rank < 0:
+            if norm == 'f':
+                update_tol = -tol*fnorm
+            elif norm == 'm':
+                update_tol = -tol*maxl2norm
+            else:
+                update_tol = -tol*sigma0
+            s = abs(v.dots(v))
+            fnorm = math.sqrt(numpy.sum(s))
+            maxl2norm = numpy.amax(numpy.sqrt(s))
+            lra.compute(data_matrix, opt, tol=update_tol, norm=norm, verb=verb)
+        else:
+            if verb > 0:
+                urank = rank*n1//(n0 + n1)
+                print('computing new %d components...' % urank)
+            lra.compute(data_matrix, opt, rank=urank, verb=verb)
+
         left11 = lra.left_v()
         right10 = lra.right_v()
         
@@ -275,49 +281,53 @@ class LowerRankApproximation:
         wl.copy(left0)
         right0.multiply(x, wr)
         wr.copy(right0)
-        ncomp = right0.nvec()
-        
-        e = numpy.ones((n, 1), dtype=dtype)
-        if norm == 'f':
-            r = left0.dots(left0)
-            s = math.sqrt(numpy.sum(r))
-        elif norm == 'm':
-            r = left0.dots(left0, transp=True)
-            s = numpy.amax(numpy.sqrt(abs(r)))
-        else:
-            s = sigma[0]
-        if shift:
-            a = vmean.dot(vmean)
-            b = vmean.dot(right0)
-            p = left0.new_vectors(1)
-            left0.multiply(b, p)
+
+        if rank < 0:
+            ncomp = right0.nvec()
+            e = numpy.ones((n, 1), dtype=dtype)
             if norm == 'f':
-                q = left0.new_vectors(e.T)
-                c = q.dot(p)
-                s = math.sqrt(s*s + 2*c + n*a)
+                r = left0.dots(left0)
+                s = math.sqrt(numpy.sum(r))
             elif norm == 'm':
-                p = p.data()
-                s = math.sqrt(numpy.amax(r + 2*p.T) + a)
-        #print(s)
-        lmd = sigma*sigma
-        eps = s*tol/7
-        if norm == 'm':
-            errs = numpy.zeros((1, n))
-        s = 0
-        i = 1
-        while s < eps and i < ncomp:
-            if norm == 'f':
-                s = math.sqrt(s*s + lmd[ncomp - i])
-            elif norm == 'm':
-                left0.select(1, ncomp - i)
-                lft = left0.data()
-                errs += lft * lft
-                s = numpy.amax(numpy.sqrt(errs))
+                r = left0.dots(left0, transp=True)
+                s = numpy.amax(numpy.sqrt(abs(r)))
             else:
-                s = sigma[ncomp - i]
-            i += 1
-        print('discarding %d components out of %d' % (i, ncomp))
-        ncomp -= i
+                s = sigma[0]
+            if shift:
+                a = vmean.dot(vmean)
+                b = vmean.dot(right0)
+                p = left0.new_vectors(1)
+                left0.multiply(b, p)
+                if norm == 'f':
+                    q = left0.new_vectors(e.T)
+                    c = q.dot(p)
+                    s = math.sqrt(s*s + 2*c + n*a)
+                elif norm == 'm':
+                    p = p.data()
+                    s = math.sqrt(numpy.amax(r + 2*p.T) + a)
+            #print(s)
+            lmd = sigma*sigma
+            eps = s*tol/7
+            if norm == 'm':
+                errs = numpy.zeros((1, n))
+            s = 0
+            i = 1
+            while s < eps and i < ncomp:
+                if norm == 'f':
+                    s = math.sqrt(s*s + lmd[ncomp - i])
+                elif norm == 'm':
+                    left0.select(1, ncomp - i)
+                    lft = left0.data()
+                    errs += lft * lft
+                    s = numpy.amax(numpy.sqrt(errs))
+                else:
+                    s = sigma[ncomp - i]
+                i += 1
+            print('discarding %d components out of %d' % (i, ncomp))
+            ncomp -= i
+        else:
+            ncomp = rank
+
         left0.select(ncomp)
         right0.select(ncomp)
         self.__left = None

@@ -17,11 +17,15 @@ Arguments:
 Options:
   -a <arch>, --arch=<arch>   architecture [default: cpu]
   -b <bsze>, --bsize=<bsze>  batch size (<0: all data) [default: -1]
+  -c <comp>, --ncomp=<comp>  number of components to compute (< 0: not known,
+                             compute based on the PCA approximation error 
+                             tolerance or interactively) [default: -1]
   -e <atol>, --aetol=<atol>  PCA approximation error tolerance (<= 0: not set,
                              run in interactive mode) [default: 0]
   -n <nsmp>, --nsamp=<nsmp>  number of samples to use (< 0: all) [default: -1]
   -t <vtol>, --vtol=<vtol>   singular value error tolerance [default: 1e-3]
   -v <verb>, --verb=<verb>   verbosity level [default: 0]
+  -s, --show  display data as images (data must be 3D)
 
 Created on Wed Sep 18 13:45:14 2019
 """
@@ -55,20 +59,24 @@ if have_docopt:
     args = docopt(__doc__, version=__version__)
     file = args['<data>']
     m = int(args['--nsamp'])
+    npc = int(args['--ncomp'])
     atol = float(args['--aetol'])
     batch_size = int(args['--bsize'])
     vtol = float(args['--vtol'])
     verb = int(args['--verb'])
     arch = args['--arch']
+    show = args['--show']
 else:
     print('\n=== docopt not found, using default options...\n')
     file = sys.argv[1]
     m = -1
+    npc = -1
     atol = 0
     batch_size = -1
     vtol = 1e-3
     verb = 0
     arch = 'cpu'
+    show = False
 
 dtype = numpy.float32
 
@@ -97,7 +105,7 @@ vmax = numpy.amax(data)
 print('data range: %e to %e' % (vmin, vmax))
 
 start = time.time()
-mean, trans, comps = pca(data, tol=atol, arch=arch, verb=verb, \
+mean, trans, comps = pca(data, npc=npc, tol=atol, arch=arch, verb=verb, \
     batch_size=batch_size)
 stop = time.time()
 elapsed_time = stop - start
@@ -115,7 +123,7 @@ err_max = numpy.amax(_norm(err, axis=1))/numpy.amax(_norm(data, axis=1))
 err_f = numpy.amax(nla.norm(err, ord='fro'))/numpy.amax(nla.norm(data, ord='fro'))
 print('\npca error: max %.1e, Frobenius %.1e' % (err_max, err_f))
 
-if len(shape) == 3:
+if show and len(shape) == 3:
     # assume data are images
     import pylab
     ny = shape[1]

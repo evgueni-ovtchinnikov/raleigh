@@ -16,6 +16,9 @@ Arguments:
 
 Options:
   -a <arch>, --arch=<arch>   architecture [default: cpu]
+  -c <comp>, --ncomp=<comp>  number of components to compute (< 0: not known,
+                             compute based on the PCA approximation error 
+                             tolerance or interactively) [default: -1]
   -e <atol>, --aetol=<atol>  PCA approximation error tolerance (<= 0: not set,
                              run in interactive mode) [default: 0]
   -n <nsmp>, --nsamp=<nsmp>  number of samples to use (< 0: all) [default: -1]
@@ -37,6 +40,7 @@ except:
 import numpy
 import numpy.linalg as nla
 import sys
+import time
 
 # in case this raleigh package is not pip installed (e.g. cloned from github)
 raleigh_path = '../..'
@@ -57,6 +61,7 @@ if have_docopt:
     m = int(args['--nsamp'])
     atol = float(args['--aetol'])
     mu = int(args['--usize'])
+    npc = int(args['--ncomp'])
     vtol = float(args['--vtol'])
     verb = int(args['--verb'])
     arch = args['--arch']
@@ -66,6 +71,7 @@ else:
     file = sys.argv[1]
     m = -1
     mu = 1
+    npc = -1
     atol = 0
     vtol = 1e-3
     verb = 0
@@ -93,9 +99,12 @@ vmin = numpy.amin(data)
 vmax = numpy.amax(data)
 print('data range: %e to %e' % (vmin, vmax))
 
-mean, trans, comps = pca(data, tol=atol, arch=arch, verb=verb)
+start = time.time()
+mean, trans, comps = pca(data, npc=npc, tol=atol, arch=arch, verb=verb)
+stop = time.time()
+elapsed_time = stop - start
 ncon = trans.shape[1]
-print('%d principal components computed' % ncon)
+print('%d principal components computed in %.1e sec' % (ncon, elapsed_time))
 
 # check the accuracy of PCA approximation L R + e a to A
 e = numpy.ones((m, 1), dtype=dtype)
@@ -105,10 +114,13 @@ err_f = numpy.amax(nla.norm(err, ord='fro'))/numpy.amax(nla.norm(data, ord='fro'
 print('\npca error: max %.1e, Frobenius %.1e' % (err_max, err_f))
 
 if mu > 0:
-    mean, trans, comps = pca(update, tol=atol, arch=arch, verb=verb, \
+    start = time.time()
+    mean, trans, comps = pca(update, npc=npc, tol=atol, arch=arch, verb=verb, \
                              have=(mean, trans, comps))
+    stop = time.time()
+    elapsed_time = stop - start
     ncon = trans.shape[1]
-    print('%d principal components computed' % ncon)
+    print('%d principal components computed in %.1e sec' % (ncon, elapsed_time))
     e = numpy.ones((m + mu, 1), dtype=dtype)
     data = numpy.concatenate((data, update))
     err = data - numpy.dot(trans, comps) - numpy.dot(e, mean)
