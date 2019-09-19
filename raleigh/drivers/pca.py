@@ -93,7 +93,7 @@ def pca(A, opt=Options(), npc=-1, tol=0, norm='f', mpc=-1, svtol=1e-3, \
         else:
             data_matrix = AMatrix(A, arch=arch, copy_data=True)
             lra.update(data_matrix, opt=opt, rank=npc, tol=tol, norm=norm, \
-                       max_rank=mpc, svtol=svtol)
+                       max_rank=mpc, svtol=svtol, verb=verb)
     else:
         lra.icompute(A, batch_size, opt=opt, rank=npc, tol=tol, norm=norm, \
                         max_rank=mpc, svtol=svtol, shift=True, arch=arch, \
