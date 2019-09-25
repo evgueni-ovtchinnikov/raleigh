@@ -42,6 +42,12 @@ import numpy.linalg as nla
 import sys
 import time
 
+try:
+    from sklearn.decomposition import IncrementalPCA
+    have_sklearn = True
+except:
+    have_sklearn = False
+
 # in case this raleigh package is not pip installed (e.g. cloned from github)
 raleigh_path = '../..'
 if raleigh_path not in sys.path:
@@ -87,7 +93,7 @@ all_data = numpy.load(file, mmap_mode='r')
 shape = all_data.shape
 m_all = shape[0]
 n = numpy.prod(shape[1:])
-all_data = numpy.memmap.reshape(all_data, (m_all,n))
+all_data = numpy.memmap.reshape(all_data, (m_all, n))
 
 if m < 1 or m > m_all:
     m = m_all
@@ -99,6 +105,8 @@ else:
 
 if batch_size < 0:
     batch_size = m
+
+e = numpy.ones((m, 1), dtype=dtype)
 
 vmin = numpy.amin(data)
 vmax = numpy.amax(data)
@@ -113,18 +121,40 @@ elapsed_time = stop - start
 sigma = _norm(trans, axis=0)
 ncon = sigma.shape[0]
 print('%d principal components computed' % ncon)
-if atol > 0:
+if atol > 0 or npc > 0:
     print('elapsed time: %.2e' % elapsed_time)
 
 # check the accuracy of PCA approximation L R + e a to A
-e = numpy.ones((m, 1), dtype=dtype)
-err = data - numpy.dot(trans, comps) - numpy.dot(e, mean)
-err_max = numpy.amax(_norm(err, axis=1))/numpy.amax(_norm(data, axis=1))
-err_f = numpy.amax(nla.norm(err, ord='fro'))/numpy.amax(nla.norm(data, ord='fro'))
-print('\npca error: max %.1e, Frobenius %.1e' % (err_max, err_f))
+w = numpy.dot(trans, comps) + numpy.dot(e, mean)
+w -= data
+err_max = numpy.amax(_norm(w, axis=1))/numpy.amax(_norm(data, axis=1))
+err_f = numpy.amax(nla.norm(w, ord='fro')) \
+        /numpy.amax(nla.norm(data, ord='fro'))
+print('pca error: max %.1e, Frobenius %.1e' % (err_max, err_f))
+del w
+
+if have_sklearn:
+    if npc < 0:
+        npc = ncon
+    print('\n--- solving with sklearn.decomposition.IncrementalPCA...')
+    start = time.time()
+    skl_ipca = IncrementalPCA(n_components=npc, batch_size=batch_size)
+    skl_trans = skl_ipca.fit_transform(data)
+    skl_comps = skl_ipca.components_
+    skl_mean = numpy.reshape(skl_ipca.mean_, (1, n))
+    stop = time.time()
+    time_skl = stop - start
+    print('elapsed time: %.1e' % time_skl)
+    pcs = skl_comps.shape[0]
+    skl_err = data - numpy.dot(skl_trans, skl_comps) - numpy.dot(e, skl_mean)
+    err_max = numpy.amax(_norm(skl_err, axis=1)) \
+                /numpy.amax(_norm(data, axis=1))
+    err_f = numpy.amax(nla.norm(skl_err, ord='fro')) \
+            /numpy.amax(nla.norm(data, ord='fro'))
+    print('pca error: max %.1e, Frobenius %.1e' % (err_max, err_f))
 
 if show and len(shape) == 3:
-    # assume data are images
+    # data samples are 2D: assume they are images
     import pylab
     ny = shape[1]
     nx = shape[2]
@@ -140,7 +170,12 @@ if show and len(shape) == 3:
         img = numpy.dot(trans[i,:], comps) + mean
         pca_image = numpy.reshape(img, (ny, nx))
         pylab.figure()
-        pylab.title('PCA approximation of the image')
+        pylab.title('PCA approximation of the image (raleigh)')
+        pylab.imshow(pca_image, cmap='gray')
+        img = numpy.dot(skl_trans[i,:], skl_comps) + skl_mean
+        pca_image = numpy.reshape(img, (ny, nx))
+        pylab.figure()
+        pylab.title('PCA approximation of the image (sklearn)')
         pylab.imshow(pca_image, cmap='gray')
         pylab.show()
 
