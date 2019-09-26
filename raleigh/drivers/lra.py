@@ -307,7 +307,7 @@ class LowerRankApproximation:
                     s = math.sqrt(numpy.amax(r + 2*p.T) + a)
             #print(s)
             lmd = sigma*sigma
-            eps = s*tol/7
+            eps = s*tol/4 #7
             if norm == 'm':
                 errs = numpy.zeros((1, n))
             s = 0

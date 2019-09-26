@@ -136,6 +136,8 @@ del w
 if have_sklearn:
     if npc < 0:
         npc = ncon
+    if npc > batch_size:
+        batch_size = npc
     print('\n--- solving with sklearn.decomposition.IncrementalPCA...')
     start = time.time()
     skl_ipca = IncrementalPCA(n_components=npc, batch_size=batch_size)
