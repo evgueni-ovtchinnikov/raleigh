@@ -347,9 +347,15 @@ def test(u, v):
     z_numpy.zero()
     q = u_numpy.dots(u_numpy)
     print(nla.norm(q))
+    # save and delete u_numpy
+    u_numpy.copy(w_numpy)
     del u_numpy
+    # reference still there
     q = z_numpy.dots(z_numpy)
     print(nla.norm(q))
+    # restore u_numpy
+    z_numpy.select_all()
+    u_numpy = z_numpy
 
     if have_cblas:
         z_cblas = u_cblas.reference()
@@ -359,9 +365,12 @@ def test(u, v):
         z_cblas.zero()
         q = u_cblas.dots(u_cblas)
         print(nla.norm(q))
+        u_cblas.copy(w_cblas)
         del u_cblas
         q = z_cblas.dots(z_cblas)
         print(nla.norm(q))
+        z_cblas.select_all()
+        u_cblas = z_cblas
 
     if have_cublas:
         z_cublas = u_cublas.reference()
@@ -376,19 +385,37 @@ def test(u, v):
         print(nla.norm(q))
 
     print('----\n testing numpy svd...')
-    z_numpy.select_all()
-    v_numpy.copy(z_numpy)
+    w_numpy.copy(u_numpy)
+    s = nla.norm(u_numpy.data())
     start = time.time()
-    q, sigma = v_numpy.svd()
+    sigma, q = w_numpy.svd()
     stop = time.time()
     elapsed = stop - start
-#    print(q.shape, q.dtype)
-#    print(sigma.shape, sigma.dtype)
-    z_numpy.multiply(q, w_numpy)
+    print(sigma)
+    print(q.shape, q.dtype)
+    print(sigma.shape, sigma.dtype)
     w_numpy.scale(sigma, multiply=True)
-    z_numpy.add(v_numpy, -1.0)
-    t = nla.norm(z_numpy.data())/s
+    w_numpy.multiply(q, v_numpy)
+    u_numpy.add(v_numpy, -1.0)
+    t = nla.norm(u_numpy.data())/s
     print('error: %e, time: %.2e' % (t, elapsed))
+
+    if have_cblas:
+        print('----\n testing cblas svd...')
+        w_cblas.copy(u_cblas)
+        s = nla.norm(u_cblas.data())
+        start = time.time()
+        sigma, q = w_cblas.svd()
+        stop = time.time()
+        elapsed = stop - start
+        print(sigma)
+        print(q.shape, q.dtype)
+        print(sigma.shape, sigma.dtype)
+        w_cblas.scale(sigma, multiply=True)
+        w_cblas.multiply(q, v_cblas)
+        u_cblas.add(v_cblas, -1.0)
+        t = nla.norm(u_cblas.data())/s
+        print('error: %e, time: %.2e' % (t, elapsed))
 
 narg = len(sys.argv)
 if narg < 4 or sys.argv[1] == '-h' or sys.argv[1] == '--help':

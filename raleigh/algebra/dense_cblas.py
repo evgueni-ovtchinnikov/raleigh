@@ -252,6 +252,29 @@ class Vectors(NDArrayVectors):
             c_n, c_m, c_k, mn_one, ptr_u, c_n, ptr_q, c_m, pl_one, ptr_v, c_n)
         return q
 
+    def svd(self):
+        m = self.nvec()
+        n = self.dimension()
+        c_n = ctypes.c_int(n)
+        c_m = ctypes.c_int(m)
+        v = numpy.ndarray((m, m), dtype=self.data_type())
+        dtype = self.data_type()
+        if dtype == numpy.complex64:
+            dtype = numpy.float32
+        elif dtype == numpy.complex128:
+            dtype = numpy.float64            
+        sigma = numpy.ndarray((m,), dtype=dtype)
+        sd = numpy.ndarray((m,), dtype=self.data_type())
+        ptr_u = _array_ptr(self.data())
+        ptr_v = ctypes.c_void_p(v.ctypes.data)
+        ptr_s = ctypes.c_void_p(sigma.ctypes.data)
+        ptr_sd = ctypes.c_void_p(sd.ctypes.data)
+        jobu = self.__cblas.ovwrt
+        jobv = self.__cblas.small
+        self.__cblas.svd(Cblas.ColMajor, jobu, jobv, c_n, c_m, \
+            ptr_u, c_n, ptr_s, ptr_u, c_n, ptr_v, c_m, ptr_sd)
+        return sigma, v.T
+
     def apply(self, A, output, transp=False):
         a = A.data()
         if transp:

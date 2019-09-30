@@ -123,9 +123,9 @@ class Vectors(NDArrayVectors):
         return self.new_vectors(q)
 
     def svd(self):
-        u, sigma, self.data()[:,:] = \
+        v, sigma, self.data()[:,:] = \
             numpy.linalg.svd(self.data(), full_matrices=False)
-        return u.T, sigma
+        return sigma, v.T
 
     def apply(self, A, output, transp=False):
         a = A.data()
