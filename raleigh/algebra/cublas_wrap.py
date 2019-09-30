@@ -46,6 +46,20 @@ except:
         print('CUBLAS not found, switching to cpu...')
     raise RuntimeError('CUBLAS not found')
 
+try:
+    if platform == 'win32':
+        from .cuda_wrap import cuda_path
+        cusolver_dll = glob.glob(cuda_path + '/cusolver64*')[0]
+        if verbosity.level > 0:
+            print('loaded %s' % cusolver_dll)
+        cusolver = ctypes.CDLL(cublas_dll, mode=ctypes.RTLD_GLOBAL)
+    else:
+        cusolver = ctypes.CDLL('libcusolver.so', mode=ctypes.RTLD_GLOBAL)
+except:
+    if verbosity.level > -1:
+        print('cuSOLVER library not found')
+    cusolver = None
+
 
 class Cublas:
     '''CUBLAS wrapper.
