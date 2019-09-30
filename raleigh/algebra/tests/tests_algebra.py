@@ -375,6 +375,20 @@ def test(u, v):
         q = z_cublas.dots(z_cublas)
         print(nla.norm(q))
 
+    print('----\n testing numpy svd...')
+    z_numpy.select_all()
+    v_numpy.copy(z_numpy)
+    start = time.time()
+    q, sigma = v_numpy.svd()
+    stop = time.time()
+    elapsed = stop - start
+#    print(q.shape, q.dtype)
+#    print(sigma.shape, sigma.dtype)
+    z_numpy.multiply(q, w_numpy)
+    w_numpy.scale(sigma, multiply=True)
+    z_numpy.add(v_numpy, -1.0)
+    t = nla.norm(z_numpy.data())/s
+    print('error: %e, time: %.2e' % (t, elapsed))
 
 narg = len(sys.argv)
 if narg < 4 or sys.argv[1] == '-h' or sys.argv[1] == '--help':

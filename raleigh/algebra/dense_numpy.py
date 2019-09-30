@@ -122,6 +122,11 @@ class Vectors(NDArrayVectors):
         self.data()[:,:] -= numpy.dot(q.T, other.data())
         return self.new_vectors(q)
 
+    def svd(self):
+        u, sigma, self.data()[:,:] = \
+            numpy.linalg.svd(self.data(), full_matrices=False)
+        return u.T, sigma
+
     def apply(self, A, output, transp=False):
         a = A.data()
         if transp:
