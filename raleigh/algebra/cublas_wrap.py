@@ -20,10 +20,10 @@ try:
     if platform == 'win32':
         cublas_dll = glob.glob(cuda_path + '/cublas64*')[0]
         cublas = ctypes.CDLL(cublas_dll, mode=ctypes.RTLD_GLOBAL)
+        if verbosity.level > 0:
+            print('loaded %s' % cublas_dll)
     else:
         cublas = ctypes.CDLL('libcublas.so', mode=ctypes.RTLD_GLOBAL)
-    if verbosity.level > 0:
-        print('loaded %s' % cublas_dll)
 
     cublasCreate = cublas.cublasCreate_v2
     cublasCreate.argtypes = [POINTER(POINTER(ctypes.c_ubyte))]
@@ -54,10 +54,10 @@ try:
         from .cuda_wrap import cuda_path
         cusolver_dll = glob.glob(cuda_path + '/cusolver64*')[0]
         cusolver = ctypes.CDLL(cusolver_dll, mode=ctypes.RTLD_GLOBAL)
+        if verbosity.level > 0:
+            print('loaded %s' % cusolver_dll)
     else:
         cusolver = ctypes.CDLL('libcusolver.so', mode=ctypes.RTLD_GLOBAL)
-    if verbosity.level > 0:
-        print('loaded %s' % cusolver_dll)
 
     cusolverCreate = cusolver.cusolverDnCreate
     cusolverCreate.argtypes = [POINTER(POINTER(ctypes.c_ubyte))]
