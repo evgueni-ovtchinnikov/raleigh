@@ -532,53 +532,63 @@ class Vectors:
         return q
 
     def svd(self):
-        m = self.nvec()
-        n = self.dimension()
-        c_n = ctypes.c_int(n)
-        c_m = ctypes.c_int(m)
-        c_lw = ctypes.c_int()
-        err = self.__cublas.svd_buff_size(self.__cublas.cusolver_handle, \
-            c_n, c_m, ctypes.byref(c_lw))
-        lw = c_lw.value
+        try:
+            from .dense_cblas import Vectors as cpuVectors
+            print('using mkl cblas...')
+        except:
+            print('mkl cblas not found, using numpy...')
+            from .dense_numpy import Vectors as cpuVectors
+        u = cpuVectors(self.data())
+        sigma, vt = u.svd()
+        self.fill(u.data())
+        return sigma, vt
+#        m = self.nvec()
+#        n = self.dimension()
+#        c_n = ctypes.c_int(n)
+#        c_m = ctypes.c_int(m)
+#        c_lw = ctypes.c_int()
+#        err = self.__cublas.svd_buff_size(self.__cublas.cusolver_handle, \
+#            c_n, c_m, ctypes.byref(c_lw))
+#        lw = c_lw.value
 #        print('buffer size: %d' % lw)
-        dptr_r = Cublas.CtypesPtr()
-        dptr_s = Cublas.CtypesPtr()
-        dptr_u = self.data_ptr()
-        dptr_v = Cublas.CtypesPtr()
-        dptr_w = Cublas.CtypesPtr()
-        dptr_i = Cublas.CtypesPtr()
-        dtype = self.data_type()
-        dsize = self.data_size()
-        _try_calling(cuda.malloc(ctypes.byref(dptr_w), lw*dsize))
-        v = numpy.ndarray((m, m), dtype=dtype)
-        _try_calling(cuda.malloc(ctypes.byref(dptr_v), m*m*dsize))
-        if dtype == numpy.complex64:
-            dtype = numpy.float32
-            dsize = 4
-        elif dtype == numpy.complex128:
-            dtype = numpy.float64            
-            dsize = 8
-        sigma = numpy.ndarray((m,), dtype=dtype)
-        _try_calling(cuda.malloc(ctypes.byref(dptr_r), m*dsize))
-        _try_calling(cuda.malloc(ctypes.byref(dptr_s), m*dsize))
-        _try_calling(cuda.malloc(ctypes.byref(dptr_i), 4))
-        jobu = self.__cublas.ovwrt
-        jobv = self.__cublas.all
-        err = self.__cublas.svd(self.__cublas.cusolver_handle, jobu, jobv, \
-            n, m, dptr_u, n, dptr_s, dptr_u, n, dptr_v, m, \
-            dptr_w, lw, dptr_r, dptr_i)
-#            c_n, c_m, dptr_u, c_n, dptr_s, dptr_u, c_n, dptr_v, c_m, \
-#            dptr_w, c_lw, dptr_r, dptr_i)
-        hptr_s = ctypes.c_void_p(sigma.ctypes.data)
-        _try_calling(cuda.memcpy(hptr_s, dptr_s, m*dsize, cuda.memcpyD2H))
-        i = ctypes.c_int()
-        _try_calling(cuda.memcpy(ctypes.byref(i), dptr_i, 4, cuda.memcpyD2H))
-        _try_calling(cuda.free(dptr_r))
-        _try_calling(cuda.free(dptr_s))
-        _try_calling(cuda.free(dptr_v))
-        _try_calling(cuda.free(dptr_w))
-        _try_calling(cuda.free(dptr_i))
-        return sigma, v.T
+#        dptr_r = Cublas.CtypesPtr()
+#        dptr_s = Cublas.CtypesPtr()
+#        dptr_u = self.data_ptr()
+#        dptr_v = Cublas.CtypesPtr()
+#        dptr_w = Cublas.CtypesPtr()
+#        dptr_i = Cublas.CtypesPtr()
+#        dtype = self.data_type()
+#        dsize = self.data_size()
+#        _try_calling(cuda.malloc(ctypes.byref(dptr_w), lw*dsize))
+#        v = numpy.ndarray((m, m), dtype=dtype)
+#        _try_calling(cuda.malloc(ctypes.byref(dptr_v), m*m*dsize))
+#        if dtype == numpy.complex64:
+#            dtype = numpy.float32
+#            dsize = 4
+#        elif dtype == numpy.complex128:
+#            dtype = numpy.float64            
+#            dsize = 8
+#        sigma = numpy.ndarray((m,), dtype=dtype)
+#        _try_calling(cuda.malloc(ctypes.byref(dptr_r), m*dsize))
+#        _try_calling(cuda.malloc(ctypes.byref(dptr_s), m*dsize))
+#        _try_calling(cuda.malloc(ctypes.byref(dptr_i), 4))
+#        jobu = self.__cublas.ovwrt
+#        jobv = self.__cublas.all
+#        err = self.__cublas.svd(self.__cublas.cusolver_handle, jobu, jobv, \
+#            n, m, dptr_u, n, dptr_s, dptr_u, n, dptr_v, m, \
+#            dptr_w, lw, dptr_r, dptr_i)
+##            c_n, c_m, dptr_u, c_n, dptr_s, dptr_u, c_n, dptr_v, c_m, \
+##            dptr_w, c_lw, dptr_r, dptr_i)
+#        hptr_s = ctypes.c_void_p(sigma.ctypes.data)
+#        _try_calling(cuda.memcpy(hptr_s, dptr_s, m*dsize, cuda.memcpyD2H))
+#        i = ctypes.c_int()
+#        _try_calling(cuda.memcpy(ctypes.byref(i), dptr_i, 4, cuda.memcpyD2H))
+#        _try_calling(cuda.free(dptr_r))
+#        _try_calling(cuda.free(dptr_s))
+#        _try_calling(cuda.free(dptr_v))
+#        _try_calling(cuda.free(dptr_w))
+#        _try_calling(cuda.free(dptr_i))
+#        return sigma, v.T
 
     def zero(self):
         m = self.nvec()

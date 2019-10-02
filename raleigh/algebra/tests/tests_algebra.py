@@ -383,22 +383,22 @@ def test(u, v):
         t = nla.norm(u_cblas.data())/s
         print('error: %e, time: %.2e' % (t, elapsed))
 
-#    if have_cublas:
-#        print('----\n testing cublas svd...')
-#        w_cublas.copy(u_cublas)
-#        s = nla.norm(u_cublas.data())
-#        start = time.time()
-#        sigma, q = w_cublas.svd()
-#        stop = time.time()
-#        elapsed = stop - start
-##        print(sigma)
-##        print(q.shape, q.dtype)
-##        print(sigma.shape, sigma.dtype)
-#        w_cblas.scale(sigma, multiply=True)
-#        w_cblas.multiply(q, v_cblas)
-#        u_cblas.add(v_cblas, -1.0)
-#        t = nla.norm(u_cblas.data())/s
-#        print('error: %e, time: %.2e' % (t, elapsed))
+    if have_cublas:
+        print('----\n testing cublas svd...')
+        w_cublas.copy(u_cublas)
+        s = nla.norm(u_cublas.data())
+        start = time.time()
+        sigma, q = w_cublas.svd()
+        stop = time.time()
+        elapsed = stop - start
+#        print(sigma)
+#        print(q.shape, q.dtype)
+#        print(sigma.shape, sigma.dtype)
+        w_cublas.scale(sigma, multiply=True)
+        w_cublas.multiply(q, v_cublas)
+        u_cublas.add(v_cublas, -1.0)
+        t = nla.norm(u_cublas.data())/s
+        print('error: %e, time: %.2e' % (t, elapsed))
 
     print('----\n testing numpy append axis=1...')
     w_numpy.copy(x_numpy)
