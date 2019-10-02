@@ -11,6 +11,7 @@ Arguments:
 
 import numpy
 import numpy.linalg as nla
+import scipy.linalg as sla
 import sys
 import time
 
@@ -22,21 +23,58 @@ if raleigh_path not in sys.path:
 from raleigh.algebra import verbosity
 verbosity.level = 2
 
+from raleigh.algebra.dense_numpy import Vectors as numpyVectors
+try:
+    from raleigh.algebra.dense_cblas import Vectors as cblasVectors
+    have_cblas = True
+except:
+    have_cblas = False
+try:
+    import raleigh.algebra.cuda_wrap as cuda
+    from raleigh.algebra.dense_cublas import Vectors as cublasVectors
+    have_cublas = True
+except:
+    have_cublas = False
 
-def test(u, v):
 
-    from raleigh.algebra.dense_numpy import Vectors as numpyVectors
-    try:
-        from raleigh.algebra.dense_cblas import Vectors as cblasVectors
-        have_cblas = True
-    except:
-        have_cblas = False
-    try:
-        import raleigh.algebra.cuda_wrap as cuda
-        from raleigh.algebra.dense_cublas import Vectors as cublasVectors
-        have_cublas = True
-    except:
-        have_cublas = False
+def _conj(a):
+    if a.dtype.kind == 'c':
+        return a.conj()
+    else:
+        return a
+
+
+def test_lra_ortho(u, v, wu, wv):
+
+    print('transfom via svd for R...')
+    u.copy(wu)
+    s, q = wu.svd()
+    v.multiply(_conj(q.T), wv)
+    wv.scale(s, multiply=True)
+    p = wu.dot(u)
+    t = wv.dots(wv)
+    wv.add(v, -1.0, p)
+    t = numpy.sqrt(wv.dots(wv)/t)
+    print('transformation error: %.1e' % nla.norm(t))
+    print('transfom via svd for L...')
+    wv.copy(v)
+    s, q = v.svd()
+    wu.multiply(_conj(q.T), u)
+    p = v.dot(v)
+    lmd, x = sla.eigh(p)
+    print('L non-orthogonality: %.1e' % (lmd[-1]/lmd[0] - 1.0))
+    v.scale(s, multiply=True)
+    p = wu.dot(u)
+    t = wv.dots(wv)
+    wv.add(v, -1.0, p)
+    t = numpy.sqrt(wv.dots(wv)/t)
+    print('transformation error: %.1e' % nla.norm(t))
+    q = u.dot(u)
+    lmd, x = sla.eigh(q)
+    print('R non-orthonormality: %.1e' % (lmd[-1]/lmd[0] - 1.0))
+
+
+def test1(u, v):
 
     u_numpy = numpyVectors(u.copy())
     v_numpy = numpyVectors(v.copy())
@@ -55,17 +93,6 @@ def test(u, v):
         w_cublas = cublasVectors(v)
         x_cublas = cublasVectors(v)
 
-    if have_cublas:
-        print('----\n testing cublasVectors.zero...')
-        w_cublas.zero()
-        t = nla.norm(w_cublas.data())
-        print('error: %e' % t)
-        print('----\n testing cublasVectors.fill_random...')
-        w_cublas.fill_random()
-        w_data = w_cublas.data()
-        print(numpy.mean(w_data))
-        print(numpy.var(w_data))
-
     print('----\n testing numpy copy...')
     start = time.time()
     u_numpy.copy(v_numpy)
@@ -80,7 +107,8 @@ def test(u, v):
         u_cblas.copy(v_cblas)
         stop = time.time()
         elapsed = stop - start
-        t = nla.norm(v_cblas.data() - v_numpy.data())/s
+#        t = nla.norm(v_cblas.data() - v_numpy.data())/s
+        t = nla.norm(v_cblas.data() - u_cblas.data())/s
         print('error: %e, time: %.2e' % (t, elapsed))
 
     if have_cublas:
@@ -90,7 +118,8 @@ def test(u, v):
         cuda.synchronize()
         stop = time.time()
         elapsed = stop - start
-        t = nla.norm(v_cublas.data() - v_numpy.data())/s
+#        t = nla.norm(v_cublas.data() - v_numpy.data())/s
+        t = nla.norm(v_cublas.data() - u_cublas.data())/s
         print('error: %e, time: %.2e' % (t, elapsed))
 
     m = u_numpy.nvec()
@@ -449,6 +478,46 @@ def test(u, v):
         s = w_cublas.dots(w_cublas)
         print(nla.norm(s))
 
+    if have_cublas:
+        print('----\n testing cublasVectors.zero...')
+        w_cublas.zero()
+        t = nla.norm(w_cublas.data())
+        print('error: %e' % t)
+        print('----\n testing cublasVectors.fill_random...')
+        w_cublas.fill_random()
+        w_data = w_cublas.data()
+        print(numpy.mean(w_data))
+        print(numpy.var(w_data))
+
+
+def test2(u, v):
+
+    print('----\n testing orthogonalization of L and R in L R*...')
+
+    u_numpy = numpyVectors(u.copy())
+    v_numpy = numpyVectors(v.copy())
+    w_numpy = numpyVectors(v.copy())
+    x_numpy = numpyVectors(v.copy())
+    print('----\n numpy...')
+    test_lra_ortho(u_numpy, v_numpy, w_numpy, x_numpy)
+
+    if have_cblas:
+        u_cblas = cblasVectors(u.copy())
+        v_cblas = cblasVectors(v.copy())
+        w_cblas = cblasVectors(v.copy())
+        x_cblas = cblasVectors(v.copy())
+        print('----\n cblas...')
+        test_lra_ortho(u_cblas, v_cblas, w_cblas, x_cblas)
+
+    if have_cublas:
+        u_cublas = cublasVectors(u)
+        v_cublas = cublasVectors(v)
+        w_cublas = cublasVectors(v)
+        x_cublas = cublasVectors(v)
+        print('----\n cublas...')
+        test_lra_ortho(u_cublas, v_cublas, w_cublas, x_cublas)
+
+
 narg = len(sys.argv)
 if narg < 4 or sys.argv[1] == '-h' or sys.argv[1] == '--help':
     print('\nUsage:\n')
@@ -479,10 +548,12 @@ try:
 
     if dt == 'c' or dt == 'z':
         print('testing on complex data...')
-        test(u + 1j*v, v - 2j*u)
+        test1(u + 1j*v, v - 2j*u)
+        test2(u + 1j*v, v - 2j*u)
     else:
         print('testing on real data...')
-        test(u, v)
+        test1(u, v)
+        test2(u, v)
         
     print('done')
 
