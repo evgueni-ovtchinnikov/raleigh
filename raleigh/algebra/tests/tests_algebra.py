@@ -43,37 +43,19 @@ def test(u, v):
     w_numpy = numpyVectors(v.copy())
     x_numpy = numpyVectors(v.copy())
 
-    print('----\n testing numpy orthogonalize...')
-    w_numpy.fill_orthogonal()
-    s = w_numpy.dots(w_numpy)
-    s = numpy.sqrt(s)
-    w_numpy.scale(s)
-    q0 = x_numpy.dot(x_numpy)
-    q_numpy = x_numpy.orthogonalize(w_numpy)
-    q = x_numpy.dot(w_numpy)
-    print('error: %e' % (nla.norm(q)/nla.norm(q0)))
-
     if have_cblas:
         u_cblas = cblasVectors(u.copy())
         v_cblas = cblasVectors(v.copy())
-        print('----\n testing cblas orthogonalize...')
-        w_cblas = cblasVectors(w_numpy.data())
+        w_cblas = cblasVectors(v.copy())
         x_cblas = cblasVectors(v.copy())
-        q0 = x_cblas.dot(x_cblas)
-        q_cblas = x_cblas.orthogonalize(w_cblas)
-        q = w_cblas.dot(x_cblas)
-        print('error: %e' % (nla.norm(q)/nla.norm(q0)))
 
     if have_cublas:
         u_cublas = cublasVectors(u)
         v_cublas = cublasVectors(v)
-        w_cublas = cublasVectors(w_numpy.data())
+        w_cublas = cublasVectors(v)
         x_cublas = cublasVectors(v)
-        print('----\n testing cublas orthogonalize...')
-        q0 = x_cublas.dot(x_cublas)
-        q_cublas = x_cublas.orthogonalize(w_cublas)
-        q = w_cublas.dot(x_cublas)
-        print('error: %e' % (nla.norm(q)/nla.norm(q0)))
+
+    if have_cublas:
         print('----\n testing cublasVectors.zero...')
         w_cublas.zero()
         t = nla.norm(w_cublas.data())
@@ -308,6 +290,7 @@ def test(u, v):
         t = nla.norm(v_cublas.data())/s
         print('error: %e, time: %.2e' % (t, elapsed))
 
+    print('----\n testing numpy vector reference...')
     nv = u_numpy.nvec()//2
     z_numpy = u_numpy.reference()
     z_numpy.select(nv, nv)
@@ -327,6 +310,7 @@ def test(u, v):
     u_numpy = z_numpy
 
     if have_cblas:
+        print('----\n testing cblas vector reference...')
         z_cblas = u_cblas.reference()
         z_cblas.select(nv, nv)
         q = u_cblas.dots(u_cblas)
@@ -342,6 +326,7 @@ def test(u, v):
         u_cblas = z_cblas
 
     if have_cublas:
+        print('----\n testing cublas vector reference...')
         z_cublas = u_cublas.reference()
         z_cublas.select(nv, nv)
         q = u_cublas.dots(u_cublas)
@@ -399,6 +384,34 @@ def test(u, v):
         u_cublas.add(v_cublas, -1.0)
         t = nla.norm(u_cublas.data())/s
         print('error: %e, time: %.2e' % (t, elapsed))
+
+    print('----\n testing numpy orthogonalize...')
+    w_numpy.fill_orthogonal()
+    s = w_numpy.dots(w_numpy)
+    s = numpy.sqrt(s)
+    w_numpy.scale(s)
+    q0 = x_numpy.dot(x_numpy)
+    q_numpy = x_numpy.orthogonalize(w_numpy)
+    q = x_numpy.dot(w_numpy)
+    print('error: %e' % (nla.norm(q)/nla.norm(q0)))
+
+    if have_cblas:
+        print('----\n testing cblas orthogonalize...')
+        #w_cblas = cblasVectors(w_numpy.data())
+        w_cblas.fill(w_numpy.data())
+        q0 = x_cblas.dot(x_cblas)
+        q_cblas = x_cblas.orthogonalize(w_cblas)
+        q = w_cblas.dot(x_cblas)
+        print('error: %e' % (nla.norm(q)/nla.norm(q0)))
+
+    if have_cublas:
+        #w_cublas = cublasVectors(w_numpy.data())
+        w_cublas.fill(w_numpy.data())
+        print('----\n testing cublas orthogonalize...')
+        q0 = x_cublas.dot(x_cublas)
+        q_cublas = x_cublas.orthogonalize(w_cublas)
+        q = w_cublas.dot(x_cublas)
+        print('error: %e' % (nla.norm(q)/nla.norm(q0)))
 
     print('----\n testing numpy append axis=1...')
     w_numpy.copy(x_numpy)
