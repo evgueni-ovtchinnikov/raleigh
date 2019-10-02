@@ -124,7 +124,6 @@ class LowerRankApproximation:
         psvd = PartialSVD()
         psvd.compute(data_matrix, opt=opt, nsv=(0, rank), shift=shift, \
             refine=self.ortho)
-#        print(psvd.sigma[:5])
         self.__left_v = psvd.left_v()
         self.__left_v.scale(psvd.sigma, multiply=True)
         self.__right_v = psvd.right_v()
@@ -202,13 +201,20 @@ class LowerRankApproximation:
         if self.ortho is False:
             wl = left0.new_vectors(left0.nvec())
             wr = right0.new_vectors(right0.nvec())
-            G = left0.dot(left0)
             H = right0.dot(right0)
-            lmd, x = sla.eigh(-G, H)
-            left0.multiply(nla.inv(x.T), wl)
-            wl.copy(left0)
-            right0.multiply(x, wr)
-            wr.copy(right0)
+            mu, x = sla.eigh(H)
+            q = mu[0]/mu[-1]
+            print(mu[0], mu[-1])
+            if q < 0.5:
+                _lra_ortho(left0, right0, wl, wr)
+            else:
+                G = left0.dot(left0)
+                lmd, x = sla.eigh(-G, H)
+                y = nla.inv(x.T)
+                left0.multiply(y, wl)
+                wl.copy(left0)
+                right0.multiply(x, wr)
+                wr.copy(right0)
         shift = self.__mean_v is not None
         sigma = numpy.sqrt(left0.dots(left0))
         sigma0 = sigma[0]
@@ -270,55 +276,20 @@ class LowerRankApproximation:
         left0.append(left01)
         left1.append(left11)
         left0.append(left1, axis=1)
-#        x = v.dot(right0)
-#        y = v.dot(v)
-#        print(nla.norm(x)/nla.norm(y))
-#        x = right10.dot(right0)
-#        print(nla.norm(x))
-#        H = right0.dot(right0)
-#        mu, x = sla.eigh(H)
-#        print(mu[-1]/mu[0])
-#        H = right10.dot(right10)
-#        mu, x = sla.eigh(H)
-#        print(mu[-1]/mu[0])
         right0.append(right10)
 
         wl = left0.new_vectors(left0.nvec())
         wr = right0.new_vectors(right0.nvec())
-#        H = right0.dot(right0)
-#        mu, x = sla.eigh(H)
-#        print(mu[-1]/mu[0])
-#        left0.multiply(x, wl)
-#        wl.copy(left0)
-#        right0.multiply(x, wr)
-#        wr.copy(right0)
-        G = left0.dot(left0)
         H = right0.dot(right0)
-        lmd, x = sla.eigh(-G, H)
-        sigma = numpy.sqrt(abs(lmd))
-        mu, y = sla.eigh(numpy.dot(x.T, x))
-        q = mu[-1]/mu[0]
-#        print(q)
-#        print(sigma[:5])
-        y = nla.inv(x.T)
-#        nx = x.shape[0]
-#        z = numpy.dot(x.T, x) - numpy.eye(nx, nx)
-#        print(nla.norm(z))
-        left0.multiply(y, wl)
-        wl.copy(left0)
-        right0.multiply(x, wr)
-        wr.copy(right0)
-        if q > 2:
+        mu, x = sla.eigh(H)
+        q = mu[0]/mu[-1]
+#        print(mu[0], mu[-1])
+        if q < 0.5:
+            _lra_ortho(left0, right0, wl, wr)
+        else:
             G = left0.dot(left0)
-            H = right0.dot(right0)
             lmd, x = sla.eigh(-G, H)
-            sigma = numpy.sqrt(abs(lmd))
-#        mu, y = sla.eigh(numpy.dot(x.T, x))
-#        print(mu[-1]/mu[0])
-#            print(sigma[:5])
             y = nla.inv(x.T)
-#        z = numpy.dot(x.T, x) - numpy.eye(nx, nx)
-#        print(nla.norm(z))
             left0.multiply(y, wl)
             wl.copy(left0)
             right0.multiply(x, wr)
@@ -460,6 +431,7 @@ class LowerRankApproximation:
 
 
 class _DefaultLRAConvergenceCriteria:
+
     def __init__(self, tol):
         self.tolerance = tol
     def set_tolerance(self, tolerance):
@@ -468,5 +440,24 @@ class _DefaultLRAConvergenceCriteria:
         res = solver.convergence_data('residual', i)
         lmd = solver.convergence_data('eigenvalue', i)
         lmd_max = solver.convergence_data('max eigenvalue', i)
-        tol = (lmd/lmd_max)**1.5*self.tolerance
+        tol = abs(lmd/lmd_max)**1.5*self.tolerance
         return res >= 0 and res*res <= tol
+
+
+def _conj(a):
+    if a.dtype.kind == 'c':
+        return a.conj()
+    else:
+        return a
+
+
+def _lra_ortho(v, u, wv, wu):
+
+    u.copy(wu)
+    s, q = wu.svd()
+    v.multiply(_conj(q.T), wv)
+    wv.scale(s, multiply=True)
+    wv.copy(v)
+    s, q = v.svd()
+    wu.multiply(_conj(q.T), u)
+    v.scale(s, multiply=True)
