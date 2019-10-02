@@ -534,9 +534,9 @@ class Vectors:
     def svd(self):
         try:
             from .dense_cblas import Vectors as cpuVectors
-            print('using mkl cblas...')
+            #print('using mkl cblas...')
         except:
-            print('mkl cblas not found, using numpy...')
+            #print('mkl cblas not found, using numpy...')
             from .dense_numpy import Vectors as cpuVectors
         u = cpuVectors(self.data())
         sigma, vt = u.svd()
