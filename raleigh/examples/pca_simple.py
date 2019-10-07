@@ -56,12 +56,13 @@ if narg > 3:
     m = min(m, int(sys.argv[3]))
 if m < data.shape[0]:
     data = data[:m, :]
+arch = 'cpu' if narg < 5 else 'gpu'
 
 numpy.random.seed(1) # make results reproducible
 
 print('\n--- solving with raleigh pca...\n')
 start = timeit.default_timer()
-mean, trans, comps = pca(data, npc=npc)
+mean, trans, comps = pca(data, npc=npc, arch=arch)
 elapsed = timeit.default_timer() - start
 ncomp = comps.shape[0]
 print('%d principal components computed in %.2e sec' % (ncomp, elapsed))
