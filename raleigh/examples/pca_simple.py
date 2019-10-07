@@ -8,12 +8,13 @@ Computes a given number of principal components of a dataset.
 
 If sklearn is installed, compares with sklearn.decomposition.PCA.
 
-Usage: pca_simple <data_file> <n_components> [<n_samples>]
+Usage: pca_simple <data_file> <n_components> [<n_samples>[, <gpu>]]
 
 data_file    : the name of the file containing data
 n_components : number of principal components wanted
 n_samples    : number of data samples to process (optional, all data processed
                by default)
+gpu          : run on GPU if this argument is present (value ignored)
 '''
 
 import numpy
@@ -44,7 +45,7 @@ def _pca_err(data, mean, trans, comps):
 
 narg = len(sys.argv)
 if narg < 3:
-    print('Usage: pca_simple <data_file> <n_components> [<n_samples>]')
+    print('Usage: pca_simple <data_file> <n_components> [<n_samples>[, <gpu>]]')
 file = sys.argv[1]
 npc = int(sys.argv[2])
 data = numpy.load(file, mmap_mode='r')
