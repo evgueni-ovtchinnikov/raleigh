@@ -8,13 +8,11 @@ Computes a given number of principal components of a dataset.
 
 If sklearn is installed, compares with sklearn.decomposition.PCA.
 
-Usage: pca_simple <data_file> <n_components> [<n_samples>[, <gpu>]]
+Usage: pca_simple <data_file> <n_components> [gpu]
 
 data_file    : the name of the file containing data
 n_components : number of principal components wanted
-n_samples    : number of data samples to process (optional, all data processed
-               by default)
-gpu          : run on GPU if this argument is present (value ignored)
+gpu          : run raleigh pca on GPU if this argument is present
 '''
 
 import numpy
@@ -45,19 +43,14 @@ def _pca_err(data, mean, trans, comps):
 
 narg = len(sys.argv)
 if narg < 3:
-    print('Usage: pca_simple <data_file> <n_components> [<n_samples>[, <gpu>]]')
-file = sys.argv[1]
+    print('Usage: pca_simple <data_file> <n_components> [gpu]')
+data = numpy.load(sys.argv[1])
 npc = int(sys.argv[2])
-data = numpy.load(file, mmap_mode='r')
 m = data.shape[0]
 if len(data.shape) > 2:
     n = numpy.prod(data.shape[1:])
-    data = numpy.memmap.reshape(data, (m, n))
-if narg > 3:
-    m = min(m, int(sys.argv[3]))
-if m < data.shape[0]:
-    data = data[:m, :]
-arch = 'cpu' if narg < 5 else 'gpu'
+    data = numpy.reshape(data, (m, n))
+arch = 'cpu' if narg < 4 else 'gpu'
 
 numpy.random.seed(1) # make results reproducible
 
@@ -68,7 +61,7 @@ elapsed = timeit.default_timer() - start
 ncomp = comps.shape[0]
 print('%d principal components computed in %.2e sec' % (ncomp, elapsed))
 em, ef = _pca_err(data, mean, trans, comps)
-print('pca error: max %.1e, Frobenius %.1e' % (em, ef))
+print('PCA error: max 2-norm %.1e, Frobenius norm %.1e' % (em, ef))
 
 try:
     from sklearn.decomposition import PCA
@@ -81,7 +74,7 @@ try:
     ncomp = comps.shape[0]
     print('%d principal components computed in %.2e sec' % (ncomp, elapsed))
     em, ef = _pca_err(data, mean, trans, comps)
-    print('pca error: max %.1e, Frobenius %.1e' % (em, ef))
+    print('PCA error: max 2-norm %.1e, Frobenius norm %.1e' % (em, ef))
 except:
     pass
 print('done')

@@ -6,15 +6,22 @@
 
 Computes reduced-feature dataset approximation of specified accuracy.
 
-If sklearn is installed, compares with restarted sklearn.decomposition.PCA.
+PCA allows to approximate m data samples of size n represented by rows of an 
+m-by-n matrix X by the rows of the matrix X_k = e a + Y_k Z_k, where 
+    e = numpy.ones((m, 1)),
+    a = numpy.mean(X, axis=0).reshape((1, n)), 
+    the rows of m-by-k matrix Y_k are reduced-features data samples, and 
+    the rows of k-by-n matrix Z_k are principal components.
 
-Usage: pca_simple <data_file> <tolerance> [<n_samples>[, <gpu>]]
+This script computes PCA approximation X_k such that the ratio of the Frobenius
+norm of the difference X - X_k to the Frobenius norm of X is not greater than
+the user-specified tolerance.
 
-data_file : the name of the file containing data
+Usage: pca_simple <data_file> <tolerance> [gpu]
+
+data_file : the name of the file containing data matrix X
 tolerance : approximation tolerance wanted
-n_samples : number of data samples to process (optional, all data processed
-            by default)
-gpu       : run on GPU if this argument is present (value ignored)
+gpu       : run raleigh pca on GPU if this argument is present
 """
 
 import math
@@ -46,19 +53,14 @@ def _pca_err(data, mean, trans, comps):
 
 narg = len(sys.argv)
 if narg < 3:
-    print('Usage: pca_simple <data_file> <tolerance> [<n_samples>[, <gpu>]]')
-file = sys.argv[1]
-data = numpy.load(file, mmap_mode='r')
+    print('Usage: pca_simple <data_file> <tolerance> [gpu]')
+data = numpy.load(sys.argv[1])
 m = data.shape[0]
 n = numpy.prod(data.shape[1:])
 if len(data.shape) > 2:
-    data = numpy.memmap.reshape(data, (m, n))
+    data = numpy.reshape(data, (m, n))
 tol = float(sys.argv[2])
-if narg > 3:
-    m = min(m, int(sys.argv[3]))
-if m < data.shape[0]:
-    data = data[:m, :]
-arch = 'cpu' if narg < 5 else 'gpu'
+arch = 'cpu' if narg < 4 else 'gpu'
 
 numpy.random.seed(1) # make results reproducible
 
@@ -69,17 +71,16 @@ elapsed = timeit.default_timer() - start
 ncomp = comps.shape[0]
 print('%d principal components computed in %.2e sec' % (ncomp, elapsed))
 em, ef = _pca_err(data, mean, trans, comps)
-print('pca error: max %.1e, Frobenius %.1e' % (em, ef))
+print('PCA error: max 2-norm %.1e, Frobenius norm %.1e' % (em, ef))
 
 try:
     from sklearn.decomposition import PCA
-    # sklearn PCA needs to be given the number of wanted components;
+    # sklearn PCA needs to be given the number k of wanted components;
     # since it is generally unknown in advance, one has to apply deflation:
-    # a certain number of components and corresponding reduced-features samples
-    # are computed, and if the PCA error 
-    #    pca_err = data - mean - reduced_data * components
-    # is not small enough, then PCs of data - reduced_data * components are
-    # computed recursively
+    # a certain number k of principal components and corresponding 
+    # reduced-features samples are computed, and if the PCA error E_k = X - X_k
+    # is not small enough, then further k PCs of X (which are PCs of E_k) are 
+    # computed etc. until the PCA error falls below the required tolerance
     print('\n--- solving with sklearn PCA...')
     dtype = data.dtype
     npc = max(1, min(m, n)//10) # a guess of sufficient number of PCs
@@ -124,7 +125,7 @@ try:
     ncomp = comps_skl.shape[0]
     print('%d principal components computed in %.2e sec' % (ncomp, elapsed))
     em, ef = _pca_err(data0, mean, trans_skl, comps_skl)
-    print('pca error: max %.1e, Frobenius %.1e' % (em, ef))
+    print('PCA error: max 2-norm %.1e, Frobenius norm %.1e' % (em, ef))
 except:
     pass
 print('done')
