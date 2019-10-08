@@ -47,7 +47,8 @@ em, ef = pca_error(data[: m, :], mean, trans, comps)
 print('PCA error: max %.1e, Frobenius %.1e' % (em, ef))
 
 print('\nmore data arrived, updating PCs for %d data samples...' % m_all)
-mean, trans, comps = pca(data[m :, :], tol=atol, verb=1, \
+npc = comps.shape[0] if atol == 0 else -1
+mean, trans, comps = pca(data[m :, :], npc=npc, tol=atol, verb=1, \
     have=(mean, trans, comps))
 print('%d principal components computed' % trans.shape[1])
 em, ef = pca_error(data, mean, trans, comps)
