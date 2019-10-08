@@ -262,8 +262,8 @@ class LowerRankApproximation:
             maxl2norm = numpy.amax(numpy.sqrt(s))
             lra.compute(data_matrix, opt, tol=update_tol, norm=norm, verb=verb)
         else:
+            urank = rank*n1//(n0 + n1)
             if verb > 0:
-                urank = rank*n1//(n0 + n1)
                 print('computing new %d components...' % urank)
             lra.compute(data_matrix, opt, rank=urank, verb=verb)
 
@@ -319,7 +319,7 @@ class LowerRankApproximation:
                     p = p.data()
                     s = math.sqrt(numpy.amax(r + 2*p.T) + a)
             #print(s)
-            lmd = sigma*sigma
+            #lmd = sigma*sigma
             eps = s*tol/4 #7
             if norm == 'm':
                 errs = numpy.zeros((1, n))
@@ -327,7 +327,8 @@ class LowerRankApproximation:
             i = 1
             while s < eps and i < ncomp:
                 if norm == 'f':
-                    s = math.sqrt(s*s + lmd[ncomp - i])
+                    s = math.sqrt(s*s + r[ncomp - i])
+#                    s = math.sqrt(s*s + lmd[ncomp - i])
                 elif norm == 'm':
                     left0.select(1, ncomp - i)
                     lft = left0.data()

@@ -32,7 +32,7 @@ def _norm(a, axis):
     
 
 def _pca_err(data, mean, trans, comps):
-    ones = numpy.ones((m, 1), dtype=data.dtype)
+    ones = numpy.ones((data.shape[0], 1), dtype=data.dtype)
     if len(mean.shape) < 2:
         mean = numpy.reshape(mean, (1, comps.shape[1]))
     err = numpy.dot(trans, comps) + numpy.dot(ones, mean) - data
