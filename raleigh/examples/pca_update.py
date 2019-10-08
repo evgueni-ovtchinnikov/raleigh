@@ -8,11 +8,11 @@ Principal Components update demo.
 Performs PCA on a chunk of data, then addds more data and updates Principal 
 Components.
 
-Usage: pca_update <data_file> <tolerance> [<quota>]
+Usage: pca_update <data_file> <tolerance> [<q_first>]
 
 data_file : the name of the file containing data matrix X
-tolerance : approximation tolerance wanted
-quota     : relative size of the first chunk (default 0.5)
+tolerance : PCA approximation tolerance wanted
+q_first   : relative size of the first chunk (default 0.5)
 """
 
 import numpy
@@ -23,7 +23,6 @@ import sys
 raleigh_path = '../..'
 if raleigh_path not in sys.path:
     sys.path.insert(0, raleigh_path)
-
 from raleigh.drivers.pca import pca
 
 
@@ -43,41 +42,30 @@ def _pca_err(data, mean, trans, comps):
 
 narg = len(sys.argv)
 if narg < 3:
-    print('Usage: pca_update <data_file> <tolerance> [<quota>]')
-all_data = numpy.load(sys.argv[1])
+    print('Usage: pca_update <data_file> <tolerance> [<q_first>]')
+data = numpy.load(sys.argv[1])
 atol = float(sys.argv[2])
-if narg > 3:
-    q = float(sys.argv[3])
-else:
-    q = 0.5
-verb = 1
-dtype = all_data.dtype
+q = float(sys.argv[3]) if narg > 3 else 0.5
 
 numpy.random.seed(1) # make results reproducible
 
-shape = all_data.shape
-m_all = shape[0]
-n = numpy.prod(shape[1:])
-all_data = numpy.reshape(all_data, (m_all, n))
+m_all = data.shape[0]
+if len(data.shape) > 2: # allow for multi-dimensional samples (e.g. images)
+    n = numpy.prod(data.shape[1:])
+    data = numpy.reshape(data, (m_all, n))
 m = min(m_all - 1, max(1, int(q*m_all)))
-mu = m_all - m
-data = all_data[: m, :]
-update = all_data[m : m + mu, :]
 
-mean, trans, comps = pca(data, tol=atol, verb=verb)
-ncomp = trans.shape[1]
-print('%d principal components computed' % ncomp)
+print('computing PCs for %d data samples...' % m)
+mean, trans, comps = pca(data[: m, :], tol=atol, verb=1)
+print('%d principal components computed' % trans.shape[1])
+em, ef = _pca_err(data[: m, :], mean, trans, comps)
+print('PCA error: max %.1e, Frobenius %.1e' % (em, ef))
+
+print('\nmore data arrived, updating PCs for %d data samples...' % m_all)
+mean, trans, comps = pca(data[m :, :], tol=atol, verb=1, \
+    have=(mean, trans, comps))
+print('%d principal components computed' % trans.shape[1])
 em, ef = _pca_err(data, mean, trans, comps)
-print('\nPCA error: max %.1e, Frobenius %.1e' % (em, ef))
-
-if mu > 0:
-    mean, trans, comps = pca(update, tol=atol, verb=verb, \
-                             have=(mean, trans, comps))
-    ncomp = trans.shape[1]
-    print('%d principal components computed' % ncomp)
-    data = numpy.concatenate((data, update))
-    em, ef = _pca_err(data, mean, trans, comps)
-    print('\nPCA error: max %.1e, Frobenius %.1e' % (em, ef))
-
+print('PCA error: max %.1e, Frobenius %.1e' % (em, ef))
 
 print('done')
