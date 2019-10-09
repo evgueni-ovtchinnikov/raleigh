@@ -260,7 +260,9 @@ class LowerRankApproximation:
             s = abs(v.dots(v))
             fnorm = math.sqrt(numpy.sum(s))
             maxl2norm = numpy.amax(numpy.sqrt(s))
-            lra.compute(data_matrix, opt, tol=update_tol, norm=norm, verb=verb)
+            urank = max_rank*n1//(n0 + n1)
+            lra.compute(data_matrix, opt, tol=update_tol, norm=norm, \
+                max_rank=urank, verb=verb)
         else:
             urank = rank*n1//(n0 + n1)
             if verb > 0:
@@ -277,6 +279,8 @@ class LowerRankApproximation:
         left1.append(left11)
         left0.append(left1, axis=1)
         right0.append(right10)
+        self.__left_v = left0
+        self.__right_v = right0
 
         wl = left0.new_vectors(left0.nvec())
         wr = right0.new_vectors(right0.nvec())
@@ -318,17 +322,14 @@ class LowerRankApproximation:
                 elif norm == 'm':
                     p = p.data()
                     s = math.sqrt(numpy.amax(r + 2*p.T) + a)
-            #print(s)
-            #lmd = sigma*sigma
-            eps = s*tol/4 #7
+            eps = s*tol/4
             if norm == 'm':
                 errs = numpy.zeros((1, n))
             s = 0
             i = 1
-            while s < eps and i < ncomp:
+            while i < ncomp:
                 if norm == 'f':
                     s = math.sqrt(s*s + r[ncomp - i])
-#                    s = math.sqrt(s*s + lmd[ncomp - i])
                 elif norm == 'm':
                     left0.select(1, ncomp - i)
                     lft = left0.data()
@@ -336,9 +337,13 @@ class LowerRankApproximation:
                     s = numpy.amax(numpy.sqrt(errs))
                 else:
                     s = sigma[ncomp - i]
+                if s > eps:
+                    break
                 i += 1
-            print('discarding %d components out of %d' % (i, ncomp))
-            ncomp -= i
+            i -= 1
+            if i > 0:
+                print('discarding %d components out of %d' % (i, ncomp))
+                ncomp -= i
         else:
             ncomp = rank
 

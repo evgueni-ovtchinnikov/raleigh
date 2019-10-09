@@ -310,6 +310,7 @@ class DefaultStoppingCriteria:
             msg = '%.2f sec: sigma[%d] = %e = %.2e*sigma[0]' % \
                 (self.elapsed_time, self.ncon + i, si, si_rel)
         self.ncon = solver.rcon
+        done = False
         if self.err_tol != 0:
             if self.verb > 0:
                 print(msg)
@@ -317,8 +318,10 @@ class DefaultStoppingCriteria:
                 done = err_rel <= self.err_tol
             else:
                 done = err_abs <= abs(self.err_tol)
-        else:
+        elif self.max_nsv < 1:
             done = (input(msg + ', more? ') == 'n')
+        elif self.verb > 0:
+            print(msg)
         self.iteration = solver.iteration
         self.start_time = time.time()
         done = done or self.max_nsv > 0 and self.ncon >= self.max_nsv

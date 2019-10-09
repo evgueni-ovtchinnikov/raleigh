@@ -2,9 +2,10 @@
 # Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
 
 # -*- coding: utf-8 -*-
-""" 'Smart' PCA test.
+""" 
+'Smart' Principal Component Analysis test.
 
-Computes reduced-feature dataset approximation of specified accuracy.
+Computes PCA approximation of specified accuracy.
 
 PCA allows to approximate m data samples of size n represented by rows of an 
 m-by-n matrix X by the rows of the matrix X_k = e a + Y_k Z_k, where 
@@ -17,10 +18,11 @@ This script computes PCA approximation X_k such that the ratio of the Frobenius
 norm of the difference X - X_k to the Frobenius norm of X is not greater than
 the user-specified tolerance.
 
-Usage: pca_simple <data_file> <tolerance> [gpu]
+Usage: pca_simple <data_file> <tolerance> <max_pcs> [gpu]
 
 data_file : the name of the file containing data matrix X
 tolerance : approximation tolerance wanted
+max_pcs   : maximal number of principal components to compute (<1: no limit)
 gpu       : run raleigh pca on GPU if this argument is present
 """
 
@@ -38,21 +40,22 @@ from raleigh.drivers.pca import pca, pca_error
 
 
 narg = len(sys.argv)
-if narg < 3:
-    print('Usage: pca_simple <data_file> <tolerance> [gpu]')
+if narg < 4:
+    print('Usage: pca_simple <data_file> <tolerance> <max_pcs> [gpu]')
 data = numpy.load(sys.argv[1])
 m = data.shape[0]
 n = numpy.prod(data.shape[1:])
 if len(data.shape) > 2:
     data = numpy.reshape(data, (m, n))
 tol = float(sys.argv[2])
-arch = 'cpu' if narg < 4 else 'gpu'
+mpc = int(sys.argv[3])
+arch = 'cpu' if narg < 5 else 'gpu'
 
 numpy.random.seed(1) # make results reproducible
 
 print('\n--- solving with raleigh pca...\n')
 start = timeit.default_timer()
-mean, trans, comps = pca(data, tol=tol, arch=arch, verb=1)
+mean, trans, comps = pca(data, tol=tol, mpc=mpc, arch=arch, verb=1)
 elapsed = timeit.default_timer() - start
 ncomp = comps.shape[0]
 print('%d principal components computed in %.2e sec' % (ncomp, elapsed))
@@ -69,7 +72,11 @@ try:
     # computed etc. until the PCA error falls below the required tolerance
     print('\n--- solving with sklearn PCA...')
     dtype = data.dtype
-    npc = max(1, min(m, n)//10) # a guess of sufficient number of PCs
+    # a guess of sufficient number of PCs
+    if mpc > 0:
+        npc = mpc//2
+    else:
+        npc = max(1, min(m, n)//10)
     data0 = data # data will change, save a copy for final error computation
     data = data.copy()
     start = timeit.default_timer()
@@ -102,6 +109,8 @@ try:
         print('%.2f sec: last singular value: sigma[%d] = %e, error %.2e' \
             % (time_s, pcs - 1, sigma[-1], err_fro))
         if err_fro < tol: # desired accuracy achieved, quit the loop
+            break
+        if mpc > 0 and pcs >= mpc: # max number of PCs exceeded
             break
         print('deflating...')
         # deflate: subtract computed approximation from data
