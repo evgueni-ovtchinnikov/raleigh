@@ -5,42 +5,26 @@
 """
 Incremental Principal Component Analysis demo.
 
-PCs are computed incrementally, processing a number (batch size) of data 
-samples at a time.
+Principal components are computed incrementally, processing a number 
+(batch size) of data samples at a time.
 
-Usage:
-  incremental_pca [--help | -h | options] <data>
+For comparison, the same amount of principal components is computed also by 
+scikit-learn IncrementalPCA.
+
+Usage: incremental_pca <data_file> <batch_size> <tolerance> <max_pcs> [gpu]
 
 Arguments:
-  data  .npy file containing data as ndarray of two or more dimensions.
 
-Options:
-  -a <arch>, --arch=<arch>   architecture [default: cpu]
-  -b <bsze>, --bsize=<bsze>  batch size (<0: all data) [default: -1]
-  -c <comp>, --ncomp=<comp>  number of components to compute (< 0: not known,
-                             compute based on the PCA approximation error 
-                             tolerance or interactively) [default: -1]
-  -e <atol>, --aetol=<atol>  PCA approximation error tolerance (<= 0: not set,
-                             run in interactive mode) [default: 0]
-  -n <nsmp>, --nsamp=<nsmp>  number of samples to use (< 0: all) [default: -1]
-  -t <vtol>, --vtol=<vtol>   singular value error tolerance [default: 1e-3]
-  -v <verb>, --verb=<verb>   verbosity level [default: 0]
-  -s, --show  display data as images (data must be 3D)
-
-Created on Wed Sep 18 13:45:14 2019
+data_file  : the name of the file containing data matrix
+batch_size : batch size
+tolerance  : approximation tolerance wanted
+max_pcs    : maximal number of principal components to compute (<1: no limit)
+gpu        : run raleigh pca on GPU if this argument is present
 """
 
-try:
-    from docopt import docopt
-    __version__ = '0.1.0'
-    have_docopt = True
-except:
-    have_docopt = False
-
 import numpy
-import numpy.linalg as nla
 import sys
-import time
+import timeit
 
 try:
     from sklearn.decomposition import IncrementalPCA
@@ -52,133 +36,51 @@ except:
 raleigh_path = '../..'
 if raleigh_path not in sys.path:
     sys.path.insert(0, raleigh_path)
-
-from raleigh.drivers.pca import pca
-
-
-def _norm(a, axis):
-    return numpy.apply_along_axis(numpy.linalg.norm, axis, a)
+from raleigh.drivers.pca import pca, pca_error
 
 
-if have_docopt:
-    __version__ = '0.1.0'
-    args = docopt(__doc__, version=__version__)
-    file = args['<data>']
-    m = int(args['--nsamp'])
-    npc = int(args['--ncomp'])
-    atol = float(args['--aetol'])
-    batch_size = int(args['--bsize'])
-    vtol = float(args['--vtol'])
-    verb = int(args['--verb'])
-    arch = args['--arch']
-    show = args['--show']
-else:
-    print('\n=== docopt not found, using default options...\n')
-    file = sys.argv[1]
-    m = -1
-    npc = -1
-    atol = 0
-    batch_size = -1
-    vtol = 1e-3
-    verb = 0
-    arch = 'cpu'
-    show = False
-
-dtype = numpy.float32
+narg = len(sys.argv)
+if narg < 5:
+    print('Usage: incremental_pca <data_file> <batch_size> <tolerance> <max_pcs> [gpu]')
+data = numpy.load(sys.argv[1], mmap_mode='r')
+atol = float(sys.argv[3])
+batch_size = int(sys.argv[2])
+mpc = int(sys.argv[4])
+arch = 'cpu' if narg < 6 else 'gpu'
 
 numpy.random.seed(1) # make results reproducible
 
-all_data = numpy.load(file, mmap_mode='r')
+dtype = data.dtype
+m = data.shape[0]
+if len(data.shape) > 2:
+    n = numpy.prod(data.shape[1:])
+    data = numpy.memmap.reshape(data, (m, n))
 
-shape = all_data.shape
-m_all = shape[0]
-n = numpy.prod(shape[1:])
-all_data = numpy.memmap.reshape(all_data, (m_all, n))
-
-if m < 1 or m > m_all:
-    m = m_all
-
-if m < m_all:
-    data = all_data[:m, :]
-else:
-    data = all_data
-
-if batch_size < 0:
-    batch_size = m
-
-e = numpy.ones((m, 1), dtype=dtype)
-
-vmin = numpy.amin(data)
-vmax = numpy.amax(data)
-print('data range: %e to %e' % (vmin, vmax))
-
-start = time.time()
-mean, trans, comps = pca(data, npc=npc, tol=atol, arch=arch, verb=verb, \
+print('\n--- solving with raleigh pca...\n')
+start = timeit.default_timer()
+mean, trans, comps = pca(data, mpc=mpc, tol=atol, arch=arch, verb=1, \
     batch_size=batch_size)
-stop = time.time()
-elapsed_time = stop - start
+elapsed = timeit.default_timer() - start
+ncomp = comps.shape[0]
+print('%d principal components computed in %.2e sec' % (ncomp, elapsed))
+em, ef = pca_error(data, mean, trans, comps)
+print('PCA error: max 2-norm %.1e, Frobenius norm %.1e' % (em, ef))
 
-sigma = _norm(trans, axis=0)
-ncon = sigma.shape[0]
-print('%d principal components computed' % ncon)
-if atol > 0 or npc > 0:
-    print('elapsed time: %.2e' % elapsed_time)
-
-# check the accuracy of PCA approximation L R + e a to A
-w = numpy.dot(trans, comps) + numpy.dot(e, mean)
-w -= data
-err_max = numpy.amax(_norm(w, axis=1))/numpy.amax(_norm(data, axis=1))
-err_f = numpy.amax(nla.norm(w, ord='fro')) \
-        /numpy.amax(nla.norm(data, ord='fro'))
-print('pca error: max %.1e, Frobenius %.1e' % (err_max, err_f))
-del w
-
-if have_sklearn:
-    if npc < 0:
-        npc = ncon
+if have_sklearn and arch == 'cpu':
+    npc = ncomp
     if npc > batch_size:
         batch_size = npc
-    print('\n--- solving with sklearn.decomposition.IncrementalPCA...')
-    start = time.time()
+    print('\n--- solving with sklearn.decomposition.IncrementalPCA...\n')
+    start = timeit.default_timer()
     skl_ipca = IncrementalPCA(n_components=npc, batch_size=batch_size)
     skl_trans = skl_ipca.fit_transform(data)
     skl_comps = skl_ipca.components_
-    skl_mean = numpy.reshape(skl_ipca.mean_, (1, n))
-    stop = time.time()
-    time_skl = stop - start
-    print('elapsed time: %.1e' % time_skl)
-    pcs = skl_comps.shape[0]
-    skl_err = data - numpy.dot(skl_trans, skl_comps) - numpy.dot(e, skl_mean)
-    err_max = numpy.amax(_norm(skl_err, axis=1)) \
-                /numpy.amax(_norm(data, axis=1))
-    err_f = numpy.amax(nla.norm(skl_err, ord='fro')) \
-            /numpy.amax(nla.norm(data, ord='fro'))
-    print('pca error: max %.1e, Frobenius %.1e' % (err_max, err_f))
+    skl_mean = skl_ipca.mean_
+    stop = timeit.default_timer()
+    elapsed = stop - start
+    ncomp = skl_comps.shape[0]
+    print('%d principal components computed in %.2e sec' % (ncomp, elapsed))
+    em, ef = pca_error(data, skl_mean, skl_trans, skl_comps)
+    print('PCA error: max 2-norm %.1e, Frobenius norm %.1e' % (em, ef))
 
-if show and len(shape) == 3:
-    # data samples are 2D: assume they are images
-    import pylab
-    ny = shape[1]
-    nx = shape[2]
-    while True:
-        i = int(input('image number (negative to exit): '))
-        if i < 0 or i >= m:
-            break
-        pylab.figure()
-        pylab.title('image %d' % i)
-        img = data[i,:]
-        image = numpy.reshape(img, (ny, nx))
-        pylab.imshow(image, cmap='gray')
-        img = numpy.dot(trans[i,:], comps) + mean
-        pca_image = numpy.reshape(img, (ny, nx))
-        pylab.figure()
-        pylab.title('PCA approximation of the image (raleigh)')
-        pylab.imshow(pca_image, cmap='gray')
-        img = numpy.dot(skl_trans[i,:], skl_comps) + skl_mean
-        pca_image = numpy.reshape(img, (ny, nx))
-        pylab.figure()
-        pylab.title('PCA approximation of the image (sklearn)')
-        pylab.imshow(pca_image, cmap='gray')
-        pylab.show()
-
-print('done')
+print('\ndone')
