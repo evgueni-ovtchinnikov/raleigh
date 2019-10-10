@@ -25,8 +25,6 @@ Options:
   -n <nim> , --nimgs=<nim>   number of images to use (< 0: all) [default: -1]
   -e <err> , --imerr=<err>   image approximation error tolerance (<= 0: not set,
                              run in interactive mode) [default: 0]
-  -b <blk> , --bsize=<blk>   CG block size (< 0: auto) [default: -1]
-  -t <tol> , --rtol=<tol>    residual tolerance [default: 1e-3]
   -a <arch>, --arch=<arch>   architecture [default: cpu]
 '''
 
@@ -40,7 +38,7 @@ except:
 import numpy
 import pylab
 import sys
-import time
+import timeit
 
 # in case this raleigh package is not pip installed (e.g. cloned from github)
 raleigh_path = '../../..'
@@ -61,17 +59,15 @@ if have_docopt:
     file = args['<data>']
     ni = int(args['--nimgs'])
     err_tol = float(args['--imerr'])
-    block_size = int(args['--bsize'])
-    tol = float(args['--rtol'])
     arch = args['--arch']
 else:
-    print('\n=== docopt not found, using default options...\n')
+    narg = len(sys.argv)
+    if narg < 3:
+        print('Usage: compute_eigenimages <data_file> <pca_err> [gpu]')
     file = sys.argv[1]
+    err_tol = float(sys.argv[2])
+    arch = 'cpu' if narg < 4 else 'gpu'
     ni = -1
-    err_tol = 0
-    block_size = -1
-    tol = 1e-3
-    arch = 'cpu'
 
 numpy.random.seed(1) # make results reproducible
 
@@ -98,13 +94,9 @@ print('data range: %e to %e' % (vmin, vmax))
 
 images = numpy.reshape(images, (m, n))
 
-opt = Options()
-opt.block_size = block_size
-
-start = time.time()
-mean, coord, eigim = pca(images, opt, tol=err_tol, arch=arch)
-stop = time.time()
-elapsed_time = stop - start
+start = timeit.default_timer()
+mean, coord, eigim = pca(images, tol=err_tol, arch=arch, verb=1)
+elapsed_time = timeit.default_timer() - start
 
 sigma = _norm(coord, axis=0)
 ncon = sigma.shape[0]

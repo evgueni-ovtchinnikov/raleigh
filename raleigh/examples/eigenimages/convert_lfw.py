@@ -47,8 +47,10 @@ def _mask(nx, ny):
     mask = numpy.zeros((ny, nx), dtype=numpy.uint8)
     x0 = nx/2
     y0 = ny/2
-    ax = x0 - nx/5
-    ay = y0 - ny/10
+    ax = nx/5
+    ay = ny/4
+#    ax = x0 - nx/5
+#    ay = y0 - ny/10
     for y in range(ny):
         for x in range(nx):
             if ((x - x0)/ax)**2 + ((y - y0)/ay)**2 > 1:
@@ -165,8 +167,8 @@ for i in range(nimg):
     image = images[j,:,:]
     if face:
         image[mask > 0] = 0
-        v = numpy.sum(image)/(n - numpy.sum(mask))
-        image[mask > 0] = v
+#        v = numpy.sum(image)/(n - numpy.sum(mask))
+#        image[mask > 0] = v
         images[j,:,:] = image
     if asymm < 1.0:
         img = numpy.reshape(image, (n,))
