@@ -5,10 +5,11 @@
    compute_eigenimages.py.
 
 Usage:
-    show_errors [--help | -h] <file>
+    show_errors [--help | -h] <images> <eigenimages>
 
 Arguments:
-    file       images file (must end with .npy)
+    images       images file (must end with .npy)
+    eigenimages  eigenimages file (must end with .npz)
 '''
 
 try:
@@ -18,6 +19,7 @@ try:
 except:
     have_docopt = False
 
+import math
 import numpy
 import numpy.linalg as nla
 import pylab
@@ -31,24 +33,25 @@ def _norm(a, axis):
 if have_docopt:
     __version__ = '0.1.0'
     args = docopt(__doc__, version=__version__)
-    file = args['<file>']
+    img_file = args['<images>']
+    eigim_file = args['<eigenimages>']
 else:
-    file = sys.argv[1]
+    narg = len(sys.argv)
+    if narg < 3:
+        print('Usage: show_errors <images_file> <eigenimages_file>')
+    img_file = sys.argv[1]
+    eigim_file = sys.argv[2]
 
-u = numpy.load('eigenimages.npy')
-v = numpy.load('coordinates.npy')
+eigim = numpy.load(eigim_file)
+u = eigim['eigim']
+v = eigim['coord']
+mean = eigim['mean']
 nc, nyu, nxu = u.shape
 m = v.shape[0]
 print('%d eigenimages of size %dx%d loaded' % (nc, nyu, nxu))
-try:
-    mean = numpy.load('mean.npy')
-    print('loaded mean image')
-except:
-    mean = None
-    print('mean image not present')
 
-print('loading images from %s...' % file)
-images = numpy.load(file)
+print('loading images from %s...' % img_file)
+images = numpy.load(img_file)
 ni, ny, nx = images.shape
 print('%d images of size %dx%d loaded' % (ni, ny, nx))
 vmax = numpy.amax(images)
@@ -75,14 +78,11 @@ u = numpy.reshape(u, (nc, n))
 
 print('measuring PCA errors...')
 norm = _norm(images[:m, :], axis=1)
-if mean is None:
-    pca_images = numpy.dot(v, u)
-else:
-    ones = numpy.ones((m, 1))
-    mean = numpy.reshape(mean, (1, n))
-    pca_images = numpy.dot(v, u) + numpy.dot(ones, mean)
+ones = numpy.ones((m, 1))
+mean = numpy.reshape(mean, (1, n))
+pca_images = numpy.dot(v, u) + numpy.dot(ones, mean)
 mean = numpy.reshape(mean, n)
-proj = _norm(v, axis=1)
+norm = vmax*math.sqrt(n)
 err = _norm(images[:m, :] - pca_images, axis=1)/norm
 ind = numpy.argsort(-err)
 pylab.figure()

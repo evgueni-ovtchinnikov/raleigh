@@ -16,10 +16,10 @@ the orthonormal basis of eigenimages) - in some other PCA software these
 are referred to as 'reduced features data'.
 
 Usage:
-  compute_eigenimages [--help | -h | options] <data>
+  compute_eigenimages [--help | -h | options] <images>
 
 Arguments:
-  data  .npy file containing images as ndarray of dimensions (ni, ny, nx)
+  images  .npy file containing images as ndarray of dimensions (ni, ny, nx)
 
 Options:
   -n <nim> , --nimgs=<nim>   number of images to use (< 0: all) [default: -1]
@@ -45,7 +45,6 @@ raleigh_path = '../../..'
 if raleigh_path not in sys.path:
     sys.path.insert(0, raleigh_path)
 
-from raleigh.core.solver import Options
 from raleigh.drivers.pca import pca
 
 
@@ -56,14 +55,14 @@ def _norm(a, axis):
 if have_docopt:
     __version__ = '0.1.0'
     args = docopt(__doc__, version=__version__)
-    file = args['<data>']
+    file = args['<images>']
     ni = int(args['--nimgs'])
     err_tol = float(args['--imerr'])
     arch = args['--arch']
 else:
     narg = len(sys.argv)
     if narg < 3:
-        print('Usage: compute_eigenimages <data_file> <pca_err> [gpu]')
+        print('Usage: compute_eigenimages <images> <pca_err> [gpu]')
     file = sys.argv[1]
     err_tol = float(sys.argv[2])
     arch = 'cpu' if narg < 4 else 'gpu'
@@ -123,9 +122,6 @@ while True:
 print('saving...')
 mean = numpy.reshape(mean, (ny, nx))
 eigim = numpy.reshape(eigim, (ncon, ny, nx))
-numpy.save('mean.npy', mean)
-numpy.save('eigenimages.npy', eigim)
-numpy.save('coordinates.npy', coord)
-numpy.save('sigma.npy', sigma[:ncon])
+numpy.savez('eigenimages', eigim=eigim, coord=coord, mean=mean)
 
 print('done')
