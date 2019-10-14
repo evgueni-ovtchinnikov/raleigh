@@ -214,6 +214,8 @@ class PSVDErrorCalculator:
             t = (self.norms*self.norms).reshape((self.m, 1))
             x = t - 2*b + s*numpy.ones((self.m, 1))
             self.err = numpy.sqrt(abs(x))
+        self.err_init = numpy.amax(self.err)
+        self.err_init_f = nla.norm(self.err)
     def update_errors(self):
         ncon = self.eigenvectors.nvec()
         new = ncon - self.ncon
@@ -277,6 +279,8 @@ class DefaultStoppingCriteria:
 
     def satisfied(self, solver):
         self.norms = self.err_calc.norms
+        scale_max = self.err_calc.err_init
+        scale_f = self.err_calc.err_init_f
         if solver.rcon <= self.ncon:
             return False
         new = solver.rcon - self.ncon
@@ -292,11 +296,13 @@ class DefaultStoppingCriteria:
         if self.norm == 'm':
             self.err = self.err_calc.update_errors()
             err_abs = numpy.amax(self.err)
-            err_rel = err_abs/self.max_norm
+            err_rel = err_abs/scale_max
+#            err_rel = err_abs/self.max_norm
         elif self.norm == 'f':
             self.f -= numpy.sum(sigma*sigma)
             err_abs = math.sqrt(abs(self.f))
-            err_rel = err_abs/self.f_norm
+            err_rel = err_abs/scale_f
+#            err_rel = err_abs/self.f_norm
         else:
             err_abs = si
             err_rel = si_rel
