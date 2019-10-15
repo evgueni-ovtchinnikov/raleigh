@@ -4,7 +4,7 @@
 # -*- coding: utf-8 -*-
 '''Simple PCA test.
 
-Computes a given number of principal components of a dataset.
+Computes a number of principal components of a dataset.
 
 If sklearn is installed, compares with sklearn.decomposition.PCA.
 
@@ -62,4 +62,5 @@ try:
     print('PCA error: max 2-norm %.1e, Frobenius norm %.1e' % (em, ef))
 except:
     pass
+
 print('done')

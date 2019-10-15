@@ -5,8 +5,8 @@
 """
 Principal Components update demo.
 
-Performs PCA on a chunk of data, then addds more data and updates Principal 
-Components.
+Performs PCA on a chunk of data, then addds more data and updates principal 
+components.
 
 Usage: pca_update <data_file> <tolerance> <q_first> <max_pcs> [gpu]
 
@@ -14,6 +14,7 @@ data_file : the name of the file containing data matrix X
 tolerance : PCA approximation tolerance wanted
 q_first   : relative size of the first chunk (default 0.5)
 max_pcs   : maximal number of principal components to compute (<1: no limit)
+gpu       : run on GPU if this argument is present
 """
 
 import numpy
@@ -34,7 +35,7 @@ data = numpy.load(sys.argv[1])
 atol = float(sys.argv[2])
 q = float(sys.argv[3])
 mpc = int(sys.argv[4])
-arch = 'cpu' if narg < 6 else 'gpu'
+arch = 'cpu' if narg < 6 else sys.argv[5]
 
 numpy.random.seed(1) # make results reproducible
 

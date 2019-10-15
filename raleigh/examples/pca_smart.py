@@ -15,10 +15,11 @@ m-by-n matrix X by the rows of the matrix X_k = e a + Y_k Z_k, where
     the rows of k-by-n matrix Z_k are principal components.
 
 This script computes PCA approximation X_k such that the Frobenius norm of the
-difference X - X_k to the Frobenius norm of X is not greater than the 
-user-specified tolerance.
+difference X - X_k is not greater than the user-specified tolerance.
 
-Usage: pca_simple <data_file> <tolerance> <max_pcs> [gpu]
+If sklearn is installed, compares with restarted sklearn.decomposition.PCA.
+
+Usage: pca_smart <data_file> <tolerance> <max_pcs> [gpu]
 
 data_file : the name of the file containing data matrix X
 tolerance : approximation tolerance wanted
@@ -36,6 +37,7 @@ import timeit
 raleigh_path = '../..'
 if raleigh_path not in sys.path:
     sys.path.insert(0, raleigh_path)
+
 from raleigh.drivers.pca import pca, pca_error
 
 
@@ -49,12 +51,12 @@ if len(data.shape) > 2:
     data = numpy.reshape(data, (m, n))
 tol = float(sys.argv[2])
 mpc = int(sys.argv[3])
-arch = 'cpu' if narg < 5 else 'gpu'
+arch = 'cpu' if narg < 5 else sys.argv[4]
 
 vmin = numpy.amin(data)
 vmax = numpy.amax(data)
 # error tolerance is relative to this Frobenius norm scale:
-scale = max(abs(vmin), abs(vmax))*math.sqrt(m*n)
+scale = max(abs(vmin), abs(vmax)) * math.sqrt(m*n)
 
 numpy.random.seed(1) # make results reproducible
 
@@ -69,12 +71,14 @@ print('PCA error: max 2-norm %.1e, Frobenius norm %.1e' % (em, ef))
 
 try:
     from sklearn.decomposition import PCA
-    # sklearn PCA needs to be given the number k of wanted components;
-    # since it is generally unknown in advance, one has to apply deflation:
-    # a certain number k of principal components and corresponding 
-    # reduced-features samples are computed, and if the PCA error E_k = X - X_k
-    # is not small enough, then further k PCs of X (which are PCs of E_k) are 
-    # computed etc. until the PCA error falls below the required tolerance
+    '''
+    sklearn PCA needs to be given the number k of wanted components;
+    since it is generally unknown in advance, one has to apply deflation:
+    a certain number k of principal components and corresponding 
+    reduced-features samples are computed, and if the PCA error E_k = X - X_k
+    is not small enough, then further k PCs of X (which are PCs of E_k) are 
+    computed etc. until the PCA error falls below the required tolerance
+    '''
     print('\n--- solving with sklearn PCA...')
     dtype = data.dtype
     # a guess of sufficient number of PCs
@@ -92,10 +96,8 @@ try:
     ones = numpy.ones((m, 1), dtype=data.dtype)
     mean = numpy.dot(ones.T, data)/m
     data_s = data - numpy.dot(ones, mean)
-    # compute Frobenius norms of data and initial PCA error
-    norms = nla.norm(data, axis=1)
+    # compute Frobenius norm of the initial PCA error
     nrms = nla.norm(data_s, axis=1)
-#    norm_fro2 = numpy.sum(norms*norms)
     err2 = numpy.sum(nrms*nrms)
     while True:
         # compute next portion of PCs
@@ -111,7 +113,6 @@ try:
         # update Frobenius norm of PCA error
         err2 -= numpy.sum(sigma*sigma)
         err = math.sqrt(err2)/scale
-#        err_fro = math.sqrt(err_fro2/norm_fro2)
         print('%.2f sec: last singular value: sigma[%d] = %e, error %.2e' \
             % (time_s, pcs - 1, sigma[-1], err))
         if err < tol: # desired accuracy achieved, quit the loop
@@ -129,4 +130,5 @@ try:
     print('PCA error: max 2-norm %.1e, Frobenius norm %.1e' % (em, ef))
 except:
     pass
+
 print('done')

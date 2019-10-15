@@ -27,7 +27,7 @@ import sys
 import timeit
 
 try:
-    from sklearn.decomposition0 import IncrementalPCA
+    from sklearn.decomposition import IncrementalPCA
     have_sklearn = True
 except:
     have_sklearn = False
@@ -36,6 +36,7 @@ except:
 raleigh_path = '../..'
 if raleigh_path not in sys.path:
     sys.path.insert(0, raleigh_path)
+
 from raleigh.drivers.pca import pca, pca_error
 
 
