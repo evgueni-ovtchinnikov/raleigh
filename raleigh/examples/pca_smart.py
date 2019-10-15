@@ -14,9 +14,9 @@ m-by-n matrix X by the rows of the matrix X_k = e a + Y_k Z_k, where
     the rows of m-by-k matrix Y_k are reduced-features data samples, and 
     the rows of k-by-n matrix Z_k are principal components.
 
-This script computes PCA approximation X_k such that the ratio of the Frobenius
-norm of the difference X - X_k to the Frobenius norm of X is not greater than
-the user-specified tolerance.
+This script computes PCA approximation X_k such that the Frobenius norm of the
+difference X - X_k to the Frobenius norm of X is not greater than the 
+user-specified tolerance.
 
 Usage: pca_simple <data_file> <tolerance> <max_pcs> [gpu]
 
@@ -41,7 +41,7 @@ from raleigh.drivers.pca import pca, pca_error
 
 narg = len(sys.argv)
 if narg < 4:
-    print('Usage: pca_simple <data_file> <tolerance> <max_pcs> [gpu]')
+    print('Usage: pca_smart <data_file> <tolerance> <max_pcs> [gpu]')
 data = numpy.load(sys.argv[1])
 m = data.shape[0]
 n = numpy.prod(data.shape[1:])
@@ -50,6 +50,11 @@ if len(data.shape) > 2:
 tol = float(sys.argv[2])
 mpc = int(sys.argv[3])
 arch = 'cpu' if narg < 5 else 'gpu'
+
+vmin = numpy.amin(data)
+vmax = numpy.amax(data)
+# error tolerance is relative to this Frobenius norm scale:
+scale = max(abs(vmin), abs(vmax))*math.sqrt(m*n)
 
 numpy.random.seed(1) # make results reproducible
 
@@ -90,8 +95,8 @@ try:
     # compute Frobenius norms of data and initial PCA error
     norms = nla.norm(data, axis=1)
     nrms = nla.norm(data_s, axis=1)
-    norm_fro2 = numpy.sum(norms*norms)
-    err_fro2 = numpy.sum(nrms*nrms)
+#    norm_fro2 = numpy.sum(norms*norms)
+    err2 = numpy.sum(nrms*nrms)
     while True:
         # compute next portion of PCs
         trans = skl_pca.fit_transform(data)
@@ -104,11 +109,12 @@ try:
         time_s = stop - start
         pcs = comps_skl.shape[0]
         # update Frobenius norm of PCA error
-        err_fro2 -= numpy.sum(sigma*sigma)
-        err_fro = math.sqrt(err_fro2/norm_fro2)
+        err2 -= numpy.sum(sigma*sigma)
+        err = math.sqrt(err2)/scale
+#        err_fro = math.sqrt(err_fro2/norm_fro2)
         print('%.2f sec: last singular value: sigma[%d] = %e, error %.2e' \
-            % (time_s, pcs - 1, sigma[-1], err_fro))
-        if err_fro < tol: # desired accuracy achieved, quit the loop
+            % (time_s, pcs - 1, sigma[-1], err))
+        if err < tol: # desired accuracy achieved, quit the loop
             break
         if mpc > 0 and pcs >= mpc: # max number of PCs exceeded
             break

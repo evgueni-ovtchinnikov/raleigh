@@ -161,6 +161,9 @@ class AMatrix:
             self.__gpu = None
             #self.__vectors = Vectors(self.__op, shallow=False)
         self.__vectors = Vectors(self.__op, shallow=True)
+        vmin = numpy.amin(a)
+        vmax = numpy.amax(a)
+        self.__scale = max(abs(vmin), abs(vmax))
 
     def as_operator(self):
         return self.__op
@@ -182,6 +185,9 @@ class AMatrix:
 
     def shape(self):
         return self.__op.shape()
+
+    def scale(self):
+        return self.__scale
 
 
 class PSVDErrorCalculator:
@@ -262,6 +268,8 @@ class PSVDErrorCalculator:
 class DefaultStoppingCriteria:
 
     def __init__(self, a, err_tol=0, norm='f', max_nsv=0, verb=0):
+        self.shape = a.shape()
+        self.scale = a.scale()
         self.err_tol = err_tol
         self.norm = norm
         self.max_nsv = max_nsv
@@ -279,8 +287,11 @@ class DefaultStoppingCriteria:
 
     def satisfied(self, solver):
         self.norms = self.err_calc.norms
-        scale_max = self.err_calc.err_init
-        scale_f = self.err_calc.err_init_f
+        m, n = self.shape
+        scale_max = self.scale*math.sqrt(n)
+        scale_f = self.scale*math.sqrt(m*n)
+#        scale_max = self.err_calc.err_init
+#        scale_f = self.err_calc.err_init_f
         if solver.rcon <= self.ncon:
             return False
         new = solver.rcon - self.ncon

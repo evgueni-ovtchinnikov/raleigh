@@ -27,7 +27,7 @@ import sys
 import timeit
 
 try:
-    from sklearn.decomposition import IncrementalPCA
+    from sklearn.decomposition0 import IncrementalPCA
     have_sklearn = True
 except:
     have_sklearn = False
