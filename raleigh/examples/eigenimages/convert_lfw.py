@@ -221,12 +221,12 @@ if asymm < 1.0:
     photos = images[iind,:,:]
     print(photos.shape)
     while True:
-        i = int(input('image: '))
+        i = int(input('photo-image: '))
         if i < 0 or i >= k:
             break
         image = photos[i,:,:]
         pylab.title('%s' % names[iind[i]].replace('_', ' '))
-        pylab.imshow(image, cmap='gray')
+        pylab.imshow(image, cmap='gray', vmin=vmin, vmax=vmax)
         pylab.show()
     print('saving %d photos to %s...' % (k, 'photos.npy'))
     numpy.save('photos.npy', photos)
@@ -246,7 +246,7 @@ while view:
     image = images[i,:,:]
     pylab.figure()
     pylab.title('%s' % names[i].replace('_', ' '))
-    pylab.imshow(image, cmap='gray')
+    pylab.imshow(image, cmap='gray', vmin=vmin, vmax=vmax)
     pylab.show()
 
 print('done')
