@@ -288,10 +288,10 @@ class DefaultStoppingCriteria:
     def satisfied(self, solver):
         self.norms = self.err_calc.norms
         m, n = self.shape
-        scale_max = self.scale*math.sqrt(n)
-        scale_f = self.scale*math.sqrt(m*n)
-#        scale_max = self.err_calc.err_init
-#        scale_f = self.err_calc.err_init_f
+#        scale_max = self.scale*math.sqrt(n)
+#        scale_f = self.scale*math.sqrt(m*n)
+        scale_max = self.err_calc.err_init
+        scale_f = self.err_calc.err_init_f
         if solver.rcon <= self.ncon:
             return False
         new = solver.rcon - self.ncon
