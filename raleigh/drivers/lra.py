@@ -43,7 +43,7 @@ class LowerRankApproximation:
         self.ortho = True
         self.iterations = -1
         
-    def compute(self, data_matrix, opt=Options(), rank=-1, tol=-1, norm='f',
+    def compute(self, data_matrix, opt=Options(), rank=-1, tol=0, norm='f',
                 max_rank=-1, svtol=1e-3, shift=False, verb=0):
         '''
         For a given m by n data matrix A (m data samples n features each)
@@ -173,15 +173,19 @@ class LowerRankApproximation:
         if norm not in ['f', 'm', 's']:
             msg = 'norm %s is not supported' % repr(norm)
             raise ValueError(msg)
-        v = data_matrix.as_vectors() # reference to data_matrix
-        s = abs(v.dots(v))
-        fnorm = math.sqrt(numpy.sum(s))
-        maxl2norm = numpy.amax(numpy.sqrt(s))
-        if maxl2norm == 0.0:
+        scale = data_matrix.scale()
+        if scale == 0.0:
             return
+        v = data_matrix.as_vectors() # reference to data_matrix
+#        s = abs(v.dots(v))
+#        fnorm = math.sqrt(numpy.sum(s))
+#        maxl2norm = numpy.amax(numpy.sqrt(s))
+#        if maxl2norm == 0.0:
+#            return
         dtype = self.__dtype
         if self.__left_v is None:
             left_data = self.__left.T
+            # TODO: this must be taken care of by new_vectors()
             if not left_data.flags['C_CONTIGUOUS']:
                 left_data = numpy.ndarray(left_data.shape, dtype=dtype)
                 left_data[:,:] = self.__left.T.copy()
@@ -223,6 +227,10 @@ class LowerRankApproximation:
         n1 = v.nvec()
         e1 = numpy.ones((n1, 1), dtype=dtype)
         n = n0 + n1
+
+        ns = right0.dimension()
+        fnorm = scale*math.sqrt(ns*n1)
+        maxl2norm = scale*math.sqrt(ns)
 
         if shift:
             mean0 = self.__mean_v.data()

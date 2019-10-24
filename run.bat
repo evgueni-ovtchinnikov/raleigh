@@ -4,7 +4,7 @@ SET args=
 SET count=0
 :Loop
 IF "%1"=="" GOTO Continue
-ECHO %1
+rem ECHO %1
 IF %count%==0 SET folder=%1
 IF %count%==1 SET script=%1.py
 IF %count%==2 SET args=%1
@@ -14,6 +14,6 @@ SHIFT
 GOTO Loop
 :Continue
 COPY .\raleigh\examples\%folder%\%script% .
-ECHO %script%
+rem ECHO %script%
 python %script% %args%
 DEL %script%

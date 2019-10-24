@@ -7,3 +7,4 @@ dist/
 *.pyd
 *.pyc
 *.npy
+*.npz
