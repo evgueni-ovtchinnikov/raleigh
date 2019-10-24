@@ -35,11 +35,6 @@ import numpy.linalg as nla
 import sys
 import time
 
-# in case this raleigh package is not pip installed (e.g. cloned from github)
-raleigh_path = '../..'
-if raleigh_path not in sys.path:
-    sys.path.insert(0, raleigh_path)
-
 from raleigh.algebra import verbosity
 verbosity.level = 2
 
@@ -94,7 +89,12 @@ else:
 
 numpy.random.seed(1) # make results reproducible
 
-m, n = A.shape
+m = A.shape[0]
+if len(A.shape) > 2:
+    n = numpy.prod(A.shape[1:])
+    A = numpy.reshape(A, (m, n))
+else:
+    n = A.shape[1]
 dtype = A.dtype.type
 
 print('\n--- solving with truncated_svd...\n')
