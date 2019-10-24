@@ -16,19 +16,17 @@ gpu          : run raleigh pca on GPU if this argument is present
 '''
 
 import numpy
+import os
 import sys
 import timeit
 
-# in case this raleigh package is not pip installed (e.g. cloned from github)
-raleigh_path = '../..'
-if raleigh_path not in sys.path:
-    sys.path.insert(0, raleigh_path)
 from raleigh.drivers.pca import pca, pca_error
 
 
 narg = len(sys.argv)
 if narg < 3:
-    print('Usage: pca_simple <data_file> <n_components> [gpu]')
+    usage = 'Usage: pca_simple <data_file> <n_components> [gpu]'
+    raise SystemExit(usage)
 data = numpy.load(sys.argv[1])
 npc = int(sys.argv[2])
 m = data.shape[0]

@@ -18,7 +18,7 @@ Arguments:
   r  rank of A (use r << min(m, n) for fast generation)
 
 Options:
-  -a <alpha>, --alpha=<alpha>  singular values decay rate [default: 1]
+  -a <alpha>, --alpha=<alpha>  singular values decay rate [default: 0.75]
   -d, --double   use double precision
   -p, --ptb      add random perturbation to make the matrix full rank
   -s, --pca      generate matrix with shift-to-zero-average invariant singular

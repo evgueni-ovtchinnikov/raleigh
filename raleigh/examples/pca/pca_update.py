@@ -20,16 +20,14 @@ import numpy
 import sys
 import timeit
 
-# in case this raleigh package is not pip installed (e.g. cloned from github)
-raleigh_path = '../..'
-if raleigh_path not in sys.path:
-    sys.path.insert(0, raleigh_path)
 from raleigh.drivers.pca import pca, pca_error
 
 
 narg = len(sys.argv)
 if narg < 5:
-    print('Usage: pca_update <data_file> <tolerance> <q_first> <max_pcs> [gpu]')
+    usage = \
+          'Usage: pca_update <data_file> <tolerance> <q_first> <max_pcs> [gpu]'
+    raise SystemExit(usage)
 data = numpy.load(sys.argv[1])
 atol = float(sys.argv[2])
 q = float(sys.argv[3])

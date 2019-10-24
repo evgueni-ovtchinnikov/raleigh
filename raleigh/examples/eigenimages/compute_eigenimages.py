@@ -40,11 +40,6 @@ import pylab
 import sys
 import timeit
 
-# in case this raleigh package is not pip installed (e.g. cloned from github)
-raleigh_path = '../../..'
-if raleigh_path not in sys.path:
-    sys.path.insert(0, raleigh_path)
-
 from raleigh.core.solver import Options
 from raleigh.drivers.pca import pca
 

@@ -32,16 +32,14 @@ try:
 except:
     have_sklearn = False
 
-# in case this raleigh package is not pip installed (e.g. cloned from github)
-raleigh_path = '../..'
-if raleigh_path not in sys.path:
-    sys.path.insert(0, raleigh_path)
 from raleigh.drivers.pca import pca, pca_error
 
 
 narg = len(sys.argv)
 if narg < 5:
-    print('Usage: incremental_pca <data_file> <batch_size> <tolerance> <max_pcs> [gpu]')
+    usage = \
+   'Usage: incremental_pca <data_file> <batch_size> <tolerance> <max_pcs> [gpu]'
+    raise SystemExit(usage)
 data = numpy.load(sys.argv[1], mmap_mode='r')
 atol = float(sys.argv[3])
 batch_size = int(sys.argv[2])
