@@ -30,6 +30,7 @@ if narg < 3:
 data = numpy.load(sys.argv[1])
 npc = int(sys.argv[2])
 m = data.shape[0]
+n = data.shape[1]
 if len(data.shape) > 2:
     n = numpy.prod(data.shape[1:])
     data = numpy.reshape(data, (m, n))

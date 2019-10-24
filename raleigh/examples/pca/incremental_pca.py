@@ -50,6 +50,7 @@ numpy.random.seed(1) # make results reproducible
 
 dtype = data.dtype
 m = data.shape[0]
+n = data.shape[1]
 if len(data.shape) > 2:
     n = numpy.prod(data.shape[1:])
     data = numpy.memmap.reshape(data, (m, n))

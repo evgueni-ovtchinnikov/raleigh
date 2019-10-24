@@ -37,6 +37,7 @@ arch = 'cpu' if narg < 6 else 'gpu'
 numpy.random.seed(1) # make results reproducible
 
 m_all = data.shape[0]
+n = data.shape[1]
 if len(data.shape) > 2: # allow for multi-dimensional samples (e.g. images)
     n = numpy.prod(data.shape[1:])
     data = numpy.reshape(data, (m_all, n))
