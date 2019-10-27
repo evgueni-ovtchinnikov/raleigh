@@ -56,8 +56,6 @@ print('PCA error: max %.1e, Frobenius %.1e' % (em, ef))
 if m < m_all:
     print('\nmore data arrived, updating PCs for %d data samples...' % m_all)
     start = timeit.default_timer()
-    if atol == 0 and mpc < 1: # interactive mode not helpful in update
-        mpc = comps.shape[0]
     mean, trans, comps = pca(data[m :, :], mpc=mpc, tol=atol, verb=0, arch=arch, \
         have=(mean, trans, comps))
     elapsed = timeit.default_timer() - start

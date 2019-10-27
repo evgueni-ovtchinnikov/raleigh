@@ -158,14 +158,12 @@ class LowerRankApproximation:
         '''
         if self.__rank == 0:
             raise RuntimeError('no existing LRA data to update')
-#        if rank > 0 and rank <= self.__rank:
-#            return
-#        if max_rank > 0 and self.__rank <= max_rank:
-#            return
         if opt is None:
             opt = self.__opt
         if tol is None:
             tol = self.__tol
+        if tol == 0.0 and rank < 1:
+            rank = self.__rank
         if norm is None:
             norm = self.__norm
         if svtol is None:
@@ -173,15 +171,12 @@ class LowerRankApproximation:
         if norm not in ['f', 'm', 's']:
             msg = 'norm %s is not supported' % repr(norm)
             raise ValueError(msg)
-        scale = data_matrix.scale()
-        if scale == 0.0:
-            return
         v = data_matrix.as_vectors() # reference to data_matrix
-#        s = abs(v.dots(v))
-#        fnorm = math.sqrt(numpy.sum(s))
-#        maxl2norm = numpy.amax(numpy.sqrt(s))
-#        if maxl2norm == 0.0:
-#            return
+        s = abs(v.dots(v))
+        fnorm = math.sqrt(numpy.sum(s))
+        maxl2norm = numpy.amax(numpy.sqrt(s))
+        if maxl2norm == 0.0:
+            return
         dtype = self.__dtype
         if self.__left_v is None:
             left_data = self.__left.T
@@ -228,10 +223,6 @@ class LowerRankApproximation:
         e1 = numpy.ones((n1, 1), dtype=dtype)
         n = n0 + n1
 
-        ns = right0.dimension()
-        fnorm = scale*math.sqrt(ns*n1)
-        maxl2norm = scale*math.sqrt(ns)
-
         if shift:
             mean0 = self.__mean_v.data()
             mean1 = v.new_vectors(1, v.dimension())
@@ -265,9 +256,6 @@ class LowerRankApproximation:
                 update_tol = -tol*maxl2norm
             else:
                 update_tol = -tol*sigma0
-            s = abs(v.dots(v))
-            fnorm = math.sqrt(numpy.sum(s))
-            maxl2norm = numpy.amax(numpy.sqrt(s))
             urank = max_rank*n1//(n0 + n1)
             lra.compute(data_matrix, opt, tol=update_tol, norm=norm, \
                 max_rank=urank, verb=verb)
@@ -374,7 +362,7 @@ class LowerRankApproximation:
         self.iterations += lra.iterations
 
     def icompute(self, data_matrix, batch_size, opt=Options(), rank=-1, \
-                 tol=-1, norm='f', max_rank=-1, svtol=1e-3, shift=False, \
+                 tol=0, norm='f', max_rank=-1, svtol=1e-3, shift=False, \
                  arch='cpu', verb=0):
         '''
         Computes Lower Rank Approximation of data_matix incrementally:
