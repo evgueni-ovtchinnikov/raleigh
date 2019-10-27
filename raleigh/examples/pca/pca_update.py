@@ -33,7 +33,7 @@ data = numpy.load(sys.argv[1])
 atol = float(sys.argv[2])
 q = float(sys.argv[3])
 mpc = int(sys.argv[4])
-arch = 'cpu' if narg < 6 else sys.argv[5]
+arch = 'cpu' if narg < 6 else 'gpu!'
 
 numpy.random.seed(1) # make results reproducible
 

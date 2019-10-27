@@ -34,7 +34,7 @@ n = data.shape[1]
 if len(data.shape) > 2:
     n = numpy.prod(data.shape[1:])
     data = numpy.reshape(data, (m, n))
-arch = 'cpu' if narg < 4 else 'gpu'
+arch = 'cpu' if narg < 4 else 'gpu!'
 
 numpy.random.seed(1) # make results reproducible
 

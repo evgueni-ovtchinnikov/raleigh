@@ -60,7 +60,7 @@ else:
         print('Usage: compute_eigenimages <images> <pca_err> [gpu]')
     file = sys.argv[1]
     err_tol = float(sys.argv[2])
-    arch = 'cpu' if narg < 4 else 'gpu'
+    arch = 'cpu' if narg < 4 else 'gpu!'
     ni = -1
 
 numpy.random.seed(1) # make results reproducible

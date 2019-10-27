@@ -44,7 +44,7 @@ data = numpy.load(sys.argv[1], mmap_mode='r')
 atol = float(sys.argv[3])
 batch_size = int(sys.argv[2])
 mpc = int(sys.argv[4])
-arch = 'cpu' if narg < 6 else 'gpu'
+arch = 'cpu' if narg < 6 else 'gpu!'
 
 numpy.random.seed(1) # make results reproducible
 

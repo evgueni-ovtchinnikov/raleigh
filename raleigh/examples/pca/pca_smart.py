@@ -46,7 +46,7 @@ if len(data.shape) > 2:
     data = numpy.reshape(data, (m, n))
 tol = float(sys.argv[2])
 mpc = int(sys.argv[3])
-arch = 'cpu' if narg < 5 else sys.argv[4]
+arch = 'cpu' if narg < 5 else 'gpu!'
 
 vmin = numpy.amin(data)
 vmax = numpy.amax(data)
