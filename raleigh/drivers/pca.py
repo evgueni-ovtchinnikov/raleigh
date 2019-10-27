@@ -116,18 +116,13 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
 
 def pca_error(data, mean, trans, comps):
     m, n = data.shape
-    vmin = numpy.amin(data)
-    vmax = numpy.amax(data)
-    scale = max(abs(vmin), abs(vmax))
-    scale_m = scale*math.sqrt(n)
-    scale_f = scale*math.sqrt(m*n)
     ones = numpy.ones((data.shape[0], 1), dtype=data.dtype)
     mean = numpy.reshape(mean, (1, comps.shape[1]))
-    err = numpy.dot(trans, comps) + numpy.dot(ones, mean) - data
-    em = numpy.amax(_norm(err, axis=1))/scale_m
-    ef = numpy.amax(nla.norm(err, ord='fro'))/scale_f
-#    em = numpy.amax(_norm(err, axis=1))/numpy.amax(_norm(data, axis=1))
-#    ef = numpy.amax(nla.norm(err, ord='fro'))/numpy.amax(nla.norm(data, ord='fro'))
+    data_s = data - numpy.dot(ones, mean)
+    err = numpy.dot(trans, comps) - data_s
+    em = numpy.amax(_norm(err, axis=1))/numpy.amax(_norm(data_s, axis=1))
+    ef = numpy.amax(nla.norm(err, ord='fro')) \
+        /numpy.amax(nla.norm(data_s, ord='fro'))
     return em, ef
 
 
