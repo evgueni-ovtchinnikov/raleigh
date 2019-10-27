@@ -18,7 +18,10 @@ class Vectors(NDArrayVectors):
     '''========== Methods required by RALEIGH core solver ==========
     '''
 
-    def new_vectors(self, nv=0, dim=None):
+    def new_vectors(self, arg=0, dim=None):
+        if isinstance(arg, numpy.ndarray):
+            return Vectors(arg)
+        nv = arg
         if dim is None:
             dim = self.dimension()
         return Vectors(dim, nv, self.data_type())
@@ -225,6 +228,53 @@ class Vectors(NDArrayVectors):
         v = Vectors(self, shallow=True)
         return v
 
+    def orthogonalize(self, other):
+        m = self.nvec()
+        n = self.dimension()
+        k = other.nvec()
+        q = self.new_vectors(k, m)
+        c_n = ctypes.c_int(n)
+        c_m = ctypes.c_int(m)
+        c_k = ctypes.c_int(k)
+        ptr_u = _array_ptr(other.data())
+        ptr_v = _array_ptr(self.data())
+        ptr_q = _array_ptr(q.data())
+        if self.is_complex():
+            Trans = Cblas.ConjTrans
+        else:
+            Trans = Cblas.Trans
+        zero = self.__to_float(0.0)
+        pl_one = self.__to_float(1.0)
+        mn_one = self.__to_float(-1.0)
+        self.__cblas.gemm(Cblas.ColMajor, Trans, Cblas.NoTrans, \
+            c_m, c_k, c_n, pl_one, ptr_v, c_n, ptr_u, c_n, zero, ptr_q, c_m)
+        self.__cblas.gemm(Cblas.ColMajor, Cblas.NoTrans, Trans, \
+            c_n, c_m, c_k, mn_one, ptr_u, c_n, ptr_q, c_m, pl_one, ptr_v, c_n)
+        return q
+
+    def svd(self):
+        m = self.nvec()
+        n = self.dimension()
+        c_n = ctypes.c_int(n)
+        c_m = ctypes.c_int(m)
+        v = numpy.ndarray((m, m), dtype=self.data_type())
+        dtype = self.data_type()
+        if dtype == numpy.complex64:
+            dtype = numpy.float32
+        elif dtype == numpy.complex128:
+            dtype = numpy.float64            
+        sigma = numpy.ndarray((m,), dtype=dtype)
+        sd = numpy.ndarray((m,), dtype=self.data_type())
+        ptr_u = _array_ptr(self.data())
+        ptr_v = ctypes.c_void_p(v.ctypes.data)
+        ptr_s = ctypes.c_void_p(sigma.ctypes.data)
+        ptr_sd = ctypes.c_void_p(sd.ctypes.data)
+        jobu = self.__cblas.ovwrt
+        jobv = self.__cblas.small
+        self.__cblas.svd(Cblas.ColMajor, jobu, jobv, c_n, c_m, \
+            ptr_u, c_n, ptr_s, ptr_u, c_n, ptr_v, c_m, ptr_sd)
+        return sigma, v.T
+
     def apply(self, A, output, transp=False):
         a = A.data()
         if transp:
@@ -308,6 +358,14 @@ class Matrix(NDArrayMatrix):
             x.cblas().mkl_one, ptr_q, ldq, ptr_v, mkl_n, \
             x.cblas().mkl_zero, ptr_u, mkl_m)
 
+    def dots(self):
+        v = Vectors(self, shallow=True)
+        return v.dots(v)
+
+    def new_vectors(self, dim=None, nv=0):
+        if dim is None:
+            dim = self.shape()[1]
+        return Vectors(dim, nv, self.data_type())
 
 def _array_ptr(array, shift=0):
     return ctypes.c_void_p(array.ctypes.data + shift)

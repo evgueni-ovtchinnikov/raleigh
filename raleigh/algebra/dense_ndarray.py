@@ -36,10 +36,15 @@ class NDArrayVectors(object):
         m, n = self.__data.shape
         self.__data[iv : iv + nv, :] = 2*numpy.random.rand(nv, n) - 1
 
-    def append(self, other):
-        self.__data = numpy.concatenate((self.__data, other.data()))
-        self.__nvec += other.nvec()
-        self.select_all()
+    def append(self, other, axis=0):
+        if axis == 0:
+            self.__data = numpy.concatenate((self.data(), other.data()))
+            self.__nvec = self.nvec() + other.nvec()
+            self.select_all()
+        else:
+            self.__data = numpy.concatenate((self.__data, other.all_data()), \
+                                             axis=1)
+            self.__vdim += other.dimension()
 
     '''========== Other methods ====================================
     '''
@@ -51,6 +56,13 @@ class NDArrayVectors(object):
                 self.__data = arg.__data[i : i + n, :]
             else:
                 self.__data = arg.__data[i : i + n, :].copy()
+        elif isinstance(arg, NDArrayMatrix):
+            if shallow:
+                self.__data = arg.data()
+            else:
+                self.__data = arg.data().copy()
+            if not self.__data.flags['C_CONTIGUOUS']:
+                raise ValueError('Vectors data must be C_CONTIGUOUS')
         elif isinstance(arg, numpy.ndarray):
             self.__data = arg
         elif isinstance(arg, numbers.Number):
@@ -104,7 +116,14 @@ class NDArrayVectors(object):
 
 class NDArrayMatrix:
 
-    def __init__(self, data):
+    def __init__(self, arg):
+        if isinstance(arg, NDArrayVectors):
+            data = arg.data()
+        elif isinstance(arg, numpy.ndarray):
+            data = arg
+        else:
+            raise ValueError \
+                ('wrong argument %s in Matrix constructor' % repr(type(arg)))
         self.__data = data
         self.__shape = data.shape
         self.__dtype = data.dtype.type
@@ -123,6 +142,7 @@ class NDArrayMatrix:
 
 
 def _fill_ndarray_with_orthogonal_vectors(a):
+    a.fill(0.0)
     m, n = a.shape
     a[0,0] = 1.0
     i = 1

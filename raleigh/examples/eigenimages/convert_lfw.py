@@ -16,16 +16,18 @@ Arguments:
   datapath             lfw images folder
 
 Options:
-  -m, --how-many=<m>   number of images to process (<0: all) [default: -1]
-  -o, --output=<file>  output file name [default: images.npy]
-  -s, --asymm=<s>      select images that differ from their mirror images
-                       by no greater than <s> times maximal difference
-                       if s > 0, or mean difference otherwise, and save them
-                       to photos.npy [default: 1.0]
+  -m <m>, --how-many=<m>      number of images to process (<0: all)
+                              [default: -1]
+  -o <file>, --output=<file>  output file name [default: images.npy]
+  -s <asym>, --asymm=<asym>   select images that differ from their mirror ones
+                              by no greater than s times maximal difference
+                              if s > 0, or mean difference otherwise, and save
+                              them to photos.npy [default: 1.0]
+  -f <v>, --off-face=<v>      if v >= 0, pixel values outside the face area
+                              will be set to v times average value, erasing
+                              most of the background to get closer to passport
+                              photo look (PCA showcase) [default: -1]
   -d, --double         double the number of images by adding mirror images
-  -f, --face-area      set pixels outside face area to average value (i.e.
-                       erase most of the background to get closer to passport
-                       photo format - ldeal case for PCA)
   -v, --view           view processed images
 """
 
@@ -47,8 +49,11 @@ def _mask(nx, ny):
     mask = numpy.zeros((ny, nx), dtype=numpy.uint8)
     x0 = nx/2
     y0 = ny/2
+#    ax = nx/5
+#    ay = ny/4
     ax = x0 - nx/5
-    ay = y0 - ny/10
+    ay = y0 - ny/6
+#    ay = y0 - ny/10
     for y in range(ny):
         for x in range(nx):
             if ((x - x0)/ax)**2 + ((y - y0)/ay)**2 > 1:
@@ -59,23 +64,36 @@ def _mask(nx, ny):
 if have_docopt:
     __version__ = '0.1.0'
     args = docopt(__doc__, version=__version__)
+#    print(args)
     datapath = args['<datapath>']
     m = int(args['--how-many'])
     output = args['--output']
     asymm = float(args['--asymm'])
+    qb = float(args['--off-face'])
     dble = args['--double']
-    face = args['--face-area']
     view = args['--view']
 else:
+    narg = len(sys.argv)
+    if narg < 2:
+        print('Usage: convert_lfw <lfw_folder>')
     datapath = sys.argv[1]
     m = -1
     output = 'images.npy'
     asymm = 1.0
     dble = False
-    face = False
     view = False
+    qb = -1
 
-print('loading images from %s...' % datapath)
+face = (qb >= 0)
+if face:
+    qx = 0.7
+    qy = 0.9
+else:
+    qx = 1.0
+    qy = 1.0
+
+print('processing images from %s...' % datapath)
+
 image_dir = datapath
 for subdir in os.listdir(image_dir):
     if subdir.endswith('.txt'):
@@ -90,6 +108,12 @@ for subdir in os.listdir(image_dir):
     break
 
 ny, nx = image.shape
+ix = int(nx*(1 - qx)/2)
+iy = int(ny*(1 - qy)/2)
+nx = int(nx*qx)
+ny = int(ny*qy)
+jx = ix + nx
+jy = iy + ny
 
 print('counting images...')
 ndir = 0
@@ -130,11 +154,11 @@ for subdir in os.listdir(image_dir):
         fullname = fulldir + '/' + filename
         image = ndimage.imread(fullname, mode='L')
         if dble:
-            images[2*nimg, :, :] = image
+            images[2*nimg, :, :] = image[iy : jy, ix : jx]
             names[2*nimg] = subdir
             names[2*nimg + 1] = subdir
         else:
-            images[nimg, :, :] = image
+            images[nimg, :, :] = image[iy : jy, ix : jx]
             names[nimg] = subdir
         nimg += 1
         if m > 0 and nimg >= m:
@@ -164,9 +188,10 @@ for i in range(nimg):
         j = i
     image = images[j,:,:]
     if face:
-        image[mask > 0] = 0
-        v = numpy.sum(image)/(n - numpy.sum(mask))
-        image[mask > 0] = v
+        image[mask > 0] = vmin + qb*(vmax - vmin)
+#        image[mask > 0] = 0
+#        v = numpy.sum(image)/(n - numpy.sum(mask))
+#        image[mask > 0] = v
         images[j,:,:] = image
     if asymm < 1.0:
         img = numpy.reshape(image, (n,))
@@ -196,12 +221,12 @@ if asymm < 1.0:
     photos = images[iind,:,:]
     print(photos.shape)
     while True:
-        i = int(input('image: '))
+        i = int(input('photo-image: '))
         if i < 0 or i >= k:
             break
         image = photos[i,:,:]
         pylab.title('%s' % names[iind[i]].replace('_', ' '))
-        pylab.imshow(image, cmap='gray')
+        pylab.imshow(image, cmap='gray', vmin=vmin, vmax=vmax)
         pylab.show()
     print('saving %d photos to %s...' % (k, 'photos.npy'))
     numpy.save('photos.npy', photos)
@@ -219,8 +244,9 @@ while view:
     if i < 0 or i >= images.shape[0]:
         break
     image = images[i,:,:]
+    pylab.figure()
     pylab.title('%s' % names[i].replace('_', ' '))
-    pylab.imshow(image, cmap='gray')
+    pylab.imshow(image, cmap='gray', vmin=vmin, vmax=vmax)
     pylab.show()
 
 print('done')

@@ -72,6 +72,7 @@ class Cblas:
             self.inner.restype = ctypes.c_float
             self.mkl_one = ctypes.c_float(1.0)
             self.mkl_zero = ctypes.c_float(0.0)
+            self.svd = mkl.LAPACKE_sgesvd
         elif dt == numpy.float64:
             self.dsize = 8
             self.gemm = mkl.cblas_dgemm
@@ -84,6 +85,7 @@ class Cblas:
             self.inner.restype = ctypes.c_double
             self.mkl_one = ctypes.c_double(1.0)
             self.mkl_zero = ctypes.c_double(0.0)
+            self.svd = mkl.LAPACKE_dgesvd
         elif dt == numpy.complex64:
             self.dsize = 8
             self.gemm = mkl.cblas_cgemm
@@ -99,6 +101,7 @@ class Cblas:
             self.cmplx_zero = numpy.zeros((2,), dtype=numpy.float32)
             self.mkl_one = ctypes.c_void_p(self.cmplx_one.ctypes.data)
             self.mkl_zero = ctypes.c_void_p(self.cmplx_zero.ctypes.data)
+            self.svd = mkl.LAPACKE_cgesvd
         elif dt == numpy.complex128:
             self.dsize = 16
             self.gemm = mkl.cblas_zgemm
@@ -114,8 +117,13 @@ class Cblas:
             self.cmplx_zero = numpy.zeros((2,), dtype=numpy.float64)
             self.mkl_one = ctypes.c_void_p(self.cmplx_one.ctypes.data)
             self.mkl_zero = ctypes.c_void_p(self.cmplx_zero.ctypes.data)
+            self.svd = mkl.LAPACKE_zgesvd
         else:
             raise ValueError('data type %s not supported' % repr(dt))
+        self.__s = 'S'
+        self.__o = 'O'
+        self.small = ctypes.c_char(self.__s.encode('utf-8'))
+        self.ovwrt = ctypes.c_char(self.__o.encode('utf-8'))
 
 
 class SparseSymmetricMatrix:

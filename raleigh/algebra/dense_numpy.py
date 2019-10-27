@@ -16,10 +16,18 @@ class Vectors(NDArrayVectors):
     '''========== Methods required by RALEIGH core solver ==========
     '''
 
-    def new_vectors(self, nv=0, dim=None):
+    def new_vectors(self, arg=0, dim=None):
+        if isinstance(arg, numpy.ndarray):
+            return Vectors(arg)
+        nv = arg
         if dim is None:
             dim = self.dimension()
         return Vectors(dim, nv, self.data_type())
+
+#    def new_vectors(self, nv=0, dim=None):
+#        if dim is None:
+#            dim = self.dimension()
+#        return Vectors(dim, nv, self.data_type())
 
     def clone(self):
         return Vectors(self)
@@ -106,6 +114,19 @@ class Vectors(NDArrayVectors):
         v = Vectors(self, shallow=True)
         return v
 
+    def orthogonalize(self, other):
+        if other.is_complex():
+            q = numpy.dot(other.data().conj(), self.data().T)
+        else:
+            q = numpy.dot(other.data(), self.data().T)
+        self.data()[:,:] -= numpy.dot(q.T, other.data())
+        return self.new_vectors(q)
+
+    def svd(self):
+        v, sigma, self.data()[:,:] = \
+            numpy.linalg.svd(self.data(), full_matrices=False)
+        return sigma, v.T
+
     def apply(self, A, output, transp=False):
         a = A.data()
         if transp:
@@ -128,6 +149,7 @@ class Vectors(NDArrayVectors):
 
 
 class Matrix(NDArrayMatrix):
+
     def apply(self, x, y, transp=False):
         if transp:
             is_complex = self.is_complex()
@@ -139,6 +161,7 @@ class Matrix(NDArrayMatrix):
                 numpy.conj(y.data(), out=y.data())
         else:
             self.__apply(x, y)
+
     def __apply(self, x, y, transp=False):
         if transp:
             a = self.data().T
@@ -150,3 +173,12 @@ class Matrix(NDArrayMatrix):
         else:
             print('using non-optimized dot')
             y.data()[:,:] = numpy.dot(x.data(), a.T)
+
+    def dots(self):
+        v = Vectors(self, shallow=True)
+        return v.dots(v)
+
+    def new_vectors(self, dim=None, nv=0):
+        if dim is None:
+            dim = self.shape()[1]
+        return Vectors(dim, nv, self.data_type())

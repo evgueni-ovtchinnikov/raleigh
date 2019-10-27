@@ -15,11 +15,6 @@ import numpy.linalg as nla
 import sys
 import time
 
-# in case this raleigh package is not pip installed (e.g. cloned from github)
-raleigh_path = '../../..'
-if raleigh_path not in sys.path:
-    sys.path.insert(0, raleigh_path)
-
 
 def test(u, v):
 
@@ -54,7 +49,9 @@ def test(u, v):
         mv, nv = v.shape
         u_cublas = cublasVectors(nu, mu, u.dtype)
         v_cublas = cublasVectors(nv, mv, v.dtype)
-        a_cublas = cublasMatrix(ones)
+        w_cublas = cublasVectors(ones)
+        a_cublas = cublasMatrix(w_cublas)
+#        a_cublas = cublasMatrix(ones)
         start = time.time()
         u_cublas.fill(u)
         v_cublas.fill(v)
@@ -66,7 +63,9 @@ def test(u, v):
         y_cublas = cublasVectors(v_cublas)    
 
     if have_cblas:
-        a_cblas = cblasMatrix(ones)
+        w_cblas = cblasVectors(ones)
+        a_cblas = cblasMatrix(w_cblas)
+#        a_cblas = cblasMatrix(ones)
     if have_cublas:
         cuda.synchronize()
         start = time.time()
