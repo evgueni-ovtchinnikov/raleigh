@@ -5,7 +5,6 @@
 """Principal Component Analysis of a dataset represented by a 2D ndarray.
 """
 
-import math
 import numpy
 import numpy.linalg as nla
 
@@ -21,11 +20,12 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
 
     For a given m-by-n data matrix A (m data samples n features each) computes
     m-by-k matrix L and k-by-n matrix R with k not greater than m and n such
-    that the product L R approximates A - e a, where e = numpy.ones((m, 1)),
+    that the product L R approximates A_s = A - e a, where e = numpy.ones((m, 1)),
     and a = numpy.mean(A, axis=0).reshape((1, n))
 
     The rows of R (principal components) are orhonormal, the columns of L
-    (reduced-features data) are in the descending order of their norms.
+    (reduced-features data) are orthogonal and are in the descending order of
+    their norms.
 
     Parameters: basic
     -----------------
@@ -38,17 +38,22 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
     tol : float
         Approximation tolerance in the case npc < 0. If tol is non-zero, then 
         the computation of principal components will stop when the norm of 
-        D = A - e a - L R becomes not greater than eps, where eps is the norm
-        of A multiplied by tol if tol > 0 and eps = -tol if tol < 0. Otherwise
+        D = A_s - L R becomes not greater than eps, where eps is the norm
+        of A_s multiplied by tol if tol > 0 and eps = -tol if tol < 0. Otherwise
         the user will be asked repeatedly whether the computation should 
         continue (the number of computed principal components and the relative 
-        truncation error, the ratio of the norm of D to that of A, are 
-        displayed).
+        truncation error, the ratio of the norm of D to that of A_s, are
+        displayed). Ignored if npc is positive.
+    mpc : int
+        Maximal number of PCs to compute. Ignored if non-positive, otherwise
+        if mpc < min(m, n), then the accuracy of approximation set by tol
+        might not be achieved. Ignored if npc is positive.
     have : tuple (a0, L0, R0)
         If not None, previously computed PCA approximation L0 R0 + e0 a0
         to a data matrix A0 of the same width as A is to be updated, i.e.
         PCA approximation L R + e a to numpy.concatenate((A0, A)) is to be
-        computed.
+        computed. If neither nps nor tol are specified, the same number of
+        components as in R0 is to be computed.
     batch_size : int
         If not None, performs incremental PCA with specified batch size.
         Principal components for the first batch are computed by the standard
@@ -63,19 +68,15 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
     Parameters: advanced
     --------------------
     norm : character
-        The norm to be used for evaluating the approximation error:
-        's' : the largest singular value of D (if tol > 0, then the largest
-              singular value of A - e a will be used instead of the norm of A
-              for evaluating the relative truncation error),
-        'f' : Frobenius norm of D,
-        'm' : the largest norm of a row of D.
-    mpc : int
-        Maximal number of PCs to compute. Ignored if negative, otherwise
-        if mpc < min(m, n), then the required accuracy of approximation
-        might not be achieved.
+        The measure to be used for evaluating the relative approximation error:
+        's' : the largest singular value,
+        'f' : Frobenius norm,
+        'm' : the largest norm of a row.
     svtol : float
         Error tolerance for singular values (see Notes below) relative to
-        the largest singular value.
+        the largest singular value. May need to be decreased from its default
+        value if highly accurate approximation is sought. Increasing is not
+        recommended.
     opt : an object of class raleigh.solver.Options
         Solver options (see raleigh.solver).
 
@@ -87,6 +88,21 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
         The reduced-features data matrix.
     comps : numpy array of shape (k, n)
         Principal components matrix.
+
+    Usage examples
+    --------------
+    - To compute 1000 principal components of A:
+        mean, trans, comps = pca(A, npc=1000)
+
+    - To compute a number of principal components delivering 5% relative
+      accuracy of approximation of A:
+        mean, trans, comps = pca(A, tol=0.05)
+
+    - To update PCA of the data matrix A after new data A' has been added to it:
+        mean, trans, comps = pca(A', have=(mean, trans, comps))
+
+    - To compute PCA incrementally by processing 3000 data samples at a time:
+        mean, trans, comps = pca(A, batch_size=3000)
 
     Notes
     -----
