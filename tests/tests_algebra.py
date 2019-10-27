@@ -11,14 +11,10 @@ Arguments:
 
 import numpy
 import numpy.linalg as nla
+import os
 import scipy.linalg as sla
 import sys
 import time
-
-# in case this raleigh package is not pip installed (e.g. cloned from github)
-raleigh_path = '../../..'
-if raleigh_path not in sys.path:
-    sys.path.insert(0, raleigh_path)
 
 from raleigh.algebra import verbosity
 verbosity.level = 2
