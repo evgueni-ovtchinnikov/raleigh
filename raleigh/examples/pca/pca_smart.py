@@ -48,11 +48,6 @@ tol = float(sys.argv[2])
 mpc = int(sys.argv[3])
 arch = 'cpu' if narg < 5 else 'gpu!'
 
-vmin = numpy.amin(data)
-vmax = numpy.amax(data)
-# error tolerance is relative to this Frobenius norm scale:
-scale = max(abs(vmin), abs(vmax)) * math.sqrt(m*n)
-
 numpy.random.seed(1) # make results reproducible
 
 print('\n--- solving with raleigh pca...\n')
@@ -94,6 +89,7 @@ try:
     # compute Frobenius norm of the initial PCA error
     nrms = nla.norm(data_s, axis=1)
     err2 = numpy.sum(nrms*nrms)
+    err2init = err2
     while True:
         # compute next portion of PCs
         trans = skl_pca.fit_transform(data)
@@ -107,7 +103,7 @@ try:
         pcs = comps_skl.shape[0]
         # update Frobenius norm of PCA error
         err2 -= numpy.sum(sigma*sigma)
-        err = math.sqrt(err2)/scale
+        err = math.sqrt(err2/err2init)
         print('%.2f sec: last singular value: sigma[%d] = %e, error %.2e' \
             % (time_s, pcs - 1, sigma[-1], err))
         if err < tol: # desired accuracy achieved, quit the loop
