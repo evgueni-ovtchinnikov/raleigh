@@ -7,7 +7,6 @@
 import math
 import numpy
 import numpy.linalg as nla
-import scipy.linalg as sla
 import time
 
 try:
@@ -81,12 +80,16 @@ class PartialSVD:
                     s = v.dot(e)
                     u.add(w, -1, s)
             if refine:
-                u_data = u.data()
-                uu, sigma, uv = sla.svd(u_data.T, full_matrices=False)
-                u = u.new_vectors(uu.T)
-                wv = v.new_vectors(nv)
-                v.multiply(uv.T, wv)
-                wv.copy(v)
+                sigma, q = u.svd()
+                w = v.new_vectors(nv)
+                v.multiply(_conj(q.T), w)
+                w.copy(v)
+##                u_data = u.data()
+##                uu, sigma, uv = sla.svd(u_data.T, full_matrices=False)
+##                u = u.new_vectors(uu.T)
+##                wv = v.new_vectors(nv)
+##                v.multiply(uv.T, wv)
+##                wv.copy(v)
             else:
                 sigma = numpy.sqrt(abs(u.dots(u)))
                 u.scale(sigma)
