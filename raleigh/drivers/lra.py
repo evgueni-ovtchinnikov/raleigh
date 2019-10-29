@@ -246,6 +246,10 @@ class LowerRankApproximation:
             mean = None
             vmean = None
 
+        s = abs(v.dots(v))
+        fnorm = math.sqrt(numpy.sum(s))
+        maxl2norm = numpy.amax(numpy.sqrt(s))
+
         left1 = v.orthogonalize(right0)
 
         lra = LowerRankApproximation()
@@ -306,7 +310,7 @@ class LowerRankApproximation:
                 s = numpy.amax(numpy.sqrt(abs(r)))
             else:
                 s = sigma[0]
-            if shift:
+            if shift and False:
                 a = vmean.dot(vmean)
                 b = vmean.dot(right0)
                 p = left0.new_vectors(1)

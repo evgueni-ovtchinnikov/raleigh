@@ -194,7 +194,7 @@ class Options:
         self.convergence_criteria = None
         self.stopping_criteria = None
         self.detect_stagnation = True
-        self.max_quota = 0.5
+        self.max_quota = 0.75
 
 
 class EstimatedErrors:
@@ -501,7 +501,7 @@ class Solver:
         nc = Xc.nvec()
         m = n - nc
         if verb > -1:
-            print('%d eigenpairs not computed' % m)
+            print('%d eigenpairs not computed by CG, switching to eigh' % m)
 
         X = eigenvectors.new_vectors(m)
         X.fill_random()
@@ -526,6 +526,7 @@ class Solver:
                 BXc = Xc
             if nc > 0:
                 Gc = BXc.dot(Xc)
+                #Gci = nla.inv(Gc)
                 # approximate inverse of Gc
                 Gci = 2*numpy.identity(nc, dtype=data_type) - Gc
             Q = numpy.dot(Gci, X.dot(BXc))
@@ -538,6 +539,14 @@ class Solver:
             XBX = Y.dot(X)
         else:
             XBX = X.dot(X)
+        lmd, q = sla.eigh(XBX)
+        k = numpy.sum(lmd <= 0)
+        # dropping linear dependent Xs
+        m -= k
+        X.select(m)
+        Y.select(m)
+        Z.select(m)
+        XBX = XBX[:m, :m]
         if pro:
             A(Y, Z)
             XAX = Z.dot(Y)

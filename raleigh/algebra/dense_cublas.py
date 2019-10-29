@@ -94,7 +94,7 @@ class Vectors:
         data = self.all_data_ptr()
         data_v = other.all_data_ptr()
         ptr_v = _shifted_ptr(data_v, j*vsize)
-        ptr = _shifted_ptr(data, (i + m)*vsize)
+        ptr = _shifted_ptr(data, int(i + m)*vsize)
         ln = ctypes.c_int(l*n)
 #        print('copying %d vectors...' % l)
         self.__cublas.copy(self.__cublas.handle, ln, ptr_v, inc, ptr, inc)
@@ -253,7 +253,7 @@ class Vectors:
         dptr_u = other.data_ptr()
         dptr_v = self.data_ptr()
         dptr_q = ctypes.POINTER(ctypes.c_ubyte)()
-        size_q = k*m*self.__dsize
+        size_q = int(k*m*self.__dsize)
         _try_calling(cuda.malloc(ctypes.byref(dptr_q), size_q))
         if self.is_complex():
             Trans = Cublas.ConjTrans
@@ -279,7 +279,7 @@ class Vectors:
         dptr_u = output.data_ptr()
         dptr_v = self.data_ptr()
         dptr_q = ctypes.POINTER(ctypes.c_ubyte)()
-        size_q = k*m*self.__dsize
+        size_q = int(k*m*self.__dsize)
         _try_calling(cuda.malloc(ctypes.byref(dptr_q), size_q))
         if a.flags['C_CONTIGUOUS'] or a.flags['F_CONTIGUOUS']:
             q = a
@@ -408,7 +408,7 @@ class Vectors:
             m = nvec
             assert m >= 0
             if nvec > 0:
-                size = n*m*dsize
+                size = int(n*m*dsize)
                 self.__vdata = _Data(size)
                 _try_calling(cuda.memset(self.all_data_ptr(), 0, size))
             else:
@@ -617,7 +617,7 @@ class Vectors:
         if m < 1:
             return v
         hptr_v = ctypes.c_void_p(v.ctypes.data)
-        size = n * m * self.__dsize
+        size = int(n * m * self.__dsize)
         _try_calling(cuda.memcpy(hptr_v, self.data_ptr(), size, cuda.memcpyD2H))
         return v
 
