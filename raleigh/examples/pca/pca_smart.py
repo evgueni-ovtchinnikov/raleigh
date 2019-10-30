@@ -38,7 +38,8 @@ from raleigh.drivers.pca import pca, pca_error
 
 narg = len(sys.argv)
 if narg < 4:
-    print('Usage: pca_smart <data_file> <tolerance> <max_pcs> [gpu]')
+    usage = 'Usage: pca_smart <data_file> <tolerance> <max_pcs> [gpu]'
+    raise SystemExit(usage)
 data = numpy.load(sys.argv[1])
 m = data.shape[0]
 n = numpy.prod(data.shape[1:])
