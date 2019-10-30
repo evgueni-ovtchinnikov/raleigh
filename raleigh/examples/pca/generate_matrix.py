@@ -38,6 +38,7 @@ except:
 import numpy
 import numpy.linalg as nla
 import scipy.linalg as sla
+import sys
 
 
 def _norm(a, axis):
