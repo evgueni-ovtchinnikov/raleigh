@@ -3,11 +3,14 @@
 
 # -*- coding: utf-8 -*-
 '''Generates a data matrix from randomly generated singular vectors and 
-   singular values of user-prescribed behaviour.
+   singular values of user-controlled behaviour.
 
-The singular spectrum of the randomly generated test matrix imitates that
-encountered in Principal Component Analyisis of images from lfw dataset
-(see http://vis-www.cs.umass.edu/lfw).
+   The generated matrix is saved to data.npy, and singular values and vectors
+   to svd.npz.
+
+    The singular spectrum of the randomly generated test matrix imitates that
+    encountered in Principal Component Analyisis of images from lfw dataset
+    (see http://vis-www.cs.umass.edu/lfw).
 
 Usage:
   generate_matrix [--help | -h | options] <m> <n> <r>
@@ -74,14 +77,17 @@ if have_docopt:
     ptb = args['--ptb']
     pca = args['--pca']
 else:
-    print('\n=== docopt not found, using default options...\n')
-    m = 3000
-    n = 2000
-    k = 1000
-    alpha = 1
+    narg = len(sys.argv)
+    if narg < 4:
+        usage = 'Usage: generate_matrix <samples> <features> <rank>'
+        raise SystemExit(usage)
+    m = sys.argv[1]
+    n = sys.argv[2]
+    k = sys.argv[3]
+    alpha = 0.75
     dble = False
     ptb = False
-    pca = False
+    pca = True
 
 numpy.random.seed(1) # make results reproducible
 
