@@ -82,9 +82,9 @@ else:
     if narg < 4:
         usage = 'Usage: generate_matrix <samples> <features> <rank>'
         raise SystemExit(usage)
-    m = sys.argv[1]
-    n = sys.argv[2]
-    k = sys.argv[3]
+    m = int(sys.argv[1])
+    n = int(sys.argv[2])
+    k = int(sys.argv[3])
     alpha = 0.75
     dble = False
     ptb = False
