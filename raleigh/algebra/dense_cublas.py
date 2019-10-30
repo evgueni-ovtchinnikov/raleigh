@@ -16,7 +16,7 @@ class Vectors:
     '''CUBLAS implementation of Vectors type.
     '''
 
-    MIN_INC = 16
+#    MIN_INC = 16
 
     '''========== Methods required by RALEIGH core solver ==========
     '''
@@ -79,7 +79,8 @@ class Vectors:
         j, l = other.selected()
         nvec = i + m + l
         if nvec > self.__mvec:
-            mvec = ((nvec - 1)//Vectors.MIN_INC + 1)*Vectors.MIN_INC
+            mvec = ((nvec - 1)//self.__min_inc + 1)*self.__min_inc
+#            mvec = ((nvec - 1)//Vectors.MIN_INC + 1)*Vectors.MIN_INC
 #            print('allocating %d vectors...' % mvec)
             size = mvec * vsize
             vdata = _Data(size)
@@ -91,6 +92,8 @@ class Vectors:
                                    inc)
             self.__vdata = vdata
             self.__mvec = mvec
+            if self.__min_inc < self.__max_inc:
+                self.__min_inc *= 2
         data = self.all_data_ptr()
         data_v = other.all_data_ptr()
         ptr_v = _shifted_ptr(data_v, j*vsize)
@@ -367,6 +370,7 @@ class Vectors:
                 self.__vdata = _Data(size)
                 _try_calling(cuda.memcpy(self.all_data_ptr(), arg.data_ptr(), \
                                          size, cuda.memcpyD2D))
+            self.__cublas = arg.cublas()
         elif isinstance(arg, Matrix):
             if arg.order() is not 'C_CONTIGUOUS':
                 raise ValueError('Vectors data must be C_CONTIGUOUS')
@@ -375,6 +379,7 @@ class Vectors:
             dsize = arg.data_size()
             self.__is_complex = arg.is_complex()
             self.__vdata = arg.matrix_data() #TODO: deep copy case
+            self.__cublas = arg.cublas()
         elif isinstance(arg, numpy.ndarray):
             m, n = arg.shape
             dtype = arg.dtype.type
@@ -386,6 +391,7 @@ class Vectors:
                                      cuda.memcpyH2D))
             self.__is_complex = \
                 (dtype == numpy.complex64 or dtype == numpy.complex128)
+            self.__cublas = Cublas(dtype)
         elif isinstance(arg, numbers.Number):
             dtype = data_type
             if dtype is None:
@@ -413,6 +419,7 @@ class Vectors:
                 _try_calling(cuda.memset(self.all_data_ptr(), 0, size))
             else:
                 self.__vdata = None
+            self.__cublas = Cublas(dtype)
         else:
             raise ValueError \
                 ('wrong argument %s in constructor' % repr(type(arg)))
@@ -420,9 +427,10 @@ class Vectors:
         self.__vdim = n
         self.__nvec = m
         self.__mvec = m
+        self.__min_inc = 16
+        self.__max_inc = 1024
         self.__dsize = dsize
         self.__dtype = dtype
-        self.__cublas = Cublas(dtype)
 
     def __float(self):
         dt = self.data_type()
@@ -637,6 +645,7 @@ class Matrix:
             self.__is_complex = arg.is_complex()
             self.__order = 'C_CONTIGUOUS'
             self.__mdata = arg.vectors_data()
+            self.__cublas = arg.cublas()
         elif isinstance(arg, numpy.ndarray):
             self.__shape = arg.shape
             self.__dtype = arg.dtype.type
@@ -654,10 +663,10 @@ class Matrix:
             self.__mdata = _Data(size)
             ptr = ctypes.c_void_p(arg.ctypes.data)
             _try_calling(cuda.memcpy(self.data_ptr(), ptr, size, cuda.memcpyH2D))
+            self.__cublas = Cublas(self.__dtype)
         else:
             raise ValueError \
                 ('wrong argument %s in Matrix constructor' % repr(type(arg)))
-        self.__cublas = Cublas(self.__dtype)
 
     def __floats(self):
         dt = self.__dtype
@@ -704,6 +713,9 @@ class Matrix:
 
     def data_size(self):
         return self.__dsize
+
+    def cublas(self):
+        return self.__cublas
 
     def is_complex(self):
         return self.__is_complex
@@ -778,6 +790,11 @@ def _try_calling(err):
 def _shifted_ptr(dev_ptr, shift=0):
     ptr = ctypes.cast(dev_ptr, ctypes.c_void_p)
     return ctypes.cast(ptr.value + shift, ctypes.POINTER(ctypes.c_ubyte))
+
+
+def _ptr_value(dev_ptr):
+    ptr = ctypes.cast(dev_ptr, ctypes.c_void_p)
+    return ptr.value
 
 
 def _conjugate(a):

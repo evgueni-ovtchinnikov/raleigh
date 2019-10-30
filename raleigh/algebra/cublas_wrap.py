@@ -89,10 +89,10 @@ class Cublas:
         self.cusolver_handle = Cublas.CtypesPtr()
         err = cublasCreate(ctypes.byref(self.handle))
         if err != 0:
-            raise RuntimeError('cublasCreate failure')
+            raise RuntimeError('cublasCreate failure, cuda error %d' % err)
         err = cusolverCreate(ctypes.byref(self.cusolver_handle))
         if err != 0:
-            raise RuntimeError('cusolverCreate failure')
+            raise RuntimeError('cusolverCreate failure, cuda error %d' % err)
         self.getPointerMode = cublas.cublasGetPointerMode_v2
         self.getPointerMode.restype = ctypes.c_int
         self.setPointerMode = cublas.cublasSetPointerMode_v2
