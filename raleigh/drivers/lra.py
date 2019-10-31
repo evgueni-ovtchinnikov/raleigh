@@ -389,6 +389,7 @@ class LowerRankApproximation:
         if self.__rank == 0:
             print('processing batch %d of size %d' % (batch, batch_size))
             matrix = AMatrix(data_matrix[:batch_size, :], arch=arch)
+            print('created AMatrix')
             self.compute(matrix, opt=opt, rank=rank, \
                          tol=tol, norm=norm, max_rank=max_rank, svtol=svtol, \
                          shift=shift, verb=verb)
@@ -402,6 +403,7 @@ class LowerRankApproximation:
             print('processing batch %d of size %d' % (batch, next_ - first))
             matrix = AMatrix(data_matrix[first : next_, :], arch=arch, \
                              copy_data=True)
+            print('created AMatrix')
             self.update(matrix, opt=opt, rank=rank, tol=tol, norm=norm, \
                         max_rank=max_rank, svtol=svtol, verb=verb)
             del matrix # free memory

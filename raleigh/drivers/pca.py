@@ -121,10 +121,10 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
             lra.update(data_matrix, opt=opt, rank=npc, tol=tol, norm=norm, \
                        max_rank=mpc, svtol=svtol, verb=verb)
     else:
-        if arch[:3] == 'gpu':
-            print('WARNING: GPU version under development, using CPU for now')
+#        if arch[:3] == 'gpu':
+#            print('WARNING: GPU version under development, using CPU for now')
         lra.icompute(A, batch_size, opt=opt, rank=npc, tol=tol, norm=norm, \
-                        max_rank=mpc, svtol=svtol, shift=True, verb=verb)
+                        max_rank=mpc, svtol=svtol, shift=True, verb=verb, arch=arch)
     trans = lra.left() # transfomed (reduced-features) data
     comps = lra.right() # principal components
     return lra.mean(), trans, comps
