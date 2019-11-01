@@ -171,7 +171,10 @@ class LowerRankApproximation:
         if norm not in ['f', 'm', 's']:
             msg = 'norm %s is not supported' % repr(norm)
             raise ValueError(msg)
-        v = data_matrix.as_vectors() # reference to data_matrix
+        if self.__left_v is None:
+            v = data_matrix.as_vectors()
+        else:
+            v = self.__left_v.new_vectors(data_matrix.as_operator())
         s = abs(v.dots(v))
         fnorm = math.sqrt(numpy.sum(s))
         maxl2norm = numpy.amax(numpy.sqrt(s))

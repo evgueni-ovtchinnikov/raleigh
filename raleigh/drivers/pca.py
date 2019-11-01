@@ -127,6 +127,7 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
                         max_rank=mpc, svtol=svtol, shift=True, verb=verb, arch=arch)
     trans = lra.left() # transfomed (reduced-features) data
     comps = lra.right() # principal components
+    print('done with pca')
     return lra.mean(), trans, comps
 
 

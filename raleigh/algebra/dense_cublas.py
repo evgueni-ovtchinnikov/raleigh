@@ -22,12 +22,15 @@ class Vectors:
     '''
 
     def new_vectors(self, arg=0, dim=None):
-        if isinstance(arg, numpy.ndarray):
+#        if isinstance(arg, numpy.ndarray):
+#            return Vectors(arg, cublas=self.__cublas)
+        try:
+            nv = int(arg)
+            if dim is None:
+                dim = self.dimension()
+            return Vectors(dim, nv, self.data_type(), cublas=self.__cublas)
+        except:
             return Vectors(arg, cublas=self.__cublas)
-        nv = arg
-        if dim is None:
-            dim = self.dimension()
-        return Vectors(dim, nv, self.data_type(), cublas=self.__cublas)
 
 #    def new_vectors(self, nv=0, dim=None):
 #        if dim is None:
@@ -380,8 +383,10 @@ class Vectors:
             self.__is_complex = arg.is_complex()
             self.__vdata = arg.matrix_data() #TODO: deep copy case
             if cublas is None:
+                print('vectors: creating cublas')
                 self.__cublas = Cublas(dtype)
             else:
+                print('vectors: referencing cublas')
                 self.__cublas = cublas
 #            self.__cublas = arg.cublas()
         elif isinstance(arg, numpy.ndarray):
@@ -445,7 +450,6 @@ class Vectors:
         self.__dtype = dtype
 
 #    def __del__(self):
-#        print('destroying vectors...')
 #        del self.__vdata
 #        del self.__cublas
 

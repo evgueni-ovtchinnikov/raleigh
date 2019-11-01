@@ -163,19 +163,21 @@ class AMatrix:
             else:
                 self.__op = Matrix(a)
             self.__gpu = None
-            #self.__vectors = Vectors(self.__op, shallow=False)
-        self.__vectors = Vectors(self.__op, shallow=True)
+        self.__Vectors = Vectors
+        self.__vectors = None
         vmin = numpy.amin(a)
         vmax = numpy.amax(a)
         self.__scale = max(abs(vmin), abs(vmax))
 
-    def __del__(self):
-        del self.__vectors
+#    def __del__(self):
+#        del self.__vectors
 
     def as_operator(self):
         return self.__op
 
     def as_vectors(self):
+        if self.__vectors is None:
+            self.__vectors = self.__Vectors(self.__op, shallow=True)
         return self.__vectors
 
     def arch(self):
@@ -201,8 +203,11 @@ class PSVDErrorCalculator:
     def __init__(self, a):
         m, n = a.shape()
         self.dt = a.data_type()
-        v = a.as_vectors()
-        s = v.dots(v)
+        print('here')
+        s = a.dots()
+        print('here')
+#        v = a.as_vectors()
+#        s = v.dots(v)
         self.norms = numpy.sqrt(s.reshape((m, 1)))
         self.solver = None
         self.err = None
