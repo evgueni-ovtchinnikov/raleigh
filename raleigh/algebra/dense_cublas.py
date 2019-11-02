@@ -9,6 +9,7 @@ import numbers
 import numpy
 
 from . import cuda_wrap as cuda
+from . import cublas_handle as cublas
 from .cublas_wrap import Cublas
 
 
@@ -16,26 +17,17 @@ class Vectors:
     '''CUBLAS implementation of Vectors type.
     '''
 
-#    MIN_INC = 16
-
     '''========== Methods required by RALEIGH core solver ==========
     '''
 
     def new_vectors(self, arg=0, dim=None):
-#        if isinstance(arg, numpy.ndarray):
-#            return Vectors(arg, cublas=self.__cublas)
         try:
             nv = int(arg)
             if dim is None:
                 dim = self.dimension()
-            return Vectors(dim, nv, self.data_type(), cublas=self.__cublas)
+            return Vectors(dim, nv, self.data_type()) #, cublas=self.__cublas)
         except:
-            return Vectors(arg, cublas=self.__cublas)
-
-#    def new_vectors(self, nv=0, dim=None):
-#        if dim is None:
-#            dim = self.dimension()
-#        return Vectors(dim, nv, self.data_type())
+            return Vectors(arg) #, cublas=self.__cublas)
 
     def clone(self):
         return Vectors(self)
@@ -359,7 +351,7 @@ class Vectors:
     '''========== Other methods ====================================
     '''
 
-    def __init__(self, arg, nvec=0, data_type=None, shallow=False, cublas=None):
+    def __init__(self, arg, nvec=0, data_type=None, shallow=False): #, cublas=None):
         if isinstance(arg, Vectors):
             n = arg.dimension()
             m = arg.nvec()
@@ -373,7 +365,6 @@ class Vectors:
                 self.__vdata = _Data(size)
                 _try_calling(cuda.memcpy(self.all_data_ptr(), arg.data_ptr(), \
                                          size, cuda.memcpyD2D))
-            self.__cublas = arg.cublas()
         elif isinstance(arg, Matrix):
             if arg.order() is not 'C_CONTIGUOUS':
                 raise ValueError('Vectors data must be C_CONTIGUOUS')
@@ -382,13 +373,6 @@ class Vectors:
             dsize = arg.data_size()
             self.__is_complex = arg.is_complex()
             self.__vdata = arg.matrix_data() #TODO: deep copy case
-            if cublas is None:
-                print('vectors: creating cublas')
-                self.__cublas = Cublas(dtype)
-            else:
-                print('vectors: referencing cublas')
-                self.__cublas = cublas
-#            self.__cublas = arg.cublas()
         elif isinstance(arg, numpy.ndarray):
             m, n = arg.shape
             dtype = arg.dtype.type
@@ -400,11 +384,6 @@ class Vectors:
                                      cuda.memcpyH2D))
             self.__is_complex = \
                 (dtype == numpy.complex64 or dtype == numpy.complex128)
-            if cublas is None:
-                self.__cublas = Cublas(dtype)
-            else:
-                self.__cublas = cublas
-#            self.__cublas = Cublas(dtype)
         elif isinstance(arg, numbers.Number):
             dtype = data_type
             if dtype is None:
@@ -432,14 +411,11 @@ class Vectors:
                 _try_calling(cuda.memset(self.all_data_ptr(), 0, size))
             else:
                 self.__vdata = None
-            if cublas is None:
-                self.__cublas = Cublas(dtype)
-            else:
-                self.__cublas = cublas
-#            self.__cublas = Cublas(dtype)
         else:
             raise ValueError \
                 ('wrong argument %s in constructor' % repr(type(arg)))
+        if cublas.handle is None:
+            cublas.handle = Cublas(dtype)
         self.__selected = (0, m)
         self.__vdim = n
         self.__nvec = m
@@ -448,10 +424,7 @@ class Vectors:
         self.__max_inc = 1024
         self.__dsize = dsize
         self.__dtype = dtype
-
-#    def __del__(self):
-#        del self.__vdata
-#        del self.__cublas
+        self.__cublas = cublas.handle
 
     def __float(self):
         dt = self.data_type()
@@ -666,7 +639,6 @@ class Matrix:
             self.__is_complex = arg.is_complex()
             self.__order = 'C_CONTIGUOUS'
             self.__mdata = arg.vectors_data()
-#            self.__cublas = arg.cublas()
         elif isinstance(arg, numpy.ndarray):
             self.__shape = arg.shape
             self.__dtype = arg.dtype.type
@@ -684,7 +656,6 @@ class Matrix:
             self.__mdata = _Data(size)
             ptr = ctypes.c_void_p(arg.ctypes.data)
             _try_calling(cuda.memcpy(self.data_ptr(), ptr, size, cuda.memcpyH2D))
-#            self.__cublas = Cublas(self.__dtype)
         else:
             raise ValueError \
                 ('wrong argument %s in Matrix constructor' % repr(type(arg)))
@@ -735,9 +706,6 @@ class Matrix:
     def data_size(self):
         return self.__dsize
 
-#    def cublas(self):
-#        return self.__cublas
-
     def is_complex(self):
         return self.__is_complex
 
@@ -751,10 +719,10 @@ class Matrix:
         v = Vectors(self, shallow=True)
         return v.dots(v)
 
-#    def new_vectors(self, dim=None, nv=0):
-#        if dim is None:
-#            dim = self.shape()[1]
-#        return Vectors(dim, nv, self.data_type())
+    def new_vectors(self, dim=None, nv=0):
+        if dim is None:
+            dim = self.shape()[1]
+        return Vectors(dim, nv, self.data_type())
 
     def apply(self, x, y, transp=False):
         if x.data_type() != self.__dtype or y.data_type() != self.__dtype:

@@ -84,8 +84,7 @@ class Cublas:
     DeviceMode = ctypes.c_int(1)
 
     def __init__(self, dt):
-        print('creating cublas...')
-
+#        print('creating cublas...')
         self.handle = Cublas.CtypesPtr()
         self.cusolver_handle = Cublas.CtypesPtr()
         err = cublasCreate(ctypes.byref(self.handle))
@@ -198,7 +197,6 @@ class Cublas:
         self.ovwrt = ctypes.c_char('O'.encode('utf-8'))
 
     def __del__(self):
-        print('destroying cublas...')
-
+#        print('destroying cublas...')
         cublasDestroy(self.handle)
         cusolverDestroy(self.cusolver_handle)

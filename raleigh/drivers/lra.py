@@ -171,10 +171,7 @@ class LowerRankApproximation:
         if norm not in ['f', 'm', 's']:
             msg = 'norm %s is not supported' % repr(norm)
             raise ValueError(msg)
-        if self.__left_v is None:
-            v = data_matrix.as_vectors()
-        else:
-            v = self.__left_v.new_vectors(data_matrix.as_operator())
+        v = data_matrix.as_vectors()
         s = abs(v.dots(v))
         fnorm = math.sqrt(numpy.sum(s))
         maxl2norm = numpy.amax(numpy.sqrt(s))
@@ -392,11 +389,9 @@ class LowerRankApproximation:
         if self.__rank == 0:
             print('processing batch %d of size %d' % (batch, batch_size))
             matrix = AMatrix(data_matrix[:batch_size, :], arch=arch)
-            print('created AMatrix')
             self.compute(matrix, opt=opt, rank=rank, \
                          tol=tol, norm=norm, max_rank=max_rank, svtol=svtol, \
                          shift=shift, verb=verb)
-            del matrix # free memory
             first = batch_size
             batch += 1
         else:
@@ -406,10 +401,8 @@ class LowerRankApproximation:
             print('processing batch %d of size %d' % (batch, next_ - first))
             matrix = AMatrix(data_matrix[first : next_, :], arch=arch, \
                              copy_data=True)
-            print('created AMatrix')
             self.update(matrix, opt=opt, rank=rank, tol=tol, norm=norm, \
                         max_rank=max_rank, svtol=svtol, verb=verb)
-            del matrix # free memory
             first = next_
             batch += 1
 

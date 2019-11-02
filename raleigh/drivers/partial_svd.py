@@ -41,8 +41,8 @@ class PartialSVD:
         if transp:
             n, m = m, n
 
-#        v = op.new_vectors(n)
-        v = matrix.as_vectors().new_vectors(0, n)
+        v = op.new_vectors(n)
+#        v = matrix.as_vectors().new_vectors(0, n)
         dt = v.data_type()
         opSVD = _OperatorSVD(matrix, v, transp, shift)
         problem = Problem(v, opSVD)
@@ -169,9 +169,6 @@ class AMatrix:
         vmax = numpy.amax(a)
         self.__scale = max(abs(vmin), abs(vmax))
 
-#    def __del__(self):
-#        del self.__vectors
-
     def as_operator(self):
         return self.__op
 
@@ -203,11 +200,7 @@ class PSVDErrorCalculator:
     def __init__(self, a):
         m, n = a.shape()
         self.dt = a.data_type()
-        print('here')
         s = a.dots()
-        print('here')
-#        v = a.as_vectors()
-#        s = v.dots(v)
         self.norms = numpy.sqrt(s.reshape((m, 1)))
         self.solver = None
         self.err = None
