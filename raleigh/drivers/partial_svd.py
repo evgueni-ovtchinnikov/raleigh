@@ -42,6 +42,7 @@ class PartialSVD:
             n, m = m, n
 
         v = op.new_vectors(n)
+#        v = matrix.as_vectors().new_vectors(0, n)
         dt = v.data_type()
         opSVD = _OperatorSVD(matrix, v, transp, shift)
         problem = Problem(v, opSVD)
@@ -162,8 +163,8 @@ class AMatrix:
             else:
                 self.__op = Matrix(a)
             self.__gpu = None
-            #self.__vectors = Vectors(self.__op, shallow=False)
-        self.__vectors = Vectors(self.__op, shallow=True)
+        self.__Vectors = Vectors
+        self.__vectors = None
         vmin = numpy.amin(a)
         vmax = numpy.amax(a)
         self.__scale = max(abs(vmin), abs(vmax))
@@ -172,6 +173,8 @@ class AMatrix:
         return self.__op
 
     def as_vectors(self):
+        if self.__vectors is None:
+            self.__vectors = self.__Vectors(self.__op, shallow=True)
         return self.__vectors
 
     def arch(self):
