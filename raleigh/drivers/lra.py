@@ -277,7 +277,11 @@ class LowerRankApproximation:
         left01.zero()
         left0.append(left01)
         left1.append(left11)
-        left0.append(left1, axis=1)
+        left0_data = left0.data()
+        left1_data = left1.data()
+        left0_data = numpy.concatenate((left0_data, left1_data), axis=1)
+        left0 = left0.new_vectors(left0_data)
+#        left0.append(left1, axis=1)
         right0.append(right10)
         self.__left_v = left0
         self.__right_v = right0
@@ -286,9 +290,10 @@ class LowerRankApproximation:
         wr = right0.new_vectors(right0.nvec())
         H = right0.dot(right0)
         mu, x = sla.eigh(H)
-        q = mu[0]/mu[-1]
-#        print(mu[0], mu[-1])
+        q = mu[0] #/mu[-1]
         if q < 0.5:
+#            k = numpy.sum(mu < 0.5)
+#            print(mu[: k + 1])
             _lra_ortho(left0, right0, wl, wr)
         else:
             G = left0.dot(left0)
