@@ -96,19 +96,19 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
     >>> numpy.random.seed(1)
     >>> A, sigma, u, v = generate(3000, 2000, 1000, pca=True)
 
-    - To compute 100 principal components of A:
-        mean, trans, comps = pca(A, npc=100)
+    - To compute 300 principal components of A:
+
+        mean, trans, comps = pca(A, npc=300)
 
     >>> numpy.random.seed(1)
-    >>> mean, trans, comps = pca(A, npc=100)
-    >>> print('%d components computed' % comps.shape[0])
-    114 components computed
+    >>> mean, trans, comps = pca(A, npc=300)
     >>> em, ef = pca_error(A, mean, trans, comps)
     >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
-    PCA error: max 2-norm 8e-02, Frobenius norm 2e-01
+    PCA error: max 2-norm 5e-02, Frobenius norm 1e-01
 
     - To compute a number of principal components delivering 5% relative
       accuracy of approximation of A:
+
         mean, trans, comps = pca(A, tol=0.05)
 
     >>> numpy.random.seed(1)
@@ -119,11 +119,21 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
     >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
     PCA error: max 2-norm 2e-02, Frobenius norm 4e-02
 
+    - To compute PCA to 5% accuracy incrementally by processing 1000 data
+      samples at a time:
+
+        mean, trans, comps = pca(A, batch_size=1000, tol=0.05)
+
+    >>> numpy.random.seed(1)
+    >>> mean, trans, comps = pca(A, batch_size=1000, tol=0.05)
+    >>> print('%d components computed' % comps.shape[0])
+    928 components computed
+    >>> em, ef = pca_error(A, mean, trans, comps)
+    >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
+    PCA error: max 2-norm 2e-02, Frobenius norm 4e-02
+
     - To update PCA of the data matrix A after new data A' has been added to it:
         mean, trans, comps = pca(A', have=(mean, trans, comps))
-
-    - To compute PCA incrementally by processing 3000 data samples at a time:
-        mean, trans, comps = pca(A, batch_size=3000)
 
     Notes
     -----

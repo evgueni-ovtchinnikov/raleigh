@@ -347,7 +347,8 @@ class LowerRankApproximation:
                 i += 1
             i -= 1
             if i > 0:
-                print('discarding %d components out of %d' % (i, ncomp))
+                if verb > 0:
+                    print('discarding %d components out of %d' % (i, ncomp))
                 ncomp -= i
         else:
             ncomp = rank
@@ -392,7 +393,8 @@ class LowerRankApproximation:
         batch_size = min(batch_size, data_size)
         batch = 0
         if self.__rank == 0:
-            print('processing batch %d of size %d' % (batch, batch_size))
+            if verb > 0:
+                print('processing batch %d of size %d' % (batch, batch_size))
             matrix = AMatrix(data_matrix[:batch_size, :], arch=arch)
             self.compute(matrix, opt=opt, rank=rank, \
                          tol=tol, norm=norm, max_rank=max_rank, svtol=svtol, \
@@ -403,7 +405,8 @@ class LowerRankApproximation:
             first = 0
         while first < data_size:
             next_ = min(data_size, first + batch_size)
-            print('processing batch %d of size %d' % (batch, next_ - first))
+            if verb > 0:
+                print('processing batch %d of size %d' % (batch, next_ - first))
             matrix = AMatrix(data_matrix[first : next_, :], arch=arch, \
                              copy_data=True)
             self.update(matrix, opt=opt, rank=rank, tol=tol, norm=norm, \
