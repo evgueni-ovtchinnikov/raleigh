@@ -132,8 +132,19 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
     >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
     PCA error: max 2-norm 2e-02, Frobenius norm 4e-02
 
-    - To update PCA of the data matrix A after new data A' has been added to it:
+    >>> numpy.random.seed(1)
+    >>> mean, trans, comps = pca(A[:2400, :], tol=0.05)
+
+    - To update PCA after new data A' arrived:
+
         mean, trans, comps = pca(A', have=(mean, trans, comps))
+
+    >>> mean, trans, comps = pca(A[2400:, :], have=(mean, trans, comps))
+    >>> print('%d components computed' % comps.shape[0])
+    919 components computed
+    >>> em, ef = pca_error(A, mean, trans, comps)
+    >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
+    PCA error: max 2-norm 2e-02, Frobenius norm 4e-02
 
     Notes
     -----
