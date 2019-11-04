@@ -45,7 +45,7 @@ elapsed = timeit.default_timer() - start
 ncomp = comps.shape[0]
 print('%d principal components computed in %.2e sec' % (ncomp, elapsed))
 em, ef = pca_error(data, mean, trans, comps)
-print('PCA error: max 2-norm %.1e, Frobenius norm %.1e' % (em, ef))
+print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
 
 try:
     from sklearn.decomposition import PCA
@@ -59,7 +59,7 @@ try:
     print('%d principal components computed in %.2e sec' % (ncomp, elapsed))
     mean = numpy.mean(data, axis=0).reshape((1, n))
     em, ef = pca_error(data, mean, trans, comps)
-    print('PCA error: max 2-norm %.1e, Frobenius norm %.1e' % (em, ef))
+    print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
 except:
     pass
 

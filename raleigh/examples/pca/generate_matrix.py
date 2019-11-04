@@ -71,7 +71,7 @@ def random_matrix_for_svd(m, n, k, f_sigma, dt, pca=False):
     return s, u, v, a
 
 
-def generate(m, n, rank, dtype, scale=1.0, alpha=0.75, pca=False):
+def generate(m, n, rank, dtype=numpy.float32, scale=1.0, alpha=0.75, pca=False):
     f_sigma = lambda t: dtype(scale) * t**(-alpha)
     sigma, u, v, A = random_matrix_for_svd(m, n, rank, f_sigma, dtype, pca)
     return A, sigma, u, v
