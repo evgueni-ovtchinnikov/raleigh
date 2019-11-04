@@ -90,61 +90,55 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
 
     Usage examples
     --------------
-
+    - Generate test data
     >>> import numpy
     >>> from ..examples.pca.generate_matrix import generate
     >>> numpy.random.seed(1)
     >>> A, sigma, u, v = generate(3000, 2000, 1000, pca=True)
 
-    - To compute 300 principal components of A:
-
-        mean, trans, comps = pca(A, npc=300)
-
-    >>> numpy.random.seed(1)
+    - Compute 300 principal components of A:
     >>> mean, trans, comps = pca(A, npc=300)
     >>> em, ef = pca_error(A, mean, trans, comps)
     >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
     PCA error: max 2-norm 5e-02, Frobenius norm 1e-01
 
-    - To compute a number of principal components delivering 5% relative
+    - Compute a number of principal components delivering 5% relative
       accuracy of approximation of A:
-
-        mean, trans, comps = pca(A, tol=0.05)
-
-    >>> numpy.random.seed(1)
     >>> mean, trans, comps = pca(A, tol=0.05)
     >>> print('%d components computed' % comps.shape[0])
-    908 components computed
+    906 components computed
     >>> em, ef = pca_error(A, mean, trans, comps)
     >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
     PCA error: max 2-norm 2e-02, Frobenius norm 4e-02
 
-    - To compute PCA to 5% accuracy incrementally by processing 1000 data
+    - Compute PCA to 5% accuracy incrementally by processing 1000 data
       samples at a time:
-
-        mean, trans, comps = pca(A, batch_size=1000, tol=0.05)
-
-    >>> numpy.random.seed(1)
     >>> mean, trans, comps = pca(A, batch_size=1000, tol=0.05)
     >>> print('%d components computed' % comps.shape[0])
-    928 components computed
+    926 components computed
     >>> em, ef = pca_error(A, mean, trans, comps)
     >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
     PCA error: max 2-norm 2e-02, Frobenius norm 4e-02
 
-    >>> numpy.random.seed(1)
-    >>> mean, trans, comps = pca(A[:2400, :], tol=0.05)
-
-    - To update PCA after new data A' arrived:
-
-        mean, trans, comps = pca(A', have=(mean, trans, comps))
-
-    >>> mean, trans, comps = pca(A[2400:, :], have=(mean, trans, comps))
+    - To demonstrate the use of update, let A[:2400, :] play the role of 'old'
+      data A0
+    >>> A0 = A[:2400, :]
+    >>> mean, trans, comps = pca(A0, tol=0.05)
     >>> print('%d components computed' % comps.shape[0])
-    919 components computed
+    846 components computed
+    >>> em, ef = pca_error(A0, mean, trans, comps)
+    >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
+    PCA error: max 2-norm 2e-02, Frobenius norm 5e-02
+
+    - Now 'new' data A1 = A[2400:, :] arrived - update previously computed
+      principal components:
+    >>> A1 = A[2400:, :]
+    >>> mean, trans, comps = pca(A1, have=(mean, trans, comps))
+    >>> print('%d components updated' % comps.shape[0])
+    846 components updated
     >>> em, ef = pca_error(A, mean, trans, comps)
     >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
-    PCA error: max 2-norm 2e-02, Frobenius norm 4e-02
+    PCA error: max 2-norm 2e-02, Frobenius norm 5e-02
 
     Notes
     -----
@@ -165,7 +159,8 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
                        max_rank=mpc, svtol=svtol, verb=verb)
     else:
         lra.icompute(A, batch_size, opt=opt, rank=npc, tol=tol, norm=norm, \
-                        max_rank=mpc, svtol=svtol, shift=True, verb=verb, arch=arch)
+                     max_rank=mpc, svtol=svtol, shift=True, verb=verb, \
+                     arch=arch)
     trans = lra.left()
     comps = lra.right()
     mean = lra.mean()
