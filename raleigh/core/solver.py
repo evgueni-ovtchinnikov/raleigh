@@ -542,6 +542,7 @@ class Solver:
         lmd, q = sla.eigh(XBX)
         k = numpy.sum(lmd <= 0)
         # dropping linear dependent Xs
+        # TODO: replace quick fix below with a proper fix
         m -= k
         X.select(m)
         Y.select(m)
