@@ -90,10 +90,16 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
 
     Usage examples
     --------------
+
     >>> import numpy
     >>> from ..examples.pca.generate_matrix import generate
     >>> numpy.random.seed(1)
     >>> A, sigma, u, v = generate(3000, 2000, 1000, pca=True)
+
+    - To compute 100 principal components of A:
+        mean, trans, comps = pca(A, npc=100)
+
+    >>> numpy.random.seed(1)
     >>> mean, trans, comps = pca(A, npc=100)
     >>> print('%d components computed' % comps.shape[0])
     114 components computed
@@ -101,12 +107,17 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
     >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
     PCA error: max 2-norm 8e-02, Frobenius norm 2e-01
 
-    - To compute 1000 principal components of A:
-        mean, trans, comps = pca(A, npc=1000)
-
     - To compute a number of principal components delivering 5% relative
       accuracy of approximation of A:
         mean, trans, comps = pca(A, tol=0.05)
+
+    >>> numpy.random.seed(1)
+    >>> mean, trans, comps = pca(A, tol=0.05)
+    >>> print('%d components computed' % comps.shape[0])
+    908 components computed
+    >>> em, ef = pca_error(A, mean, trans, comps)
+    >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
+    PCA error: max 2-norm 2e-02, Frobenius norm 4e-02
 
     - To update PCA of the data matrix A after new data A' has been added to it:
         mean, trans, comps = pca(A', have=(mean, trans, comps))

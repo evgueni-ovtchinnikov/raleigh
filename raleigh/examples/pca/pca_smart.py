@@ -53,7 +53,7 @@ numpy.random.seed(1) # make results reproducible
 
 print('\n--- solving with raleigh pca...\n')
 start = timeit.default_timer()
-mean, trans, comps = pca(data, tol=tol, mpc=mpc, arch=arch, verb=1)
+mean, trans, comps = pca(data, tol=tol, mpc=mpc, arch=arch, verb=0)
 elapsed = timeit.default_timer() - start
 ncomp = comps.shape[0]
 print('%d principal components computed in %.2e sec' % (ncomp, elapsed))
