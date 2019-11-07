@@ -32,7 +32,7 @@ try:
 except:
     have_sklearn = False
 
-from raleigh.drivers.pca import pca, pca_error
+from raleigh.interfaces.pca import pca, pca_error
 
 
 narg = len(sys.argv)

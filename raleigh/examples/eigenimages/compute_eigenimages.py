@@ -40,7 +40,7 @@ import pylab
 import sys
 import timeit
 
-from raleigh.drivers.pca import pca
+from raleigh.interfaces.pca import pca
 
 
 def _norm(a, axis):

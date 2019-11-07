@@ -21,7 +21,7 @@ import numpy
 import sys
 import timeit
 
-from raleigh.drivers.pca import pca, pca_error
+from raleigh.interfaces.pca import pca, pca_error
 
 
 narg = len(sys.argv)

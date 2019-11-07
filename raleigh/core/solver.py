@@ -6,7 +6,7 @@ RALEIGH (RAL EIGensolvers for real symmetric and Hermitian problems) core
 solver.
 
 For advanced users only - consider using more user-friendly interfaces in 
-raleigh/drivers first.
+raleigh/interfaces first.
 
 Implements a block Conjugate Gradient algorithm for the computation of 
 several eigenpairs (eigenvalues and corresponding eigenvectors) of real 
@@ -173,7 +173,7 @@ class Options:
         that returns True if sufficient number of eigenpairs have been computed
         and False otherwise, based on the values of solver attributes (e.g.
         solver.eigenvalues) and possibly the user input, see 
-        drivers.partial_svd.DefaultStoppingCriteria for an example
+        interfaces.partial_svd.DefaultStoppingCriteria for an example
     detect_stagnation : bool
         if set to True, detects the loss of convergence, i.e. impossibility to
         significantly improve the accuracy of the approximation (set to False
