@@ -486,6 +486,8 @@ class Solver:
             try:
                 status = self._solve(eigenvectors, options, which, extra, init)
                 if status > 1:
+                    if verb > -1:
+                        print('core solver return status %d' % status)
                     return status - 1
             except _Error as err:
                 if verb > -1:
@@ -836,6 +838,9 @@ class Solver:
             if right != 0 and left_block_size < block_size:
                 maxit = max(maxit, numpy.amax(iterations[left_block_size:]))
             if maxit >= max_iter:
+                if verb > -1:
+                    msg = 'iterations limit of %d exceeded, terminating'
+                    print(msg % max_iter)
                 break
 
             if verb > 0:
