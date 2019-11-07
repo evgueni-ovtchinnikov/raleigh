@@ -11,7 +11,7 @@ import numpy.linalg as nla
 import scipy.linalg as sla
 
 from ..core.solver import Options
-from .partial_svd import AMatrix
+from ..algebra.dense_matrix import AMatrix
 from .partial_svd import PartialSVD
 from .truncated_svd import DefaultStoppingCriteria
 

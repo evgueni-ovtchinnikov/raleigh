@@ -144,60 +144,6 @@ class PartialSVD:
         return self.__right_v
 
 
-class AMatrix:
-
-    def __init__(self, a, arch='cpu', copy_data=False):
-        self.__arch = arch
-        if arch[:3] == 'gpu':
-            try:
-                from ..algebra import cuda_wrap as cuda
-                from ..algebra.dense_cublas import Matrix, Vectors
-                self.__op = Matrix(a)
-                self.__gpu = cuda
-            except:
-                if len(arch) > 3 and arch[3] == '!':
-                    raise RuntimeError('cannot use GPU')
-        else:
-            from ..algebra.dense_cpu import Matrix, Vectors
-#            from ..algebra.dense_numpy import Matrix, Vectors
-            if copy_data:
-                self.__op = Matrix(a.copy())
-            else:
-                self.__op = Matrix(a)
-            self.__gpu = None
-        self.__Vectors = Vectors
-        self.__vectors = None
-        vmin = numpy.amin(a)
-        vmax = numpy.amax(a)
-        self.__scale = max(abs(vmin), abs(vmax))
-
-    def as_operator(self):
-        return self.__op
-
-    def as_vectors(self):
-        if self.__vectors is None:
-            self.__vectors = self.__Vectors(self.__op, shallow=True)
-        return self.__vectors
-
-    def arch(self):
-        return self.__arch
-
-    def gpu(self):
-        return self.__gpu
-
-    def dots(self):
-        return self.__op.dots()
-
-    def data_type(self):
-        return self.__op.data_type()
-
-    def shape(self):
-        return self.__op.shape()
-
-    def scale(self):
-        return self.__scale
-
-
 class _OperatorSVD:
     def __init__(self, matrix, v, transp=False, shift=False):
         self.op = matrix.as_operator()

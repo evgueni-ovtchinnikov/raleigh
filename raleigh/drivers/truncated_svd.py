@@ -12,7 +12,7 @@ import numpy.linalg as nla
 import time
 
 from ..core.solver import Options
-from .partial_svd import AMatrix
+from ..algebra.dense_matrix import AMatrix
 from .partial_svd import PartialSVD
 
 

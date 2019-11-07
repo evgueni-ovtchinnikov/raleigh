@@ -9,7 +9,7 @@ import numpy
 import numpy.linalg as nla
 
 from ..core.solver import Options
-from .partial_svd import AMatrix
+from ..algebra.dense_matrix import AMatrix
 from .lra import LowerRankApproximation
 
 
