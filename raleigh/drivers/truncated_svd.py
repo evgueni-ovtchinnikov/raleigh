@@ -82,6 +82,8 @@ def truncated_svd(matrix, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
     computation is too slow, use scipy.linalg.svd instead.
     '''
     matrix = AMatrix(matrix, arch=arch)
+    psvd = PartialSVD(matrix)
+
     user_bs = opt.block_size
     if user_bs < 1 and (nsv < 0 or nsv > 100):
         opt.block_size = 128
@@ -94,10 +96,12 @@ def truncated_svd(matrix, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
         no_sc = True
         opt.stopping_criteria = \
             DefaultStoppingCriteria(matrix, tol, norm, msv, verb)
+        v = psvd.vectors()
+        opSVD = psvd.op_svd()
+        opt.stopping_criteria.err_calc.set_up(opSVD, v, shift=False)
     else:
         no_sc = False
 
-    psvd = PartialSVD()
     psvd.compute(matrix, opt, nsv=(0, nsv))
     u = psvd.left()
     v = psvd.right()

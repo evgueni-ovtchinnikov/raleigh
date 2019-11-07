@@ -105,7 +105,9 @@ class LowerRankApproximation:
         Jacobi-Conjugated Gradient algorithm to A_.T A_ or A_ A_.T, whichever
         is smaller in size.
         '''
+        psvd = PartialSVD(data_matrix, shift)
         m, n = data_matrix.shape()
+
         user_bs = opt.block_size
         if user_bs < 1 and (rank < 0 or rank > 100):
             opt.block_size = 128
@@ -118,11 +120,13 @@ class LowerRankApproximation:
             no_sc = True
             opt.stopping_criteria = \
                 DefaultStoppingCriteria(data_matrix, tol, norm, max_rank, verb)
+            v = psvd.vectors()
+            opSVD = psvd.op_svd()
+            opt.stopping_criteria.err_calc.set_up(opSVD, v, shift)
         else:
             no_sc = False
 
-        psvd = PartialSVD()
-        psvd.compute(data_matrix, opt=opt, nsv=(0, rank), shift=shift, \
+        psvd.compute(data_matrix, opt=opt, nsv=(0, rank), \
             refine=self.ortho)
         self.__left_v = psvd.left_v()
         self.__left_v.scale(psvd.sigma, multiply=True)

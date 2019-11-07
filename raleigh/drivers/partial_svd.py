@@ -2,6 +2,8 @@
 # Author: Evgueni Ovtchinnikov (evgueni.ovtchinnikov@stfc.ac.uk)
 
 """Partial SVD of a matrix represented by a 2D ndarray.
+
+   For advanced users only.
 """
 
 import math
@@ -17,11 +19,24 @@ except NameError:
 from ..core.solver import Problem, Solver, Options
 
 
-''' For advanced users only.
-'''
 class PartialSVD:
 
-    def __init__(self):
+    def __init__(self, matrix, shift=False):
+        op = matrix.as_operator()
+        m, n = matrix.shape()
+        transp = m < n
+        if transp:
+            n, m = m, n
+        v = op.new_vectors(n)
+        dt = v.data_type()
+        opSVD = _OperatorSVD(matrix, v, transp, shift)
+        self.__op = op
+        self.__transp = transp
+        self.__shape = (m, n)
+        self.__shift = shift
+        self.__v = v
+        self.__dtype = dt
+        self.__opsvd = opSVD
         self.sigma = None
         self.__left = None
         self.__right = None
@@ -31,30 +46,24 @@ class PartialSVD:
         self.__mean_v = None
         self.iterations = -1
 
-    def compute(self, matrix, opt=Options(), nsv=(-1, -1), shift=False, \
-                refine=True):
-    
-        op = matrix.as_operator()
-        m, n = matrix.shape()
-    
-        transp = m < n
-        if transp:
-            n, m = m, n
+    def op_svd(self):
+        return self.__opsvd
 
-        v = op.new_vectors(n)
-        dt = v.data_type()
-        opSVD = _OperatorSVD(matrix, v, transp, shift)
+    def vectors(self):
+        return self.__v
+
+    def compute(self, matrix, opt=Options(), nsv=(-1, -1), refine=True):
+    
+        op = self.__op
+        m, n = self.__shape
+        transp = self.__transp
+        v = self.__v
+        dt = self.__dtype
+        opSVD = self.__opsvd
+        shift = self.__shift
+
         problem = Problem(v, opSVD)
         solver = Solver(problem)
-
-        try:
-            opt.stopping_criteria.err_calc.set_up(opSVD, v, shift)
-            if opt.verbosity > 0:
-                print('partial SVD error calculation set up')
-        except:
-            if opt.verbosity > 0:
-                print('partial SVD error calculation not requested')
-            pass
 
         solver.solve(v, options=opt, which=nsv)
         if opt.verbosity > 0:
@@ -84,12 +93,6 @@ class PartialSVD:
                 w = v.new_vectors(nv)
                 v.multiply(_conj(q.T), w)
                 w.copy(v)
-##                u_data = u.data()
-##                uu, sigma, uv = sla.svd(u_data.T, full_matrices=False)
-##                u = u.new_vectors(uu.T)
-##                wv = v.new_vectors(nv)
-##                v.multiply(uv.T, wv)
-##                wv.copy(v)
             else:
                 sigma = numpy.sqrt(abs(u.dots(u)))
                 u.scale(sigma)
