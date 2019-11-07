@@ -132,9 +132,8 @@ class TruncatedSVDErrorCalculator:
         self.ncon = 0
         self.err = self.norms.copy()
         self.aves = None
-    def set_up(self, op, solver, eigenvectors, shift=False):
+    def set_up(self, op, eigenvectors, shift=False):
         self.op = op.op
-        self.solver = solver
         self.eigenvectors = eigenvectors
         self.shift = shift
         if shift:

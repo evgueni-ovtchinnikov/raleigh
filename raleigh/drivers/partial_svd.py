@@ -42,14 +42,13 @@ class PartialSVD:
             n, m = m, n
 
         v = op.new_vectors(n)
-#        v = matrix.as_vectors().new_vectors(0, n)
         dt = v.data_type()
         opSVD = _OperatorSVD(matrix, v, transp, shift)
         problem = Problem(v, opSVD)
         solver = Solver(problem)
 
         try:
-            opt.stopping_criteria.err_calc.set_up(opSVD, solver, v, shift)
+            opt.stopping_criteria.err_calc.set_up(opSVD, v, shift)
             if opt.verbosity > 0:
                 print('partial SVD error calculation set up')
         except:
