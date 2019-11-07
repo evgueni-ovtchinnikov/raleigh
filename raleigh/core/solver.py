@@ -501,7 +501,10 @@ class Solver:
         nc = Xc.nvec()
         m = n - nc
         if verb > -1:
-            print('%d eigenpairs not computed by CG, switching to eigh' % m)
+            msg = '%d eigenpairs not computed by CG, applying ' + \
+                  'Rayleigh-Ritz procedure'
+            print( msg % m)
+            print('in the complement subspace...')
 
         X = eigenvectors.new_vectors(m)
         X.fill_random()
@@ -540,21 +543,33 @@ class Solver:
         else:
             XBX = X.dot(X)
         lmd, q = sla.eigh(XBX)
-        k = numpy.sum(lmd <= 0)
-        # dropping linear dependent Xs
-        # TODO: replace quick fix below with a proper fix
-        m -= k
-        X.select(m)
-        Y.select(m)
-        Z.select(m)
-        XBX = XBX[:m, :m]
+        epsilon = 100*numpy.finfo(data_type).eps
+        k = numpy.sum(lmd <= epsilon*lmd[-1])
+        if k > 0:
+            if verb > -1:
+                #print(lmd[: k + 2], lmd[-1])
+                msg = 'dropping %d linear dependent vectors ' + \
+                      'from the Rayleigh-Ritz procedure...'
+                print(msg % k)
+            X.multiply(Q, Z)
+            Z.copy(X)
+            Y.multiply(Q, Z)
+            Z.copy(Y)
+            m -= k
+            X.select(m)
+            Y.select(m)
+            Z.select(m)
+            XBX = XBX[:m, :m]
+
         if pro:
             A(Y, Z)
             XAX = Z.dot(Y)
         else:
             A(X, Z)
             XAX = Z.dot(X)
-        lmdx, Q = sla.eigh(XAX, XBX, turbo=False, overwrite_a=True, overwrite_b=True)
+
+        lmdx, Q = sla.eigh(XAX, XBX, turbo=False, overwrite_a=True, \
+                           overwrite_b=True)
         X.multiply(Q, Z)
         Z.copy(X)
         eigenvectors.append(X)
