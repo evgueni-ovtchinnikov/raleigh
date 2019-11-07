@@ -6,10 +6,14 @@
    represented by a 2D ndarray.
 """
 
+import math
+import numpy
+import numpy.linalg as nla
+import time
+
 from ..core.solver import Options
 from .partial_svd import AMatrix
 from .partial_svd import PartialSVD
-from .partial_svd import DefaultStoppingCriteria
 
 
 def truncated_svd(matrix, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
@@ -111,6 +115,161 @@ def truncated_svd(matrix, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
         opt.stopping_criteria = None
 
     return u, sigma, v.T
+
+
+class TruncatedSVDErrorCalculator:
+    def __init__(self, a):
+        m, n = a.shape()
+        self.dt = a.data_type()
+        s = a.dots()
+        self.norms = numpy.sqrt(s.reshape((m, 1)))
+        self.solver = None
+        self.err = None
+        self.op = None
+        self.m = m
+        self.n = n
+        self.shift = False
+        self.ncon = 0
+        self.err = self.norms.copy()
+        self.aves = None
+    def set_up(self, op, solver, eigenvectors, shift=False):
+        self.op = op.op
+        self.solver = solver
+        self.eigenvectors = eigenvectors
+        self.shift = shift
+        if shift:
+            self.ones = op.ones
+            self.aves = op.aves
+            s = self.aves.dots(self.aves)
+            vb = eigenvectors.new_vectors(1, self.m)
+            self.op.apply(self.aves, vb)
+            b = vb.data().reshape((self.m, 1))
+            t = (self.norms*self.norms).reshape((self.m, 1))
+            x = t - 2*b + s*numpy.ones((self.m, 1))
+            self.err = numpy.sqrt(abs(x))
+        self.err_init = numpy.amax(self.err)
+        self.err_init_f = nla.norm(self.err)
+    def update_errors(self):
+        ncon = self.eigenvectors.nvec()
+        new = ncon - self.ncon
+        if new > 0:
+            err = self.err*self.err 
+            x = self.eigenvectors
+            sel = x.selected()
+            x.select(new, self.ncon)
+            m = self.m
+            n = self.n
+            if m < n:
+                z = x.new_vectors(new, n)
+                self.op.apply(x, z, transp=True)
+                if self.shift:
+                    s = x.dot(self.ones)
+                    z.add(self.aves, -1, s)
+                y = x.new_vectors(new, m)
+                self.op.apply(z, y)
+                if self.shift:
+                    s = z.dot(self.aves)
+                    y.add(self.ones, -1, s)
+                q = x.dots(y, transp=True)
+                q[q < 0] = 0
+                err[q <= 0] = 0
+            else:
+                y = x.new_vectors(new, m)
+                self.op.apply(x, y)
+                if self.shift:
+                    s = y.dot(self.ones)
+                    y.add(self.ones, -1.0/m, s)
+                    # accurate orthogonalization needed!
+                    s = y.dot(self.ones)
+                    y.add(self.ones, -1.0/m, s)
+                q = y.dots(y, transp=True)
+            q = q.reshape((m, 1))
+            err -= q
+            err[err < 0] = 0
+            self.err = numpy.sqrt(err)
+            self.eigenvectors.select(sel[1], sel[0])
+            self.ncon = ncon
+        return self.err
+
+
+class DefaultStoppingCriteria:
+
+    def __init__(self, a, err_tol=0, norm='f', max_nsv=0, verb=0):
+        self.shape = a.shape()
+        self.scale = a.scale()
+        self.err_tol = err_tol
+        self.norm = norm
+        self.max_nsv = max_nsv
+        self.verb = verb
+        self.ncon = 0
+        self.sigma = 1
+        self.iteration = 0
+        self.start_time = time.time()
+        self.elapsed_time = 0
+        self.err_calc = TruncatedSVDErrorCalculator(a)
+        self.norms = self.err_calc.norms
+        self.max_norm = numpy.amax(self.norms)
+        self.f_norm = math.sqrt(numpy.sum(self.norms*self.norms))
+        self.f = 0
+
+    def satisfied(self, solver):
+        self.norms = self.err_calc.norms
+        m, n = self.shape
+#        scale_max = self.scale*math.sqrt(n)
+#        scale_f = self.scale*math.sqrt(m*n)
+        scale_max = self.err_calc.err_init
+        scale_f = self.err_calc.err_init_f
+        if solver.rcon <= self.ncon:
+            return False
+        new = solver.rcon - self.ncon
+        lmd = solver.eigenvalues[self.ncon : solver.rcon]
+        sigma = -numpy.sort(-numpy.sqrt(abs(lmd)))
+        if self.ncon == 0:
+            self.sigma = sigma[0]
+            self.err = self.err_calc.err
+            self.f = numpy.sum(self.err*self.err)
+        i = new - 1
+        si = sigma[i]
+        si_rel = si/self.sigma
+        if self.norm == 'm':
+            self.err = self.err_calc.update_errors()
+            err_abs = numpy.amax(self.err)
+            err_rel = err_abs/scale_max
+#            err_rel = err_abs/self.max_norm
+        elif self.norm == 'f':
+            self.f -= numpy.sum(sigma*sigma)
+            err_abs = math.sqrt(abs(self.f))
+            err_rel = err_abs/scale_f
+#            err_rel = err_abs/self.f_norm
+        else:
+            err_abs = si
+            err_rel = si_rel
+        now = time.time()
+        elapsed_time = now - self.start_time
+        self.elapsed_time += elapsed_time
+        if self.norm in ['f', 'm']:
+            msg = '%.2f sec: sigma[%d] = %.2e*sigma[0], truncation error = %.2e' % \
+                  (self.elapsed_time, self.ncon + i, si_rel, err_rel)
+        else:
+            msg = '%.2f sec: sigma[%d] = %e = %.2e*sigma[0]' % \
+                (self.elapsed_time, self.ncon + i, si, si_rel)
+        self.ncon = solver.rcon
+        done = False
+        if self.err_tol != 0:
+            if self.verb > 0:
+                print(msg)
+            if self.err_tol > 0:
+                done = err_rel <= self.err_tol
+            else:
+                done = err_abs <= abs(self.err_tol)
+        elif self.max_nsv < 1:
+            done = (input(msg + ', more? ') == 'n')
+        elif self.verb > 0:
+            print(msg)
+        self.iteration = solver.iteration
+        self.start_time = time.time()
+        done = done or self.max_nsv > 0 and self.ncon >= self.max_nsv
+        return done
 
 
 class _DefaultSVDConvergenceCriteria:

@@ -13,7 +13,7 @@ import scipy.linalg as sla
 from ..core.solver import Options
 from .partial_svd import AMatrix
 from .partial_svd import PartialSVD
-from .partial_svd import DefaultStoppingCriteria
+from .truncated_svd import DefaultStoppingCriteria
 
 
 class LowerRankApproximation:
