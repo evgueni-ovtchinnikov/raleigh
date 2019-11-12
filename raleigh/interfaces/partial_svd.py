@@ -11,11 +11,6 @@ import numpy
 import numpy.linalg as nla
 import time
 
-try:
-    input = raw_input
-except NameError:
-    pass
-
 from ..core.solver import Problem, Solver, Options
 
 

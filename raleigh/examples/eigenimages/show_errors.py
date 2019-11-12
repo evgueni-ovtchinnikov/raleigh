@@ -25,6 +25,11 @@ import numpy.linalg as nla
 import pylab
 import sys
 
+try:
+    input = raw_input
+except NameError:
+    pass
+
 
 def _norm(a, axis):
     return numpy.apply_along_axis(nla.norm, axis, a)

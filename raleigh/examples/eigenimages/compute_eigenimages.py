@@ -42,6 +42,11 @@ import timeit
 
 from raleigh.interfaces.pca import pca
 
+try:
+    input = raw_input
+except NameError:
+    pass
+
 
 def _norm(a, axis):
     return numpy.apply_along_axis(numpy.linalg.norm, axis, a)

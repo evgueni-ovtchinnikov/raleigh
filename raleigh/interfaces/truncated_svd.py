@@ -15,6 +15,11 @@ from ..core.solver import Options
 from ..algebra.dense_matrix import AMatrix
 from .partial_svd import PartialSVD
 
+try:
+    input = raw_input
+except NameError:
+    pass
+
 
 def truncated_svd(matrix, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
                   vtol=1e-3, arch='cpu', verb=0):

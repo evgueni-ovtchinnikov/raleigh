@@ -44,6 +44,11 @@ import pylab
 import scipy.ndimage as ndimage
 import sys
 
+try:
+    input = raw_input
+except NameError:
+    pass
+
 
 def _mask(nx, ny):
     mask = numpy.zeros((ny, nx), dtype=numpy.uint8)
