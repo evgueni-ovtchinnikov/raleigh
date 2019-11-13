@@ -105,8 +105,6 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
     - Compute a number of principal components delivering 5% relative
       accuracy of approximation of A:
     >>> mean, trans, comps = pca(A, tol=0.05)
-    >>> print('%d components computed' % comps.shape[0])
-    906 components computed
     >>> em, ef = pca_error(A, mean, trans, comps)
     >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
     PCA error: max 2-norm 2e-02, Frobenius norm 4e-02
@@ -114,8 +112,6 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
     - Compute PCA to 5% accuracy incrementally by processing 1000 data
       samples at a time:
     >>> mean, trans, comps = pca(A, batch_size=1000, tol=0.05)
-    >>> print('%d components computed' % comps.shape[0])
-    926 components computed
     >>> em, ef = pca_error(A, mean, trans, comps)
     >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
     PCA error: max 2-norm 2e-02, Frobenius norm 4e-02
@@ -124,8 +120,6 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
       data A0
     >>> A0 = A[:2400, :]
     >>> mean, trans, comps = pca(A0, tol=0.05)
-    >>> print('%d components computed' % comps.shape[0])
-    846 components computed
     >>> em, ef = pca_error(A0, mean, trans, comps)
     >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
     PCA error: max 2-norm 2e-02, Frobenius norm 5e-02
@@ -134,8 +128,6 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
       principal components:
     >>> A1 = A[2400:, :]
     >>> mean, trans, comps = pca(A1, have=(mean, trans, comps))
-    >>> print('%d components updated' % comps.shape[0])
-    846 components updated
     >>> em, ef = pca_error(A, mean, trans, comps)
     >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
     PCA error: max 2-norm 2e-02, Frobenius norm 5e-02
