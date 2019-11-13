@@ -12,7 +12,7 @@ Usage: pca_update <data_file> <tolerance> <q_first> <max_pcs> [gpu]
 
 data_file : the name of the file containing data matrix X
 tolerance : PCA approximation tolerance wanted
-q_first   : relative size of the first chunk (default 0.5)
+q_first   : relative size of the first chunk
 max_pcs   : maximal number of principal components to compute (<1: no limit)
 gpu       : run on GPU if this argument is present
 """

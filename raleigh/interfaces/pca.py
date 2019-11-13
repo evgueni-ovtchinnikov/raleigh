@@ -92,7 +92,7 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
     --------------
     - Generate test data
     >>> import numpy
-    >>> from ..examples.pca.generate_matrix import generate
+    >>> from raleigh.examples.pca.generate_matrix import generate
     >>> numpy.random.seed(1)
     >>> A, sigma, u, v = generate(3000, 2000, 1000, pca=True)
 
