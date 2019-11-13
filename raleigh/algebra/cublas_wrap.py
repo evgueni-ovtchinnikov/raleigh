@@ -90,6 +90,7 @@ class Cublas:
         err = cublasCreate(ctypes.byref(self.handle))
         if err != 0:
             raise RuntimeError('cublasCreate failure, cuda error %d' % err)
+        self.__cublas = cublas
 ##        err = cusolverCreate(ctypes.byref(self.cusolver_handle))
 ##        if err != 0:
 ##            raise RuntimeError('cusolverCreate failure, cuda error %d' % err)
@@ -171,5 +172,5 @@ class Cublas:
 
     def __del__(self):
 #        print('destroying cublas...')
-        cublasDestroy(self.handle)
+        self.__cublas.cublasDestroy_v2(self.handle)
 ##        cusolverDestroy(self.cusolver_handle)
