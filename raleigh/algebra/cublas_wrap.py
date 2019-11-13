@@ -49,27 +49,27 @@ except:
         print('CUBLAS not found, switching to cpu...')
     raise RuntimeError('CUBLAS not found')
 
-try:
-    if platform == 'win32':
-        from .cuda_wrap import cuda_path
-        cusolver_dll = glob.glob(cuda_path + '/cusolver64*')[0]
-        cusolver = ctypes.CDLL(cusolver_dll, mode=ctypes.RTLD_GLOBAL)
-        if verbosity.level > 0:
-            print('loaded %s' % cusolver_dll)
-    else:
-        cusolver = ctypes.CDLL('libcusolver.so', mode=ctypes.RTLD_GLOBAL)
-
-    cusolverCreate = cusolver.cusolverDnCreate
-    cusolverCreate.argtypes = [POINTER(POINTER(ctypes.c_ubyte))]
-    cusolverCreate.restype = ctypes.c_int
-
-    cusolverDestroy = cusolver.cusolverDnDestroy
-    cusolverDestroy.restype = ctypes.c_int
-
-except:
-    if verbosity.level > -1:
-        print('cuSOLVER library not found')
-    cusolver = None
+##try:
+##    if platform == 'win32':
+##        from .cuda_wrap import cuda_path
+##        cusolver_dll = glob.glob(cuda_path + '/cusolver64*')[0]
+##        cusolver = ctypes.CDLL(cusolver_dll, mode=ctypes.RTLD_GLOBAL)
+##        if verbosity.level > 0:
+##            print('loaded %s' % cusolver_dll)
+##    else:
+##        cusolver = ctypes.CDLL('libcusolver.so', mode=ctypes.RTLD_GLOBAL)
+##
+##    cusolverCreate = cusolver.cusolverDnCreate
+##    cusolverCreate.argtypes = [POINTER(POINTER(ctypes.c_ubyte))]
+##    cusolverCreate.restype = ctypes.c_int
+##
+##    cusolverDestroy = cusolver.cusolverDnDestroy
+##    cusolverDestroy.restype = ctypes.c_int
+##
+##except:
+##    if verbosity.level > -1:
+##        print('cuSOLVER library not found')
+##    raise RuntimeError('CUSOLVER not found')
 
 
 class Cublas:
@@ -90,9 +90,9 @@ class Cublas:
         err = cublasCreate(ctypes.byref(self.handle))
         if err != 0:
             raise RuntimeError('cublasCreate failure, cuda error %d' % err)
-        err = cusolverCreate(ctypes.byref(self.cusolver_handle))
-        if err != 0:
-            raise RuntimeError('cusolverCreate failure, cuda error %d' % err)
+##        err = cusolverCreate(ctypes.byref(self.cusolver_handle))
+##        if err != 0:
+##            raise RuntimeError('cusolverCreate failure, cuda error %d' % err)
         self.getPointerMode = cublas.cublasGetPointerMode_v2
         self.getPointerMode.restype = ctypes.c_int
         self.setPointerMode = cublas.cublasSetPointerMode_v2
@@ -115,8 +115,8 @@ class Cublas:
             self.gemm.restype = ctypes.c_int
             self.gemm_batched = cublas.cublasSgemmBatched
             self.gemm_batched.restype = ctypes.c_int
-            self.svd_buff_size = cusolver.cusolverDnSgesvd_bufferSize
-            self.svd = cusolver.cusolverDnSgesvd
+##            self.svd_buff_size = cusolver.cusolverDnSgesvd_bufferSize
+##            self.svd = cusolver.cusolverDnSgesvd
         elif dt == numpy.float64:
             self.dsize = 8
             self.copy = cublas.cublasDcopy_v2
@@ -133,8 +133,8 @@ class Cublas:
             self.gemm.restype = ctypes.c_int
             self.gemm_batched = cublas.cublasDgemmBatched
             self.gemm_batched.restype = ctypes.c_int
-            self.svd_buff_size = cusolver.cusolverDnDgesvd_bufferSize
-            self.svd = cusolver.cusolverDnDgesvd
+##            self.svd_buff_size = cusolver.cusolverDnDgesvd_bufferSize
+##            self.svd = cusolver.cusolverDnDgesvd
         elif dt == numpy.complex64:
             self.dsize = 8
             self.copy = cublas.cublasCcopy_v2
@@ -153,8 +153,8 @@ class Cublas:
             self.gemm.restype = ctypes.c_int
             self.gemm_batched = cublas.cublasCgemmBatched
             self.gemm_batched.restype = ctypes.c_int
-            self.svd_buff_size = cusolver.cusolverDnCgesvd_bufferSize
-            self.svd = cusolver.cusolverDnCgesvd
+##            self.svd_buff_size = cusolver.cusolverDnCgesvd_bufferSize
+##            self.svd = cusolver.cusolverDnCgesvd
         elif dt == numpy.complex128:
             self.dsize = 16
             self.copy = cublas.cublasZcopy_v2
@@ -173,25 +173,19 @@ class Cublas:
             self.gemm.restype = ctypes.c_int
             self.gemm_batched = cublas.cublasZgemmBatched
             self.gemm_batched.restype = ctypes.c_int
-            self.svd_buff_size = cusolver.cusolverDnZgesvd_bufferSize
-            self.svd = cusolver.cusolverDnZgesvd
+##            self.svd_buff_size = cusolver.cusolverDnZgesvd_bufferSize
+##            self.svd = cusolver.cusolverDnZgesvd
         else:
             raise ValueError('data type %s not supported' % repr(dt))
-        self.svd_buff_size.restype = ctypes.c_int
-        self.svd.argtypes = [POINTER(ctypes.c_ubyte), \
-            ctypes.c_char, ctypes.c_char, ctypes.c_int, ctypes.c_int, \
-            POINTER(ctypes.c_ubyte), ctypes.c_int, POINTER(ctypes.c_ubyte), \
-            POINTER(ctypes.c_ubyte), ctypes.c_int, \
-            POINTER(ctypes.c_ubyte), ctypes.c_int, \
-            POINTER(ctypes.c_ubyte), ctypes.c_int, \
-            POINTER(ctypes.c_ubyte), POINTER(ctypes.c_ubyte)]
-        self.svd.restype = ctypes.c_int
-#        self.all = ctypes.c_char('A')
-#        self.small = ctypes.c_char('S')
-#        self.ovwrt = ctypes.c_char('O')
-#        self.all = ctypes.c_char('A'.encode('ascii'))
-#        self.small = ctypes.c_char('S'.encode('ascii'))
-#        self.ovwrt = ctypes.c_char('O'.encode('ascii'))
+##        self.svd_buff_size.restype = ctypes.c_int
+##        self.svd.argtypes = [POINTER(ctypes.c_ubyte), \
+##            ctypes.c_char, ctypes.c_char, ctypes.c_int, ctypes.c_int, \
+##            POINTER(ctypes.c_ubyte), ctypes.c_int, POINTER(ctypes.c_ubyte), \
+##            POINTER(ctypes.c_ubyte), ctypes.c_int, \
+##            POINTER(ctypes.c_ubyte), ctypes.c_int, \
+##            POINTER(ctypes.c_ubyte), ctypes.c_int, \
+##            POINTER(ctypes.c_ubyte), POINTER(ctypes.c_ubyte)]
+##        self.svd.restype = ctypes.c_int
         self.all = ctypes.c_char('A'.encode('utf-8'))
         self.small = ctypes.c_char('S'.encode('utf-8'))
         self.ovwrt = ctypes.c_char('O'.encode('utf-8'))
@@ -199,4 +193,4 @@ class Cublas:
     def __del__(self):
 #        print('destroying cublas...')
         cublasDestroy(self.handle)
-        cusolverDestroy(self.cusolver_handle)
+##        cusolverDestroy(self.cusolver_handle)
