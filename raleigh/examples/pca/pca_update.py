@@ -46,7 +46,7 @@ m = min(m_all, max(1, int(q*m_all)))
 
 print('computing PCs for %d data samples...' % m)
 start = timeit.default_timer()
-mean, trans, comps = pca(data[: m, :], tol=atol, mpc=mpc, verb=1, arch=arch)
+mean, trans, comps = pca(data[: m, :], tol=atol, mpc=mpc, arch=arch)
 elapsed = timeit.default_timer() - start
 ncomp = comps.shape[0]
 print('%d principal components computed in %.2e sec' % (ncomp, elapsed))
