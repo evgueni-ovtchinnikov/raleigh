@@ -9,7 +9,7 @@ import numpy
 import numpy.linalg as nla
 
 from ..core.solver import Options
-from .partial_svd import AMatrix
+from ..algebra.dense_matrix import AMatrix
 from .lra import LowerRankApproximation
 
 
@@ -75,8 +75,7 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
     svtol : float
         Error tolerance for singular values (see Notes below) relative to
         the largest singular value. May need to be decreased from its default
-        value if highly accurate approximation is sought. Increasing is not
-        recommended.
+        value if highly accurate approximation is sought.
     opt : an object of class raleigh.solver.Options
         Solver options (see raleigh.solver).
 
@@ -91,18 +90,47 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
 
     Usage examples
     --------------
-    - To compute 1000 principal components of A:
-        mean, trans, comps = pca(A, npc=1000)
+    - Generate test data
+    >>> import numpy
+    >>> from raleigh.examples.pca.generate_matrix import generate
+    >>> numpy.random.seed(1)
+    >>> A, sigma, u, v = generate(3000, 2000, 1000, pca=True)
 
-    - To compute a number of principal components delivering 5% relative
+    - Compute 300 principal components of A:
+    >>> mean, trans, comps = pca(A, npc=300)
+    >>> em, ef = pca_error(A, mean, trans, comps)
+    >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
+    PCA error: max 2-norm 5e-02, Frobenius norm 1e-01
+
+    - Compute a number of principal components delivering 5% relative
       accuracy of approximation of A:
-        mean, trans, comps = pca(A, tol=0.05)
+    >>> mean, trans, comps = pca(A, tol=0.05)
+    >>> em, ef = pca_error(A, mean, trans, comps)
+    >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
+    PCA error: max 2-norm 2e-02, Frobenius norm 4e-02
 
-    - To update PCA of the data matrix A after new data A' has been added to it:
-        mean, trans, comps = pca(A', have=(mean, trans, comps))
+    - Compute PCA to 5% accuracy incrementally by processing 1000 data
+      samples at a time:
+    >>> mean, trans, comps = pca(A, batch_size=1000, tol=0.05)
+    >>> em, ef = pca_error(A, mean, trans, comps)
+    >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
+    PCA error: max 2-norm 2e-02, Frobenius norm 4e-02
 
-    - To compute PCA incrementally by processing 3000 data samples at a time:
-        mean, trans, comps = pca(A, batch_size=3000)
+    - To demonstrate the use of update, let A[:2400, :] play the role of 'old'
+      data A0
+    >>> A0 = A[:2400, :]
+    >>> mean, trans, comps = pca(A0, tol=0.05)
+    >>> em, ef = pca_error(A0, mean, trans, comps)
+    >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
+    PCA error: max 2-norm 2e-02, Frobenius norm 5e-02
+
+    - Now 'new' data A1 = A[2400:, :] arrived - update previously computed
+      principal components:
+    >>> A1 = A[2400:, :]
+    >>> mean, trans, comps = pca(A1, have=(mean, trans, comps))
+    >>> em, ef = pca_error(A, mean, trans, comps)
+    >>> print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
+    PCA error: max 2-norm 2e-02, Frobenius norm 5e-02
 
     Notes
     -----
@@ -123,11 +151,12 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
                        max_rank=mpc, svtol=svtol, verb=verb)
     else:
         lra.icompute(A, batch_size, opt=opt, rank=npc, tol=tol, norm=norm, \
-                        max_rank=mpc, svtol=svtol, shift=True, arch=arch, \
-                        verb=verb)
-    trans = lra.left() # transfomed (reduced-features) data
-    comps = lra.right() # principal components
-    return lra.mean(), trans, comps
+                     max_rank=mpc, svtol=svtol, shift=True, verb=verb, \
+                     arch=arch)
+    trans = lra.left()
+    comps = lra.right()
+    mean = lra.mean()
+    return mean, trans, comps
 
 
 def pca_error(data, mean, trans, comps):

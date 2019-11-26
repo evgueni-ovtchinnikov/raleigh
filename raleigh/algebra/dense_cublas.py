@@ -9,6 +9,7 @@ import numbers
 import numpy
 
 from . import cuda_wrap as cuda
+from . import cublas_handle as cublas
 from .cublas_wrap import Cublas
 
 
@@ -16,23 +17,17 @@ class Vectors:
     '''CUBLAS implementation of Vectors type.
     '''
 
-    MIN_INC = 16
-
     '''========== Methods required by RALEIGH core solver ==========
     '''
 
     def new_vectors(self, arg=0, dim=None):
-        if isinstance(arg, numpy.ndarray):
-            return Vectors(arg)
-        nv = arg
-        if dim is None:
-            dim = self.dimension()
-        return Vectors(dim, nv, self.data_type())
-
-#    def new_vectors(self, nv=0, dim=None):
-#        if dim is None:
-#            dim = self.dimension()
-#        return Vectors(dim, nv, self.data_type())
+        try:
+            nv = int(arg)
+            if dim is None:
+                dim = self.dimension()
+            return Vectors(dim, nv, self.data_type()) #, cublas=self.__cublas)
+        except:
+            return Vectors(arg) #, cublas=self.__cublas)
 
     def clone(self):
         return Vectors(self)
@@ -79,7 +74,8 @@ class Vectors:
         j, l = other.selected()
         nvec = i + m + l
         if nvec > self.__mvec:
-            mvec = ((nvec - 1)//Vectors.MIN_INC + 1)*Vectors.MIN_INC
+            mvec = ((nvec - 1)//self.__min_inc + 1)*self.__min_inc
+#            mvec = ((nvec - 1)//Vectors.MIN_INC + 1)*Vectors.MIN_INC
 #            print('allocating %d vectors...' % mvec)
             size = mvec * vsize
             vdata = _Data(size)
@@ -91,10 +87,12 @@ class Vectors:
                                    inc)
             self.__vdata = vdata
             self.__mvec = mvec
+            if self.__min_inc < self.__max_inc:
+                self.__min_inc *= 2
         data = self.all_data_ptr()
         data_v = other.all_data_ptr()
         ptr_v = _shifted_ptr(data_v, j*vsize)
-        ptr = _shifted_ptr(data, (i + m)*vsize)
+        ptr = _shifted_ptr(data, int(i + m)*vsize)
         ln = ctypes.c_int(l*n)
 #        print('copying %d vectors...' % l)
         self.__cublas.copy(self.__cublas.handle, ln, ptr_v, inc, ptr, inc)
@@ -253,7 +251,7 @@ class Vectors:
         dptr_u = other.data_ptr()
         dptr_v = self.data_ptr()
         dptr_q = ctypes.POINTER(ctypes.c_ubyte)()
-        size_q = k*m*self.__dsize
+        size_q = int(k*m*self.__dsize)
         _try_calling(cuda.malloc(ctypes.byref(dptr_q), size_q))
         if self.is_complex():
             Trans = Cublas.ConjTrans
@@ -279,7 +277,7 @@ class Vectors:
         dptr_u = output.data_ptr()
         dptr_v = self.data_ptr()
         dptr_q = ctypes.POINTER(ctypes.c_ubyte)()
-        size_q = k*m*self.__dsize
+        size_q = int(k*m*self.__dsize)
         _try_calling(cuda.malloc(ctypes.byref(dptr_q), size_q))
         if a.flags['C_CONTIGUOUS'] or a.flags['F_CONTIGUOUS']:
             q = a
@@ -353,7 +351,7 @@ class Vectors:
     '''========== Other methods ====================================
     '''
 
-    def __init__(self, arg, nvec=0, data_type=None, shallow=False):
+    def __init__(self, arg, nvec=0, data_type=None, shallow=False): #, cublas=None):
         if isinstance(arg, Vectors):
             n = arg.dimension()
             m = arg.nvec()
@@ -408,7 +406,7 @@ class Vectors:
             m = nvec
             assert m >= 0
             if nvec > 0:
-                size = n*m*dsize
+                size = int(n*m*dsize)
                 self.__vdata = _Data(size)
                 _try_calling(cuda.memset(self.all_data_ptr(), 0, size))
             else:
@@ -416,13 +414,17 @@ class Vectors:
         else:
             raise ValueError \
                 ('wrong argument %s in constructor' % repr(type(arg)))
+        if cublas.handle is None:
+            cublas.handle = Cublas(dtype)
         self.__selected = (0, m)
         self.__vdim = n
         self.__nvec = m
         self.__mvec = m
+        self.__min_inc = 16
+        self.__max_inc = 1024
         self.__dsize = dsize
         self.__dtype = dtype
-        self.__cublas = Cublas(dtype)
+        self.__cublas = cublas.handle
 
     def __float(self):
         dt = self.data_type()
@@ -617,7 +619,7 @@ class Vectors:
         if m < 1:
             return v
         hptr_v = ctypes.c_void_p(v.ctypes.data)
-        size = n * m * self.__dsize
+        size = int(n * m * self.__dsize)
         _try_calling(cuda.memcpy(hptr_v, self.data_ptr(), size, cuda.memcpyD2H))
         return v
 
@@ -657,7 +659,6 @@ class Matrix:
         else:
             raise ValueError \
                 ('wrong argument %s in Matrix constructor' % repr(type(arg)))
-        self.__cublas = Cublas(self.__dtype)
 
     def __floats(self):
         dt = self.__dtype
@@ -778,6 +779,11 @@ def _try_calling(err):
 def _shifted_ptr(dev_ptr, shift=0):
     ptr = ctypes.cast(dev_ptr, ctypes.c_void_p)
     return ctypes.cast(ptr.value + shift, ctypes.POINTER(ctypes.c_ubyte))
+
+
+def _ptr_value(dev_ptr):
+    ptr = ctypes.cast(dev_ptr, ctypes.c_void_p)
+    return ptr.value
 
 
 def _conjugate(a):

@@ -42,27 +42,39 @@ def _conj(a):
 
 def test_lra_ortho(u, v, wu, wv):
 
+    # have: vector sets u = [u_1, ..., u_k] and v = [v_1, .., v_k]
+    # want: orthonormal vector set u' and orthogonal vector set v' such that
+    # 1) span(u) = span(u'), span(v) = span(v')
+    # 2) v*u.H = v'*u'.H
+
     print('transfom via svd for R...')
     u.copy(wu)
-    s, q = wu.svd()
-    v.multiply(_conj(q.T), wv)
-    wv.scale(s, multiply=True)
-    p = wu.dot(u)
+    s, q = wu.svd() # u == wu*s*q, wu: orthonormal set, s: diag, q: unitary
+    v.multiply(_conj(q.T), wv) 
+    wv.scale(s, multiply=True) # vw = v*q.H*s
+    # theory: wv*wu.H = v*q.H*s*wu.H = v*(wu*s*q.H) = v*u.H
+    # let us check numerically by measuring D = wv*wu.H - v*u.H
+    # D*w = 0 for any w orthogonal to span(u) = span(wu)
+    # hence enough to measure D*wu = wv - v*u.H*wu
+    p = wu.dot(u) # p = u.H*wu
     t = wv.dots(wv)
-    wv.add(v, -1.0, p)
+    wv.add(v, -1.0, p) # wv := wv - v*u.H*wu 
     t = numpy.sqrt(wv.dots(wv)/t)
     print('transformation error: %.1e' % nla.norm(t))
+    # now make wv orthogonal
+    wv.add(v, 1.0, p) # restore wv 
     print('transfom via svd for L...')
-    wv.copy(v)
-    s, q = v.svd()
-    wu.multiply(_conj(q.T), u)
-    p = v.dot(v)
-    lmd, x = sla.eigh(p)
-    print('L non-orthogonality: %.1e' % (lmd[-1]/lmd[0] - 1.0))
-    v.scale(s, multiply=True)
-    p = wu.dot(u)
+    wv.copy(v) # use v as a workspace
+    s, q = v.svd() # wv == v*s*q
+    wu.multiply(_conj(q.T), u) # u' = wu*q.H: orthonormal because q is unitary
+    v.scale(s, multiply=True) # v' = v*s
+    # theory: v'*u'.H = v*s*(wu*q.H).H = v*s*q*wu.H = wv*wu.H
+    # let us check numerically by measuring D = wv*wu.H - v'*u'.H
+    # D*w = 0 for any w orthogonal to span(u) = span(wu) = span(u')
+    # hence enough to measure D*wu = wv - v'*u'.H*wu
+    p = wu.dot(u) # p = u'.H*wu
     t = wv.dots(wv)
-    wv.add(v, -1.0, p)
+    wv.add(v, -1.0, p) # wv := wv - v'*u'.H*wu
     t = numpy.sqrt(wv.dots(wv)/t)
     print('transformation error: %.1e' % nla.norm(t))
     q = u.dot(u)

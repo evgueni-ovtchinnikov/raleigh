@@ -6,7 +6,7 @@ RALEIGH (RAL EIGensolvers for real symmetric and Hermitian problems) core
 solver.
 
 For advanced users only - consider using more user-friendly interfaces in 
-raleigh/drivers first.
+raleigh/interfaces first.
 
 Implements a block Conjugate Gradient algorithm for the computation of 
 several eigenpairs (eigenvalues and corresponding eigenvectors) of real 
@@ -173,7 +173,7 @@ class Options:
         that returns True if sufficient number of eigenpairs have been computed
         and False otherwise, based on the values of solver attributes (e.g.
         solver.eigenvalues) and possibly the user input, see 
-        drivers.partial_svd.DefaultStoppingCriteria for an example
+        interfaces.partial_svd.DefaultStoppingCriteria for an example
     detect_stagnation : bool
         if set to True, detects the loss of convergence, i.e. impossibility to
         significantly improve the accuracy of the approximation (set to False
@@ -194,7 +194,7 @@ class Options:
         self.convergence_criteria = None
         self.stopping_criteria = None
         self.detect_stagnation = True
-        self.max_quota = 0.5
+        self.max_quota = 0.75
 
 
 class EstimatedErrors:
@@ -486,6 +486,8 @@ class Solver:
             try:
                 status = self._solve(eigenvectors, options, which, extra, init)
                 if status > 1:
+                    if verb > -1:
+                        print('core solver return status %d' % status)
                     return status - 1
             except _Error as err:
                 if verb > -1:
@@ -501,7 +503,10 @@ class Solver:
         nc = Xc.nvec()
         m = n - nc
         if verb > -1:
-            print('%d eigenpairs not computed' % m)
+            msg = '%d eigenpairs not computed by CG, applying ' + \
+                  'Rayleigh-Ritz procedure'
+            print( msg % m)
+            print('in the complement subspace...')
 
         X = eigenvectors.new_vectors(m)
         X.fill_random()
@@ -526,6 +531,7 @@ class Solver:
                 BXc = Xc
             if nc > 0:
                 Gc = BXc.dot(Xc)
+                #Gci = nla.inv(Gc)
                 # approximate inverse of Gc
                 Gci = 2*numpy.identity(nc, dtype=data_type) - Gc
             Q = numpy.dot(Gci, X.dot(BXc))
@@ -538,13 +544,34 @@ class Solver:
             XBX = Y.dot(X)
         else:
             XBX = X.dot(X)
+        lmd, q = sla.eigh(XBX)
+        epsilon = 100*numpy.finfo(data_type).eps
+        k = numpy.sum(lmd <= epsilon*lmd[-1])
+        if k > 0:
+            if verb > -1:
+                #print(lmd[: k + 2], lmd[-1])
+                msg = 'dropping %d linear dependent vectors ' + \
+                      'from the Rayleigh-Ritz procedure...'
+                print(msg % k)
+            X.multiply(Q, Z)
+            Z.copy(X)
+            Y.multiply(Q, Z)
+            Z.copy(Y)
+            m -= k
+            X.select(m)
+            Y.select(m)
+            Z.select(m)
+            XBX = XBX[:m, :m]
+
         if pro:
             A(Y, Z)
             XAX = Z.dot(Y)
         else:
             A(X, Z)
             XAX = Z.dot(X)
-        lmdx, Q = sla.eigh(XAX, XBX, turbo=False, overwrite_a=True, overwrite_b=True)
+
+        lmdx, Q = sla.eigh(XAX, XBX, turbo=False, overwrite_a=True, \
+                           overwrite_b=True)
         X.multiply(Q, Z)
         Z.copy(X)
         eigenvectors.append(X)
@@ -811,6 +838,9 @@ class Solver:
             if right != 0 and left_block_size < block_size:
                 maxit = max(maxit, numpy.amax(iterations[left_block_size:]))
             if maxit >= max_iter:
+                if verb > -1:
+                    msg = 'iterations limit of %d exceeded, terminating'
+                    print(msg % max_iter)
                 break
 
             if verb > 0:

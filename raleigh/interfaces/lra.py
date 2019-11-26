@@ -11,9 +11,9 @@ import numpy.linalg as nla
 import scipy.linalg as sla
 
 from ..core.solver import Options
-from .partial_svd import AMatrix
+from ..algebra.dense_matrix import AMatrix
 from .partial_svd import PartialSVD
-from .partial_svd import DefaultStoppingCriteria
+from .truncated_svd import DefaultStoppingCriteria
 
 
 class LowerRankApproximation:
@@ -105,7 +105,9 @@ class LowerRankApproximation:
         Jacobi-Conjugated Gradient algorithm to A_.T A_ or A_ A_.T, whichever
         is smaller in size.
         '''
+        psvd = PartialSVD(data_matrix, shift)
         m, n = data_matrix.shape()
+
         user_bs = opt.block_size
         if user_bs < 1 and (rank < 0 or rank > 100):
             opt.block_size = 128
@@ -118,11 +120,13 @@ class LowerRankApproximation:
             no_sc = True
             opt.stopping_criteria = \
                 DefaultStoppingCriteria(data_matrix, tol, norm, max_rank, verb)
+            v = psvd.vectors()
+            opSVD = psvd.op_svd()
+            opt.stopping_criteria.err_calc.set_up(opSVD, v, shift)
         else:
             no_sc = False
 
-        psvd = PartialSVD()
-        psvd.compute(data_matrix, opt=opt, nsv=(0, rank), shift=shift, \
+        psvd.compute(data_matrix, opt=opt, nsv=(0, rank), \
             refine=self.ortho)
         self.__left_v = psvd.left_v()
         self.__left_v.scale(psvd.sigma, multiply=True)
@@ -171,7 +175,7 @@ class LowerRankApproximation:
         if norm not in ['f', 'm', 's']:
             msg = 'norm %s is not supported' % repr(norm)
             raise ValueError(msg)
-        v = data_matrix.as_vectors() # reference to data_matrix
+        v = data_matrix.as_vectors()
         s = abs(v.dots(v))
         fnorm = math.sqrt(numpy.sum(s))
         maxl2norm = numpy.amax(numpy.sqrt(s))
@@ -246,6 +250,10 @@ class LowerRankApproximation:
             mean = None
             vmean = None
 
+        s = abs(v.dots(v))
+        fnorm = math.sqrt(numpy.sum(s))
+        maxl2norm = numpy.amax(numpy.sqrt(s))
+
         left1 = v.orthogonalize(right0)
 
         lra = LowerRankApproximation()
@@ -273,7 +281,11 @@ class LowerRankApproximation:
         left01.zero()
         left0.append(left01)
         left1.append(left11)
-        left0.append(left1, axis=1)
+        left0_data = left0.data()
+        left1_data = left1.data()
+        left0_data = numpy.concatenate((left0_data, left1_data), axis=1)
+        left0 = left0.new_vectors(left0_data)
+#        left0.append(left1, axis=1)
         right0.append(right10)
         self.__left_v = left0
         self.__right_v = right0
@@ -282,9 +294,10 @@ class LowerRankApproximation:
         wr = right0.new_vectors(right0.nvec())
         H = right0.dot(right0)
         mu, x = sla.eigh(H)
-        q = mu[0]/mu[-1]
-#        print(mu[0], mu[-1])
+        q = mu[0] #/mu[-1]
         if q < 0.5:
+#            k = numpy.sum(mu < 0.5)
+#            print(mu[: k + 1])
             _lra_ortho(left0, right0, wl, wr)
         else:
             G = left0.dot(left0)
@@ -306,7 +319,7 @@ class LowerRankApproximation:
                 s = numpy.amax(numpy.sqrt(abs(r)))
             else:
                 s = sigma[0]
-            if shift:
+            if shift and False:
                 a = vmean.dot(vmean)
                 b = vmean.dot(right0)
                 p = left0.new_vectors(1)
@@ -338,7 +351,8 @@ class LowerRankApproximation:
                 i += 1
             i -= 1
             if i > 0:
-                print('discarding %d components out of %d' % (i, ncomp))
+                if verb > 0:
+                    print('discarding %d components out of %d' % (i, ncomp))
                 ncomp -= i
         else:
             ncomp = rank
@@ -383,24 +397,24 @@ class LowerRankApproximation:
         batch_size = min(batch_size, data_size)
         batch = 0
         if self.__rank == 0:
-            print('processing batch %d of size %d' % (batch, batch_size))
+            if verb > 0:
+                print('processing batch %d of size %d' % (batch, batch_size))
             matrix = AMatrix(data_matrix[:batch_size, :], arch=arch)
             self.compute(matrix, opt=opt, rank=rank, \
                          tol=tol, norm=norm, max_rank=max_rank, svtol=svtol, \
                          shift=shift, verb=verb)
-            del matrix # free memory
             first = batch_size
             batch += 1
         else:
             first = 0
         while first < data_size:
             next_ = min(data_size, first + batch_size)
-            print('processing batch %d of size %d' % (batch, next_ - first))
+            if verb > 0:
+                print('processing batch %d of size %d' % (batch, next_ - first))
             matrix = AMatrix(data_matrix[first : next_, :], arch=arch, \
                              copy_data=True)
             self.update(matrix, opt=opt, rank=rank, tol=tol, norm=norm, \
                         max_rank=max_rank, svtol=svtol, verb=verb)
-            del matrix # free memory
             first = next_
             batch += 1
 

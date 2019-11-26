@@ -39,8 +39,8 @@ from raleigh.algebra import verbosity
 verbosity.level = 2
 
 from raleigh.core.solver import Options
-from raleigh.drivers.truncated_svd import truncated_svd
-from raleigh.drivers.pca import pca
+from raleigh.interfaces.truncated_svd import truncated_svd
+from raleigh.interfaces.pca import pca
 
 
 def norm(a, axis):

@@ -12,7 +12,7 @@ Usage: pca_update <data_file> <tolerance> <q_first> <max_pcs> [gpu]
 
 data_file : the name of the file containing data matrix X
 tolerance : PCA approximation tolerance wanted
-q_first   : relative size of the first chunk (default 0.5)
+q_first   : relative size of the first chunk
 max_pcs   : maximal number of principal components to compute (<1: no limit)
 gpu       : run on GPU if this argument is present
 """
@@ -21,7 +21,7 @@ import numpy
 import sys
 import timeit
 
-from raleigh.drivers.pca import pca, pca_error
+from raleigh.interfaces.pca import pca, pca_error
 
 
 narg = len(sys.argv)
@@ -46,7 +46,7 @@ m = min(m_all, max(1, int(q*m_all)))
 
 print('computing PCs for %d data samples...' % m)
 start = timeit.default_timer()
-mean, trans, comps = pca(data[: m, :], tol=atol, mpc=mpc, verb=1, arch=arch)
+mean, trans, comps = pca(data[: m, :], tol=atol, mpc=mpc, arch=arch)
 elapsed = timeit.default_timer() - start
 ncomp = comps.shape[0]
 print('%d principal components computed in %.2e sec' % (ncomp, elapsed))
