@@ -6,7 +6,7 @@
 
 Computes principal components of a dataset until stopped by the user.
 
-Usage: pca_simple <data_file> [gpu]
+Usage: interactive_pca <data_file> [gpu]
 
 data_file    : the name of the file containing data
 gpu          : run raleigh pca on GPU if this argument is present
