@@ -284,11 +284,17 @@ class DefaultProbe:
 
     def __init__(self, data):
         self.data = data
-        m, n = data.shape
-        mean = numpy.mean(data, axis=0).reshape((1, n))
+        self.shape = data.shape
+        m = self.shape[0]
+        n = numpy.prod(self.shape[1:])
+        data2d = data.reshape((m, n))
+        mean = numpy.mean(data2d, axis=0).reshape((1, n))
+        s = numpy.linalg.norm(mean)
+        b = numpy.dot(data2d, mean.T)
+        t = _norm(data2d, axis=1).reshape((m, 1))
         ones = numpy.ones((m, 1), dtype=data.dtype)
-        data_s = data - numpy.dot(ones, mean)
-        self.nrms = _norm(data_s, axis=1)
+        x = t*t - 2*b + s*s*ones
+        self.nrms = numpy.sqrt(abs(x)).reshape((m,))
         self.nsv = 0
 
     def inspect(self, mean, sigma, left, right):
