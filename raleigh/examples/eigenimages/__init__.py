@@ -7,9 +7,9 @@ convert_lfw.py:
     === MUST BE RUN FIRST ===
 
 compute_eigenimages.py:
-    Computes Principal Components for a set of 2D images in small portions until
-    stopped by user's entering 'n' in answer to 'more?' or the error of PCA
-    approximation falls below the required tolerance.
+    Computes Principal Components for a set of 2D images interactively until
+    stopped by the user or until the error of PCA approximation falls below the
+    required tolerance.
 
 show_errors.py:
     Compares images with their PCA approximations computed by the script

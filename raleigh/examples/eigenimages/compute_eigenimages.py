@@ -3,9 +3,9 @@
 
 '''Principal Component Analysis of 2D images.
 
-Computes Principal Components for a set of 2D images in small portions until
-stopped by user's entering 'n' in answer to 'more?' or the error of PCA
-approximation falls below the tolerance.
+Computes Principal Components for a set of 2D images interactively until
+stopped by user or until the error of PCA approximation falls below the
+required tolerance.
 
 Note on Linear Algebra style terminology adopted here:
 Due to a specific nature of this PCA application, principal components are
@@ -214,18 +214,17 @@ opt.stopping_criteria = UserStoppingCriteria(images, probe=probe)
 
 images = numpy.reshape(images, (m, n))
 
-start = timeit.default_timer()
 if err_tol > 0:
+    start = timeit.default_timer()
     mean, coord, eigim = pca(images, tol=err_tol, arch=arch, verb=1)
+    elapsed_time = timeit.default_timer() - start
+    print('elapsed time: %.2e' % elapsed_time)
 else:
     mean, coord, eigim = pca(images, opt=opt, arch=arch, verb=1)
-elapsed_time = timeit.default_timer() - start
 
 sigma = _norm(coord, axis=0)
 ncon = sigma.shape[0]
 print('%d eigenimages computed' % ncon)
-if err_tol > 0:
-    print('elapsed time: %.2e' % elapsed_time)
 
 while True:
     i = int(input('image number (negative to exit): '))
