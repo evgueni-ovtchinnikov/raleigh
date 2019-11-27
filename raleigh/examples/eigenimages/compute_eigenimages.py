@@ -15,6 +15,8 @@ coefficients of these linear combinations as 'coordinates' (of images in
 the orthonormal basis of eigenimages) - in some other PCA software these
 are referred to as 'reduced features data'.
 
+If you have docopt:
+
 Usage:
   compute_eigenimages [--help | -h | options] <images>
 
@@ -26,6 +28,9 @@ Options:
   -e <err> , --imerr=<err>   image approximation error tolerance (<= 0: not set,
                              run in interactive mode) [default: 0]
   -a <arch>, --arch=<arch>   architecture [default: cpu]
+
+If you do not have docopt:
+  compute_eigenimages <images> <pca_err> [gpu]
 '''
 
 try:
@@ -62,22 +67,25 @@ class Probe:
     def __init__(self, images):
         self.images = images
         self.shape = images.shape
-        self.img_list = None
+        self.tol = 0 # start in interactive mode
+        self.first = True # to give help hint at the start
+        self.img_list = None # no images to show yet
         m = self.shape[0]
         ny = self.shape[1]
         nx = self.shape[2]
         self.nx = nx
         self.ny = ny
-        # compute the norm of zero-average-shifted data samples
+        # compute the norms of centered (shifted-to-zero-average) data samples
+        # to be used for the relative truncation error computation
         n = nx*ny
         data = images.reshape((m, n))
         mean = numpy.mean(data, axis=0).reshape((1, n))
-        s = numpy.linalg.norm(mean)
-        b = numpy.dot(data, mean.T)
-        t = _norm(data, axis=1).reshape((m, 1))
         ones = numpy.ones((m, 1), dtype=data.dtype)
-        x = t*t - 2*b + s*s*ones
-        self.nrms = numpy.sqrt(abs(x)).reshape((m,))
+        r = numpy.linalg.norm(mean)
+        s = numpy.dot(data, mean.T)
+        t = _norm(data, axis=1).reshape((m, 1))
+        nrms_sqr = t*t - 2*s + r*r*ones
+        self.nrms = numpy.sqrt(abs(nrms_sqr)).reshape((m,))
 
     def inspect(self, mean, sigma, left, right):
         '''This method will be called each time a bunch of singular vectors have
@@ -88,7 +96,7 @@ class Probe:
            left : left singular vectors computed so far
            right: right singular vectors computed so far
 
-           This data can be used to judge whether sufficient number of
+           This data can be used e.g. to judge whether sufficient number of
            eigenimages have been computed.
         '''
         # compute coordinates (reduced features data)
@@ -98,34 +106,44 @@ class Probe:
         proj = _norm(u, axis=1)
         nrms_sqr = self.nrms * self.nrms
         proj_sqr = proj*proj
-        errs_sqr = nrms_sqr - proj_sqr
+        errs_sqr = nrms_sqr - proj_sqr # Pythagorean theorem
         err_fro = math.sqrt(numpy.sum(errs_sqr)/numpy.sum(nrms_sqr))
-        i = sigma.shape[0] - 1
+        i = sigma.shape[0] - 1 # latest singular value
         msg = 'sigma[%d] = %.1e*sigma[0], truncation error %.1e'
         msg = msg % (i, sigma[i]/sigma[0], err_fro)
-        # visualize the current approximation to images
-        while True:
-            ans = input(msg + ' h|q|s> ')
+        if self.tol > 0: # we are in non-intractive mode
+            print(msg)
+            if err_fro < self.tol:
+                self.tol = 0 # back to interactive mode
+            else:
+                return False # more eigenimages needed
+        while True: # process user's choices
+            if self.first:
+                print('answer h to the prompt below to get usage help')
+                self.first = False
+            ans = input(msg + ' h|q|s|t> ')
             vals = ans.split()
             nvals = len(vals)
             if nvals < 1:
                 break
             if vals[0] == 'h':
-                print('q               : to stop')
-                print('s im1 [im2] ... : to show listed images')
+                print('q               : to stop the computation')
+                print('s im1 [im2 ...] : to show listed images')
                 print('s               : to show previously selected images')
+                print('t tolerance     : to continue in non-iteractive mode')
+                print('                  until the truncation error falls')
+                print('                  below tolerance')
                 print('any other input : to continue')
                 continue
-            if vals[0] == 'c':
-                break
             if vals[0] == 'q':
-                return True
+                return True # we are done
             if vals[0] == 's':
+                # visualize the current approximation to images
                 nimgs = nvals - 1
                 if nimgs < 1:
                     imgs = self.img_list
                     if imgs is None:
-                        print('usage: s img1 [img2] ...')
+                        print('usage: s im1 [im2 ...]')
                         continue
                 else:
                     imgs = vals[1:]
@@ -144,7 +162,11 @@ class Probe:
                     pylab.imshow(pca_image, cmap='gray')
                     pylab.show()
                 self.img_list = imgs
-        return False
+                continue
+            if vals[0] == 't':
+                self.tol = float(vals[1])
+            break
+        return False # more eigenimages needed
         
 
 if have_docopt:
