@@ -77,9 +77,9 @@ else:
         print('\nUsage:\n')
         print('python truncated_svd.py <data>')
         exit()
-    data = sys.argv[1]
+    A = sys.argv[1]
     print('\n=== docopt not found, using default options...\n')
-    arch = 'cpu'
+    arch = 'cpu' if narg < 3 else 'gpu!'
     rank = -1
     th = 0.01
     tol = 1e-3
