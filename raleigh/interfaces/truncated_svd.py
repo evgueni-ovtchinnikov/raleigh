@@ -282,19 +282,22 @@ class DefaultStoppingCriteria:
 
 class DefaultProbe:
 
-    def __init__(self, data):
+    def __init__(self, data, shift):
         self.data = data
         self.shape = data.shape
         m = self.shape[0]
         n = numpy.prod(self.shape[1:])
         data2d = data.reshape((m, n))
-        mean = numpy.mean(data2d, axis=0).reshape((1, n))
-        s = numpy.linalg.norm(mean)
-        b = numpy.dot(data2d, mean.T)
         t = _norm(data2d, axis=1).reshape((m, 1))
-        ones = numpy.ones((m, 1), dtype=data.dtype)
-        x = t*t - 2*b + s*s*ones
-        self.nrms = numpy.sqrt(abs(x)).reshape((m,))
+        if not shift:
+            self.nrms = t.reshape((m,))
+        else:
+            mean = numpy.mean(data2d, axis=0).reshape((1, n))
+            s = numpy.linalg.norm(mean)
+            b = numpy.dot(data2d, mean.T)
+            ones = numpy.ones((m, 1), dtype=data.dtype)
+            x = t*t - 2*b + s*s*ones
+            self.nrms = numpy.sqrt(abs(x)).reshape((m,))
         self.nsv = 0
 
     def inspect(self, mean, sigma, left, right):
@@ -321,7 +324,7 @@ class UserStoppingCriteria:
 
         self.shape = data.shape
         if probe is None:
-            self.probe = DefaultProbe(data)
+            self.probe = DefaultProbe(data, shift)
         else:
             self.probe = probe
         m = self.shape[0]
@@ -363,13 +366,6 @@ class UserStoppingCriteria:
             else:
                 s = v.dot(self.__ones)
                 u.add(self.__mean, -1, s)
-        if self.ncon > 0:
-            if self.transpose:
-                q = u.orthogonalize(self.right)
-                v_data = self.right.data()
-            else:
-                q = u.orthogonalize(self.left)
-                v_data = self.left.data()
         sigma, q = u.svd()
         w = v.new_vectors(new)
         v.multiply(_conj(q.T), w)
