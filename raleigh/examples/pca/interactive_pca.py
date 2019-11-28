@@ -40,7 +40,7 @@ print('\n--- solving with raleigh pca...\n')
 opt = Options()
 opt.stopping_criteria = UserStoppingCriteria(data, shift=True)
 start = timeit.default_timer()
-mean, trans, comps = pca(data, opt=opt)
+mean, trans, comps = pca(data, opt=opt, arch=arch)
 elapsed = timeit.default_timer() - start
 ncomp = comps.shape[0]
 print('%d principal components computed in %.2e sec' % (ncomp, elapsed))
