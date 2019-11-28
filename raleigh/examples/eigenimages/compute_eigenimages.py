@@ -210,7 +210,7 @@ print('data range: %e to %e' % (vmin, vmax))
 
 opt = Options()
 probe = Probe(images)
-opt.stopping_criteria = UserStoppingCriteria(images, probe=probe)
+opt.stopping_criteria = UserStoppingCriteria(images, shift=True, probe=probe)
 
 images = numpy.reshape(images, (m, n))
 

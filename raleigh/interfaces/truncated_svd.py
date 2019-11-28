@@ -315,7 +315,7 @@ class DefaultProbe:
 
 class UserStoppingCriteria:
 
-    def __init__(self, data, probe=None):
+    def __init__(self, data, shift=False, probe=None):
 
         from ..algebra.dense_cpu import Matrix, Vectors
 
@@ -328,30 +328,48 @@ class UserStoppingCriteria:
         n = numpy.prod(self.shape[1:])
         self.transpose = (m < n)
         self.data = numpy.reshape(data, (m, n))
+        self.shift = shift
         self.matrix = Matrix(self.data)
-        self.mean = numpy.mean(self.data, axis=0)
+        self.mean = numpy.mean(self.data, axis=0).reshape((1, n))
+        dtype = data.dtype
         sigma_dtype = numpy.dtype(abs(self.data[0,0])).type
         self.sigma = numpy.ndarray((0,), dtype=sigma_dtype)
-        self.left = Vectors(m, data_type=data.dtype)
-        self.right = Vectors(n, data_type=data.dtype)
+        self.left = Vectors(m, data_type=dtype)
+        self.right = Vectors(n, data_type=dtype)
+        self.ones = numpy.ones((1, m), dtype=dtype)
+        self.__ones = Vectors(self.ones)
+        self.__mean = Vectors(self.mean)
         self.ncon = 0
 
     def satisfied(self, solver):
         new = solver.rcon - self.ncon
         if new < 1:
             return False
-        v = solver.eigenvectors.reference()
-        v.select(new, self.ncon)
+        eigenvectors = solver.eigenvectors.reference()
+        eigenvectors.select(new, self.ncon)
         if self.transpose:
+            v = self.left.new_vectors(new)
             u = self.right.new_vectors(new)
         else:
+            v = self.right.new_vectors(new)
             u = self.left.new_vectors(new)
+        v_data = eigenvectors.data()
+        v.fill(v_data)
         self.matrix.apply(v, u, transp=self.transpose)
+        if self.shift:
+            if not self.transpose:
+                s = v.dot(self.__mean)
+                u.add(self.__ones, -1, s)
+            else:
+                s = v.dot(self.__ones)
+                u.add(self.__mean, -1, s)
         if self.ncon > 0:
             if self.transpose:
                 q = u.orthogonalize(self.right)
+                v_data = self.right.data()
             else:
                 q = u.orthogonalize(self.left)
+                v_data = self.left.data()
         sigma, q = u.svd()
         w = v.new_vectors(new)
         v.multiply(_conj(q.T), w)
