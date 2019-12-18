@@ -36,14 +36,11 @@ arch = 'cpu' if narg < 3 else 'gpu!'
 
 numpy.random.seed(1) # make results reproducible
 
-print('\n--- solving with raleigh pca...\n')
 opt = Options()
 opt.stopping_criteria = UserStoppingCriteria(data, shift=True)
-start = timeit.default_timer()
 mean, trans, comps = pca(data, opt=opt, arch=arch)
-elapsed = timeit.default_timer() - start
 ncomp = comps.shape[0]
-print('%d principal components computed in %.2e sec' % (ncomp, elapsed))
+print('%d principal components computed' % ncomp)
 em, ef = pca_error(data, mean, trans, comps)
 print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
 
