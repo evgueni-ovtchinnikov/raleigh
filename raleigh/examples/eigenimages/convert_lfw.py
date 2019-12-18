@@ -23,10 +23,11 @@ Options:
                               by no greater than s times maximal difference
                               if s > 0, or mean difference otherwise, and save
                               them to photos.npy [default: 1.0]
-  -f <v>, --off-face=<v>      if v >= 0, pixel values outside the face area
-                              will be set to v times average value, erasing
+  -f <q>, --off-face=<q>      if q >= 0, pixel values outside the face area
+                              will be set to vmin + q*(vmax - vmin), where
+                              [vmin, vmax] is the range of pixel values (erasing
                               most of the background to get closer to passport
-                              photo look (PCA showcase) [default: -1]
+                              photo look - PCA showcase) [default: -1]
   -d, --double         double the number of images by adding mirror images
   -v, --view           view processed images
 """

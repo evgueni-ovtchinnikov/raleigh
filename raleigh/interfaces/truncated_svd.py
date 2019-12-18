@@ -280,6 +280,108 @@ class DefaultStoppingCriteria:
         return done
 
 
+class DefaultProbe:
+
+    def __init__(self, data, shift):
+        self.data = data
+        self.shape = data.shape
+        m = self.shape[0]
+        n = numpy.prod(self.shape[1:])
+        data2d = data.reshape((m, n))
+        t = _norm(data2d, axis=1).reshape((m, 1))
+        if not shift:
+            self.nrms = t.reshape((m,))
+        else:
+            mean = numpy.mean(data2d, axis=0).reshape((1, n))
+            s = numpy.linalg.norm(mean)
+            b = numpy.dot(data2d, mean.T)
+            ones = numpy.ones((m, 1), dtype=data.dtype)
+            x = t*t - 2*b + s*s*ones
+            self.nrms = numpy.sqrt(abs(x)).reshape((m,))
+        self.nsv = 0
+
+    def inspect(self, mean, sigma, left, right):
+        s = numpy.reshape(sigma, (1, sigma.shape[0]))
+        u = left*s
+        proj = _norm(u, axis=1)
+        nrms_sqr = self.nrms * self.nrms
+        proj_sqr = proj*proj
+        errs_sqr = nrms_sqr - proj_sqr
+        err_mx2 = math.sqrt(numpy.amax(errs_sqr)/numpy.amax(nrms_sqr))
+        err_fro = math.sqrt(numpy.sum(errs_sqr)/numpy.sum(nrms_sqr))
+        i = sigma.shape[0] - 1
+        msg = 'sigma[%d] = %.1e*sigma[0], trunc. err. max 2: %.1e, fro: %.1e'
+        msg = msg % (i, sigma[i]/sigma[0], err_mx2, err_fro)
+        done = (input(msg + ', more? ') == 'n')
+        return done
+        
+
+class UserStoppingCriteria:
+
+    def __init__(self, data, shift=False, probe=None):
+
+        from ..algebra.dense_cpu import Matrix, Vectors
+
+        self.shape = data.shape
+        if probe is None:
+            self.probe = DefaultProbe(data, shift)
+        else:
+            self.probe = probe
+        m = self.shape[0]
+        n = numpy.prod(self.shape[1:])
+        self.transpose = (m < n)
+        self.data = numpy.reshape(data, (m, n))
+        self.shift = shift
+        self.matrix = Matrix(self.data)
+        self.mean = numpy.mean(self.data, axis=0).reshape((1, n))
+        dtype = data.dtype
+        sigma_dtype = numpy.dtype(abs(self.data[0,0])).type
+        self.sigma = numpy.ndarray((0,), dtype=sigma_dtype)
+        self.left = Vectors(m, data_type=dtype)
+        self.right = Vectors(n, data_type=dtype)
+        self.ones = numpy.ones((1, m), dtype=dtype)
+        self.__ones = Vectors(self.ones)
+        self.__mean = Vectors(self.mean)
+        self.ncon = 0
+
+    def satisfied(self, solver):
+        new = solver.rcon - self.ncon
+        if new < 1:
+            return False
+        eigenvectors = solver.eigenvectors.reference()
+        eigenvectors.select(new, self.ncon)
+        if self.transpose:
+            v = self.left.new_vectors(new)
+            u = self.right.new_vectors(new)
+        else:
+            v = self.right.new_vectors(new)
+            u = self.left.new_vectors(new)
+        v_data = eigenvectors.data()
+        v.fill(v_data)
+        self.matrix.apply(v, u, transp=self.transpose)
+        if self.shift:
+            if not self.transpose:
+                s = v.dot(self.__mean)
+                u.add(self.__ones, -1, s)
+            else:
+                s = v.dot(self.__ones)
+                u.add(self.__mean, -1, s)
+        sigma, q = u.svd()
+        w = v.new_vectors(new)
+        v.multiply(_conj(q.T), w)
+        self.sigma = numpy.concatenate((self.sigma, sigma))
+        if self.transpose:
+            self.left.append(w)
+            self.right.append(u)
+        else:
+            self.left.append(u)
+            self.right.append(w)
+        u = self.left.data().T
+        v = self.right.data().T
+        self.ncon += new
+        return self.probe.inspect(self.mean, self.sigma, u, v)
+
+
 class _DefaultSVDConvergenceCriteria:
     def __init__(self, tol):
         self.tolerance = tol
@@ -288,3 +390,14 @@ class _DefaultSVDConvergenceCriteria:
     def satisfied(self, solver, i):
         err = solver.convergence_data('kinematic vector error', i)
         return err >= 0 and err <= self.tolerance
+
+
+def _conj(a):
+    if a.dtype.kind == 'c':
+        return a.conj()
+    else:
+        return a
+
+
+def _norm(a, axis):
+    return numpy.apply_along_axis(nla.norm, axis, a)
