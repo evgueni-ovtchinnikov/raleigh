@@ -86,15 +86,31 @@ class Probe:
         self.nrms = numpy.sqrt(abs(nrms_sqr)).reshape((m,))
 
     def inspect(self, mean, sigma, left, right):
-        '''This method will be called each time a bunch of singular vectors have
-           converged.
+        '''Principal components are computed by applying truncated Singular
+           Value Decomposition to the data matrix of shape samples x features,
+           which in turn is performed essentially by solving the eigenvalue
+           problem for the covariance matrix.
+           Principal components computed in this way are eigenvectors of the
+           covariance matrix or, equivalently, right singular vectors of the
+           centered (shifted to zero mean) data matrix.
 
-           mean : mean image
-           sigma: singular values computed so far
-           left : left singular vectors computed so far
-           right: right singular vectors computed so far
+           This method will be called by the core eigensolver each time a bunch
+           of singular vectors have converged.
 
-           This data can be used e.g. to judge whether sufficient number of
+           Parameters:
+           -----------
+           mean : 1D numpy array
+                  mean row of the data matrix
+           sigma: 1D numpy array
+                  singular values of the data matrix computed so far
+           left : 2D numpy array
+                  columns are left singular vectors of the data matrix computed
+                  so far
+           right: 2D numpy array
+                  columns are right singular vectors of the data matrix computed
+                  so far
+
+           This data can be used to judge whether sufficient number of
            eigenimages have been computed.
         '''
         # compute coordinates (reduced features data)
