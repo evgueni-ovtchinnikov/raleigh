@@ -1,5 +1,9 @@
 # ChangeLog
 
+## v1.2
+
+Added features that facilitate the user's development of interactive truncated SVD and PCA code and demonstrated their use in new icompute_eigenimages.py example script.
+
 ## v1.1
 
 This release mostly introduces substantial changes in computing Lower Rank Approximations (LRA) and Principal Component Analysis (PCA).
