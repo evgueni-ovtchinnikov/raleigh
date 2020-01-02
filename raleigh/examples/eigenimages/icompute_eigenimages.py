@@ -6,16 +6,19 @@
 Computes Principal Components for a set of 2D images interactively until
 stopped by user.
 
-Note on Linear Algebra style terminology adopted here:
-Due to a specific nature of this PCA application, principal components are
+--- A note on Linear Algebra style terminology adopted here ---
+Due to the specific nature of this PCA application, principal components are
 referred to as 'eigenimages'. Each image from the original data set is
-approximated by a linear combination of eigenimages, hence we refer to the
-coefficients of these linear combinations as 'coordinates' (of images in
-the orthonormal basis of eigenimages) - in some other PCA software these
-are referred to as 'reduced features data'.
+approximated by a linear combination of eigenimages, hence the coefficients
+of this linear combination are referred to as 'coordinates' (of the approximate
+image in the orthonormal basis of eigenimages) - in some other PCA software
+these are referred to as 'reduced features data'.
+
+The computed eigenimages and coordinates and the mean image are saved in the
+file eigenimages.npz as three variables named eigim, coord and mean.
 
 If you have docopt:
-
+-------------------
 Usage:
   icompute_eigenimages [--help | -h | options] <images>
 
@@ -27,7 +30,7 @@ Options:
   -a <arch>, --arch=<arch>   architecture [default: cpu]
 
 If you do not have docopt:
-
+--------------------------
   icompute_eigenimages <images> <pca_err> [gpu]
 '''
 
@@ -86,16 +89,14 @@ class Probe:
         self.nrms = numpy.sqrt(abs(nrms_sqr)).reshape((m,))
 
     def inspect(self, mean, sigma, left, right):
-        '''Principal components are computed by applying truncated Singular
-           Value Decomposition to the data matrix of shape samples x features,
-           which in turn is performed essentially by solving the eigenvalue
-           problem for the covariance matrix.
-           Principal components computed in this way are eigenvectors of the
-           covariance matrix or, equivalently, right singular vectors of the
-           centered (shifted to zero mean) data matrix.
+        '''Principal components computed by RALEIGH's method pca are the right
+           singular vectors of the centered (shifted to zero mean) data matrix
+           of shape samples x features, and coordinates of i-th data sample
+           approximation are i-th components of the left singular vectors
+           multiplied by the respective singular values.
 
-           This method will be called by the core eigensolver each time a bunch
-           of singular vectors have converged.
+           The method 'inspect' will be called by the RALEIGH's core eigensolver
+           each time a bunch of singular vectors have converged.
 
            Parameters:
            -----------
@@ -110,8 +111,9 @@ class Probe:
                   columns are right singular vectors of the data matrix computed
                   so far
 
-           This data can be used to judge whether sufficient number of
-           eigenimages have been computed.
+           In the implementation below, these data are, on user's request,
+           used to visualize PCA approximations to images, helping the user to
+           decide whether a sufficient number of eigenimages have been computed.
         '''
         # compute coordinates (reduced features data)
         s = numpy.reshape(sigma, (1, sigma.shape[0]))
@@ -147,7 +149,7 @@ class Probe:
                 print('t tolerance     : to continue in non-iteractive mode')
                 print('                  until the truncation error falls')
                 print('                  below tolerance')
-                print('any other input : to continue')
+                print('any other input : to compute few more eigenimages')
                 continue
             if vals[0] == 'q':
                 return True # we are done
@@ -168,11 +170,13 @@ class Probe:
                     if im < 0 or im >= nim:
                         continue
                     image = self.images[im,:,:]
+                    pylab.figure()
+                    pylab.title('image %d' % im)
                     pylab.imshow(image, cmap='gray')
                     img = numpy.dot(u[im, :], right.T) + mean
                     pca_image = numpy.reshape(img, (ny, nx))
                     pylab.figure()
-                    pylab.title('PCA approximation of the image')
+                    pylab.title('PCA approximation of the image %d' % im)
                     pylab.imshow(pca_image, cmap='gray')
                     pylab.show()
                 self.img_list = imgs
@@ -216,6 +220,8 @@ else:
     m = m_all
     images = all_images
 
+# instruct the RALEIGH's core eigensolver to call the above implementation
+# of Probe.inspect() each time a bunch of singular vectors have converged.
 opt = Options()
 probe = Probe(images)
 opt.stopping_criteria = UserStoppingCriteria(images, shift=True, probe=probe)
@@ -226,22 +232,6 @@ mean, coord, eigim = pca(images, opt=opt, arch=arch, verb=1)
 
 ncon = eigim.shape[0]
 print('%d eigenimages computed' % ncon)
-
-while True:
-    i = int(input('image number (negative to exit): '))
-    if i < 0 or i >= m:
-        break
-    pylab.figure()
-    pylab.title('image %d' % i)
-    img = images[i,:]
-    image = numpy.reshape(img, (ny, nx))
-    pylab.imshow(image, cmap='gray')
-    img = numpy.dot(coord[i,:], eigim) + mean
-    pca_image = numpy.reshape(img, (ny, nx))
-    pylab.figure()
-    pylab.title('PCA approximation of the image')
-    pylab.imshow(pca_image, cmap='gray')
-    pylab.show()
 
 print('saving...')
 mean = numpy.reshape(mean, (ny, nx))
