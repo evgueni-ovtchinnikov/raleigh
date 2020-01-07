@@ -14,17 +14,61 @@ RALEIGH is a Python implementation of the block Jacobi-conjugated gradients algo
 	- nearest to a given real value
 * If the number of eigenvalues needed is not known in advance (as is normally the case with PCA), the computation will continue until user-specified stopping criteria are satisfied (e.g. PCA approximation to the data is satisfactory).
 * PCA capabilities include quick update of principal components after arrival of new data and incremental computation of principal components, dealing with one chunk of data at a time.
-* The core solver is written in terms of abstract vectors, owing to which it will work on any architecture verbatim, provided that basic linear algebra operations on vectors are implemented (currently, MKL and CUBLAS implementations are provided with the package, in the absence of these libraries NumPy algebra being used).
+* The core solver is written in terms of abstract vectors, owing to which it will work on any architecture verbatim, provided that basic linear algebra operations on vectors are implemented. Currently, MKL and CUBLAS implementations are provided with the package, in the absence of these libraries NumPy algebra being used.
 
 ### Dependencies
 
-For best performance, install MKL 10.3 or later (or, on Windows, numpy+mkl). On Linux, the folder containing libmkl\_rt.so must be in LD\_LIBRARY\_PATH. On Windows, the one containing mkl\_rt.dll must be in PATH. Large sparse problems can only be solved if MKL is available, PCA and other dense problems can be solved without it.
+For best performance, install MKL 10.3 or later (or, on Windows, numpy+mkl). On Linux, the folder containing libmkl\_rt.so must be listed in LD\_LIBRARY\_PATH. On Windows, the one containing mkl\_rt.dll must be listed in PATH. Large sparse problems can only be solved if MKL is available, PCA and other dense problems can be solved without it.
 
-To use GPU (which must be CUDA-enabled), NVIDIA GPU Computing Toolkit needs to be installed. On Linux, the folder containing libcudart.so must be in LD\_LIBRARY\_PATH.
+To use GPU (which must be CUDA-enabled), NVIDIA GPU Computing Toolkit needs to be installed. On Linux, the folder containing libcudart.so must be listed in LD\_LIBRARY\_PATH.
 
 ### Basic usage
 
-Subfolder _interfaces_ contains user-friendly SciPy-like interfaces to core solver working in terms of NumPy and SciPy data objects. Subfolder _examples_ contains scripts illustrating their use, as well as a script illustrating basic capabilities of the core solver.
+To compute 10 eigenvalues closest to 0.25 of a sparse real symmetric or Hermitian matrix `A` in SciPy format:
+```
+from raleigh.interfaces.partial_hevp import partial_hevp
+lmd, x, status = partial_hevp(A, which=10, sigma=0.25)
+# lmd : eigenvalues
+# x : eigenvectors
+# status : execution status
+```
+To compute 10 smallest eigenvalues of a sparse positive definite real symmetric or Hermitian matrix `M` using its incomplete LU-factorization as the preconditioner:
+```
+from raleigh.algebra.sparse_mkl import IncompleteLU as ILU
+T = ILU(A)
+T.factorize()
+lmd, x, status = partial_hevp(A, which=10, T=T)
+```
+To compute 100 principal components for the dataset represented by the 2D matrix `A` with data samples as rows:
+```
+from raleigh.interfaces.pca import pca
+mean, trans, comps = pca(A, npc=100)
+# mean : the average of data samples (bias)
+# trans : transformed (reduced features) data set
+# comps : the matrix with principal components as rows
+```
+To compute a number of principal components sufficient to approximate `A` with 5% tolerance for the relative PCA error (the ratio of the Frobenius norm of `mean + trans*comps - A` to that of `A`):
+```
+mean, trans, comps = pca(A, tol=0.05)
+```
+To quickly update `mean`, `trans` and `comps` taking into account new data `A_new`:
+```
+mean, trans, comps = pca(A_new, have=(mean, trans, comps))
+```
+To compute PCA to 5% accuracy incrementally by processing 1000 data samples at a time:
+```
+mean, trans, comps = pca(A, tol=0.05, batch_size=1000)
+```
+
+### Package structure
+
+#### Basic use subpackages
+
+Subpackage _interfaces_ contains user-friendly SciPy-like interfaces to core solver working in terms of NumPy and SciPy data objects. Subpackage _examples_ contains scripts illustrating their use, as well as a script illustrating basic capabilities of the core solver.
+
+#### Advanced use subpackages
+
+Subpackage _algebra_ contains NumPy, MKL and CUBLAS implementations of abstract vectors algebra. These can be used as templates for user's own implementations. Subpackage _core_ contains the core solver implementation and related data objects definitions.
 
 ### Documentation
 
@@ -34,7 +78,7 @@ The mathematical and numerical aspects of the algorithm implemented by RALEIGH a
 
 ### Issues
 
-Please use [GitHub issue tracker](https://github.com/evgueni-ovtchinnikov/raleigh/issues) to report bugs and request features.
+Please use [GitHub issue tracker](https://github.com/evgueni-ovtchinnikov/raleigh/issues) or send an e-mail to Evgueni to report bugs and request features.
 
 ### License
 
