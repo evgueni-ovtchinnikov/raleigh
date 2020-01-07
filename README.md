@@ -22,6 +22,16 @@ For best performance, install MKL 10.3 or later (or, on Windows, numpy+mkl). On 
 
 To use GPU (which must be CUDA-enabled), NVIDIA GPU Computing Toolkit needs to be installed. On Linux, the folder containing libcudart.so must be listed in LD\_LIBRARY\_PATH.
 
+### Package structure
+
+#### Basic use subpackages
+
+Subpackage _interfaces_ contains user-friendly SciPy-like interfaces to core solver working in terms of NumPy and SciPy data objects. Subpackage _examples_ contains scripts illustrating their use, as well as a script illustrating basic capabilities of the core solver.
+
+#### Advanced use subpackages
+
+Subpackage _algebra_ contains NumPy, MKL and CUBLAS implementations of abstract vectors algebra. These can be used as templates for user's own implementations. Subpackage _core_ contains the core solver implementation and related data objects definitions.
+
 ### Basic usage
 
 To compute 10 eigenvalues closest to 0.25 of a sparse real symmetric or Hermitian matrix `A` in SciPy format:
@@ -60,19 +70,9 @@ To compute PCA to 5% accuracy incrementally by processing 1000 data samples at a
 mean, trans, comps = pca(A, tol=0.05, batch_size=1000)
 ```
 
-### Package structure
-
-#### Basic use subpackages
-
-Subpackage _interfaces_ contains user-friendly SciPy-like interfaces to core solver working in terms of NumPy and SciPy data objects. Subpackage _examples_ contains scripts illustrating their use, as well as a script illustrating basic capabilities of the core solver.
-
-#### Advanced use subpackages
-
-Subpackage _algebra_ contains NumPy, MKL and CUBLAS implementations of abstract vectors algebra. These can be used as templates for user's own implementations. Subpackage _core_ contains the core solver implementation and related data objects definitions.
-
 ### Documentation
 
-Basic usage of the package is briefly described in docstrings of modules in folder _interfaces_ (the best starting point to learn about RALEIGH usage) and example scripts. Advanced users will find the description of basic principles of RALEIGH's design in _core/solver.py_.
+Basic usage of the package is briefly described in the docstrings of modules in _interfaces_ and _examples_. Advanced users will find the description of basic principles of RALEIGH's design in _core_ module _solver_.
 
 The mathematical and numerical aspects of the algorithm implemented by RALEIGH are described in the papers by E. E. Ovtchinnikov in J. Comput. Phys. 227:9477-9497 and SIAM Numer. Anal. 46:2567-2619.
 
