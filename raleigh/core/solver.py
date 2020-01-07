@@ -1017,10 +1017,9 @@ class Solver:
                 dlmd_min_lft = eps*numpy.amax(abs(dlmd[:lbs, rec - 1]))
             if lbs < block_size:
                 dlmd_min_rgt = eps*numpy.amax(abs(dlmd[lbs:, rec - 1]))
-            if self.iteration >= 2:
-                if self.iteration == 2:
-                    dlmd_min_left = dlmd_min_lft
-                    dlmd_min_right =  dlmd_min_rgt
+            if self.iteration == 2:
+                dlmd_min_left = dlmd_min_lft
+                dlmd_min_right =  dlmd_min_rgt
 
             if self.iteration >= 2:
                 cluster[:, :] = 0
