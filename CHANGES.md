@@ -2,7 +2,9 @@
 
 ## v1.2
 
-This release mostly adds features that facilitate the user's development of interactive truncated SVD and PCA code. The use of these new features is demonstrated by the new icompute_eigenimages.py example script.
+On the development side, this release mostly adds features that facilitate the user's development of interactive truncated SVD and PCA code. The use of these new features is demonstrated by the new icompute_eigenimages.py example script.
+
+Presentation-wise, the users are likely to appreciate basic usage examples added to README.md, which are much more simple than the example scripts of the package.
 
 ## v1.1
 
