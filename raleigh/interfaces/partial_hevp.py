@@ -61,6 +61,21 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
           1 : + number of iteration and converged eigenvalues printed
           2 : + current eigenvalue iterates, residuals and error estimates
               printed
+
+    Returns
+    -------
+    lmd : one-dimensional numpy array
+        Eigenvalues in ascending order.
+    x : two-dimensional numpy array
+        The matrix of corresponding eigenvectors as columns.
+    status : int
+        Execution status
+        0 : success
+        1 : maximal number of iterations exceeded
+        2 : no search directions left (bad problem data or preconditioner)
+        3 : some of the requested left eigenvalues may not exist
+        4 : some of the requested right eigenvalues may not exist
+       <0 : fatal error, error message printed if verb is non-negative
     '''
 
     if B is not None:
