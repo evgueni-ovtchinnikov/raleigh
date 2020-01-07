@@ -18,7 +18,7 @@ RALEIGH is a Python implementation of the block Jacobi-conjugated gradients algo
 
 ### Dependencies
 
-For best performance, install MKL 10.3 or later (or, on Windows, numpy+mkl). On Linux, the folder containing libmkl\_rt.so must be listed in LD\_LIBRARY\_PATH. On Windows, the one containing mkl\_rt.dll must be listed in PATH. Large sparse problems can only be solved if MKL is available, PCA and other dense problems can be solved without it.
+For best performance, install MKL 10.3 or later (or, on Windows, numpy+mkl). On Linux, the folder containing libmkl\_rt.so must be listed in LD\_LIBRARY\_PATH. On Windows, the one containing mkl\_rt.dll must be listed in PATH. Large sparse problems can only be solved if MKL is available, PCA and other dense problems can be dealt with without it.
 
 To use GPU (which must be CUDA-enabled), NVIDIA GPU Computing Toolkit needs to be installed. On Linux, the folder containing libcudart.so must be listed in LD\_LIBRARY\_PATH.
 
@@ -53,11 +53,11 @@ To compute 100 principal components for the dataset represented by the 2D matrix
 ```
 from raleigh.interfaces.pca import pca
 mean, trans, comps = pca(A, npc=100)
-# mean : the average of data samples (bias)
+# mean : the average of data samples
 # trans : transformed (reduced features) data set
 # comps : the matrix with principal components as rows
 ```
-To compute a number of principal components sufficient to approximate `A` with 5% tolerance for the relative PCA error (the ratio of the Frobenius norm of `mean + trans*comps - A` to that of `A`):
+To compute a number of principal components sufficient to approximate `A` with 5% tolerance to the relative PCA error (the ratio of the Frobenius norm of `trans*comps - A_s` to that of `A_s`, where the rows of `A_s` are the original data samples shifted by `mean`):
 ```
 mean, trans, comps = pca(A, tol=0.05)
 ```
@@ -65,7 +65,7 @@ To quickly update `mean`, `trans` and `comps` taking into account new data `A_ne
 ```
 mean, trans, comps = pca(A_new, have=(mean, trans, comps))
 ```
-To compute PCA to 5% accuracy incrementally by processing 1000 data samples at a time:
+To compute 5% accuracy PCA approximation incrementally by processing 1000 data samples at a time:
 ```
 mean, trans, comps = pca(A, tol=0.05, batch_size=1000)
 ```
