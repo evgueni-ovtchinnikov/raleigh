@@ -544,7 +544,7 @@ class Solver:
             XBX = Y.dot(X)
         else:
             XBX = X.dot(X)
-        lmd, q = sla.eigh(XBX)
+        lmd, Q = sla.eigh(XBX)
         epsilon = 100*numpy.finfo(data_type).eps
         k = numpy.sum(lmd <= epsilon*lmd[-1])
         if k > 0:
