@@ -63,26 +63,6 @@ except:
     exit()
 
 
-def lap1d(n, a):
-    h = a/(n + 1)
-    d = numpy.ones((n,))/(h*h)
-    return scs.spdiags([-d, 2*d, -d], [-1, 0, 1], n, n, format='csr')
-
-
-def lap2d(nx, ny, ax, ay):
-    L = lap1d(nx, ax)
-    Ly = lap1d(ny, ay)
-    L = scs.csr_matrix(scs.kron(scs.eye(ny), L) + scs.kron(Ly, scs.eye(nx)))
-    return L
-
-
-def lap3d(nx, ny, nz, ax, ay, az):
-    L = lap2d(nx, ny, ax, ay)
-    Lz = lap1d(nz, az)
-    L = scs.csr_matrix(scs.kron(scs.eye(nz), L) + scs.kron(Lz, scs.eye(nx*ny)))
-    return L
-
-
 def norm(a, axis):
     return numpy.apply_along_axis(numpy.linalg.norm, axis, a)
 
@@ -131,6 +111,7 @@ else:
 numpy.random.seed(1) # makes the results reproducible
 
 if matrix == 'lap3d':
+    from raleigh.examples.laplace import lap3d
     if verb > -1:
         print('generating discretized 3D Laplacian matrix...')
     M = lap3d(nx, nx, nx, 1.0, 1.0, 1.0)
