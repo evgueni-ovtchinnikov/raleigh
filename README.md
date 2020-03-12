@@ -21,7 +21,7 @@ RALEIGH is a Python implementation of the block Jacobi-conjugated gradients algo
 
 For best performance, install MKL 10.3 or later. On Linux, the latest MKL can be installed by `pip install --user mkl`. On Windows, one can alternatively install numpy+mkl. On Linux, the folder containing libmkl\_rt.so must be listed in LD\_LIBRARY\_PATH. On Windows, the one containing mkl\_rt.dll must be listed in PATH. Large sparse problems can only be solved if MKL is available, PCA and other dense problems can be tackled without it.
 
-To use GPU (which must be CUDA-enabled), NVIDIA GPU Computing Toolkit needs to be installed. On Linux, the folder containing libcudart.so must be listed in LD\_LIBRARY\_PATH.
+To use GPU (which must be CUDA-enabled), NVIDIA GPU Computing Toolkit needs to be installed. On Linux, the folder containing libcudart.so must be listed in LD\_LIBRARY\_PATH. At present, GPU can only be used for dense (SVD-related) problems.
 
 ### Package structure
 
