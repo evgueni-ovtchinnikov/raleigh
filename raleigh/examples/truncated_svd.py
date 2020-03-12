@@ -20,7 +20,6 @@ Options:
   -s <thsh>, --thres=<thsh>  singular values threshold [default: 0.01]
   -t <vtol>, --vtol=<vtol>   singular vectors error tolerance [default: 1e-3]
   -v <verb>, --verb=<verb>   verbosity level [default: 0]
-  -P, --pca                  compute also PCA
 """
 
 try:
@@ -40,7 +39,6 @@ verbosity.level = 2
 
 from raleigh.core.solver import Options
 from raleigh.interfaces.truncated_svd import truncated_svd
-from raleigh.interfaces.pca import pca
 
 
 def norm(a, axis):
@@ -64,7 +62,6 @@ if have_docopt:
     th = float(args['--thres'])
     tol = float(args['--vtol'])
     verb = int(args['--verb'])
-    do_pca = args['--pca']
     svd_data = None
     filename = args['--svd']
     if filename is not None:
@@ -85,7 +82,6 @@ else:
     th = 0.01
     tol = 1e-3
     verb = 0
-    do_pca = True
     svd_data = None
 
 numpy.random.seed(1) # make results reproducible
