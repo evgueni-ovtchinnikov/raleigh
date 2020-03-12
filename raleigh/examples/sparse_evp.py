@@ -14,7 +14,8 @@ Usage:
     sparse_evp <matrix> <nev> [<sigma>, [<tol>]]
 
     <matrix>  the name of the Matrix Market file containing problem matrix or
-              lap3d(n) for n-by-n-by-n discretized Laplacian
+              parameters of 3D discretized Laplacian (mesh sizes nx, ny, nz
+              and domain sizes ax, ay, az)
     <sigma>   shift (default: 0)
     <nev>     number of eigenvalues wanted nearest to the shift
     <tol>     error tolerance (default: 1e-6)
@@ -50,33 +51,37 @@ else:
     tol = 1e-6
 
 i = matrix.find('.mtx')
-if i < 0:
-    i = matrix.find('lap3d')
-    if i < 0:
-        print('\nUsage:\n')
-        print('python sparse_evp <matrix> <nev> [<sigma>, [<tol>]]')
-        print('where <matrix> is either a Matrix Market file name' +
-              ' or lap3d(n)')
-        exit()
-    else:
-        n = int(matrix[6 : len(matrix)-1])
-        from raleigh.examples.laplace import lap3d
-        print('generating discretized 3D Laplacian matrix...')
-        A = lap3d(n, n, n, 1.0, 1.0, 1.0)
-else:
-    print('reading the matrix from %s...' % matrix)
+if i < 0: # the file contains 3D Laplacian parameters
+    f = open(matrix, 'r')
+    data = f.read()
+    par = data.split()
+    nx = int(par[0])
+    ny = int(par[1])
+    nz = int(par[2])
+    ax = float(par[3])
+    ay = float(par[4])
+    az = float(par[5])
+    from raleigh.examples.laplace import lap3d
+    print('\n---generating discretized 3D Laplacian matrix...')
+    A = lap3d(nx, ny, nz, ax, ay, az)
+else: # the file contains the matrix in Matrix Market format
+    print('\n---reading the matrix from %s...' % matrix)
     A = mmread(matrix).tocsr()
 
 numpy.random.seed(1) # makes the results reproducible
 
-print('solving with raleigh partial_hevp...')
-vals, vecs, status = partial_hevp(A, sigma=sigma, which=nev, tol=tol)
+print('\n---solving with raleigh partial_hevp...')
+start = time.time()
+vals, vecs, status = partial_hevp(A, sigma=sigma, which=nev, tol=tol, verb=-1)
+stop = time.time()
+raleigh_time = stop - start
 if status != 0:
     print('partial_hevp execution status: %d' % status)
 print('converged eigenvalues are:')
 print(vals)
+print('raleigh time: %.2e' % raleigh_time)
 
-print('solving with scipy eigsh...')
+print('\n---solving with scipy eigsh...')
 start = time.time()
 vals, vecs = scs.linalg.eigsh(A, nev, sigma=sigma, which='LM', tol=tol)
 stop = time.time()
