@@ -544,12 +544,13 @@ class Solver:
             XBX = Y.dot(X)
         else:
             XBX = X.dot(X)
-        lmd, Q = sla.eigh(XBX)
+        lmd, Q = sla.eigh(-XBX)
+        lmd = -lmd
         epsilon = 100*numpy.finfo(data_type).eps
-        k = numpy.sum(lmd <= epsilon*lmd[-1])
+        k = numpy.sum(lmd <= epsilon*lmd[0])
         if k > 0:
             if verb > -1:
-                #print(lmd[: k + 2], lmd[-1])
+                #print(lmd[-k], lmd[0])
                 msg = 'dropping %d linear dependent vectors ' + \
                       'from the Rayleigh-Ritz procedure...'
                 print(msg % k)
@@ -561,7 +562,11 @@ class Solver:
             X.select(m)
             Y.select(m)
             Z.select(m)
-            XBX = XBX[:m, :m]
+            if not std:
+                B(X, Y)
+                XBX = Y.dot(X)
+            else:
+                XBX = X.dot(X)
 
         if pro:
             A(Y, Z)
