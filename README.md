@@ -43,12 +43,18 @@ lmd, x, status = partial_hevp(A, which=10, sigma=0.25)
 # x : eigenvectors
 # status : execution status
 ```
-To compute 10 smallest eigenvalues of a sparse positive definite real symmetric or Hermitian matrix `M` using its incomplete LU-factorization as the preconditioner:
+To compute 10 smallest eigenvalues of a sparse positive definite real symmetric or Hermitian matrix `A` using its incomplete LU-factorization as the preconditioner:
 ```
+from raleigh.interfaces.partial_hevp import partial_hevp
 from raleigh.algebra.sparse_mkl import IncompleteLU as ILU
 T = ILU(A)
 T.factorize()
 lmd, x, status = partial_hevp(A, which=10, T=T)
+```
+To compute 10 lowest buckling load factors &alpha; of the buckling problem (K + &alpha; Ks)v = 0 with stiffness matrix K and stress stiffness matrix Ks using load factor shift 1.0:
+```
+from raleigh.interfaces.partial_hevp import partial_hevp
+alpha, v, status = partial_hevp(K, Ks, buckling=True, sigma=-1.0, which=10)
 ```
 To compute 100 principal components for the dataset represented by the 2D matrix `A` with data samples as rows:
 ```
