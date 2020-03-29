@@ -30,11 +30,12 @@ def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
     A : either scipy's sparse matrix or raleigh's SparseSymmetricSolver
         In the first case, the (stiffness) matrix of the problem.
         In the second case, the inverse of A - sigma B if B is not None or
-        A - sigma I, where I is the identity, otherwise.
+        otherwise A - sigma I, where I is the identity.
     B : scipy's sparse matrix
         In buckling case (buckling is True), stress stiffness matrix, otherwise
-        mass matrix. If None, eigenvalues and eigenvectors of A are computed,
-        otherwise those of the generalized problem A x = lambda B x.
+        mass matrix, which must be positive definite. If None, eigenvalues and
+        eigenvectors of A are computed, otherwise those of the generalized
+        problem A x = lambda B x.
     T : a Python object
         If T is not None, then A must be positive definite.
         Preconditioner (roughly, approximate inverse of A). Must have method
@@ -46,10 +47,10 @@ def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
         computed by apply(x, y), must be real symmetric/Hermitian and positive
         definite.
     buckling : Boolean
-        Flag for buckling mode.
+        Flag for buckling mode. Ignored if T is not None.
     sigma : float
-        Ignored if T is not None. Otherwise specifies value in the vicinity of
-        which the wanted eigenvalues are situated.
+        Shift inside the spectrum for the sake of faster convergence. Must be
+        negative if buckling is True. Ignored if T is not None.
     which : an integer or tuple of two integers
         Specifies which eigenvalues are wanted.
         Integer: if T is not none or buckling is True, then it is
@@ -83,6 +84,7 @@ def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
        <0 : fatal error, error message printed if verb is non-negative
     '''
 
+    buckling = buckling and (T is None)
     if B is not None:
         if buckling:
             opB = SparseSymmetricMatrix(A)
