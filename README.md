@@ -6,7 +6,7 @@ RALEIGH is a Python implementation of the block Jacobi-conjugated gradients algo
 
 * Can be applied to both standard eigenvalue problem for a real symmetric or Hermitian matrix A and generalized eigenvalue problems for matrix pencils A - &lambda; B or A B - &lambda; I with positive definite real symmetric or Hermitian B.
 * Can employ either of the two known convergence improvement techniques for large sparse problems: shift-and-invert and preconditioning.
-* Can also compute singular values and vectors, and is actually an especially efficient tool for Principal Component Analysis (PCA) of dense data of large size (more than 10000 samples with more than 10000 features each), owing to the high efficiency of matrix multiplications on modern multicore and GPU architectures.
+* Can also compute singular values and vectors, and is actually an especially efficient tool for Principal Component Analysis (PCA) of dense data of large size, owing to the high efficiency of matrix multiplications on modern multicore and GPU architectures.
 * The user can specify the number of wanted eigenvalues
 	- on either margin of the spectrum (e.g. 5 on the left, 10 on the right)
 	- of largest magnitude
@@ -14,7 +14,7 @@ RALEIGH is a Python implementation of the block Jacobi-conjugated gradients algo
 	- nearest to a given real value
 * If the number of eigenvalues needed is not known in advance (as is normally the case with PCA), the computation will continue until user-specified stopping criteria are satisfied (e.g. PCA approximation to the data is satisfactory).
 * PCA capabilities include quick update of principal components after arrival of new data and incremental computation of principal components, dealing with one chunk of data at a time.
-* For sparse matrices of large size (~100K or larger), RALEIGH's `partial_hevp` eigensolver is much faster than `eigsh` from SciPy. Similarly, for large data (>10K samples with >10K features) that has large amount of redundancy, RALEIGH's `pca` function is considerably faster than `fit_ransform` method of scikit-learn and, in addition, uses much less memory.
+* For sparse matrices of large size (~10<sup>5</sup> or larger), RALEIGH's `partial_hevp` eigensolver is much faster than `eigsh` from SciPy. Similarly, for large data (~10<sup>4</sup> samples with ~10<sup>4</sup> features or larger) that has large amount of redundancy, RALEIGH's `pca` function is considerably faster than `fit_ransform` method of scikit-learn and, in addition, uses much less memory.
 * The core solver is written in terms of abstract vectors, owing to which it will work on any architecture verbatim, provided that basic linear algebra operations on vectors are implemented. Currently, MKL and CUBLAS implementations are provided with the package, in the absence of these libraries NumPy algebra being used.
 
 ### Dependencies
@@ -43,12 +43,18 @@ lmd, x, status = partial_hevp(A, which=10, sigma=0.25)
 # x : eigenvectors
 # status : execution status
 ```
-To compute 10 smallest eigenvalues of a sparse positive definite real symmetric or Hermitian matrix `M` using its incomplete LU-factorization as the preconditioner:
+To compute 10 smallest eigenvalues of a sparse positive definite real symmetric or Hermitian matrix `A` using its incomplete LU-factorization as the preconditioner:
 ```
+from raleigh.interfaces.partial_hevp import partial_hevp
 from raleigh.algebra.sparse_mkl import IncompleteLU as ILU
 T = ILU(A)
 T.factorize()
 lmd, x, status = partial_hevp(A, which=10, T=T)
+```
+To compute 10 lowest buckling load factors &alpha; of the buckling problem (K + &alpha; Ks)v = 0 with stiffness matrix K and stress stiffness matrix Ks using load factor shift 1.0:
+```
+from raleigh.interfaces.partial_hevp import partial_hevp
+alpha, v, status = partial_hevp(K, Ks, buckling=True, sigma=-1.0, which=10)
 ```
 To compute 100 principal components for the dataset represented by the 2D matrix `A` with data samples as rows:
 ```

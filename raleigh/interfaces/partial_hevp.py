@@ -18,7 +18,8 @@ from ..algebra.sparse_mkl import Operator
 from ..core.solver import Problem, Solver, Options, DefaultConvergenceCriteria
 
 
-def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
+def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
+                 verb=0):
     '''Computes several eigenpairs of sparse real symmetric/Hermitian eigenvalue
     problems using either shift-invert or preconditioning technique.
     Requires MKL 10.3 or later (needs mkl_rt.dll on Windows, libmkl_rt.so on
@@ -29,10 +30,12 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
     A : either scipy's sparse matrix or raleigh's SparseSymmetricSolver
         In the first case, the (stiffness) matrix of the problem.
         In the second case, the inverse of A - sigma B if B is not None or
-        A - sigma I, where I is the identity, otherwise.
+        otherwise A - sigma I, where I is the identity.
     B : scipy's sparse matrix
-        Mass matrix. If None, eigenvalues and eigenvectors of A are computed,
-        otherwise those of the generalized problem A x = lambda B x.
+        In buckling case (buckling is True), stress stiffness matrix, otherwise
+        mass matrix, which must be positive definite. If None, eigenvalues and
+        eigenvectors of A are computed, otherwise those of the generalized
+        problem A x = lambda B x.
     T : a Python object
         If T is not None, then A must be positive definite.
         Preconditioner (roughly, approximate inverse of A). Must have method
@@ -43,15 +46,18 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
         linear operator, i.e. for any x, the matrix numpy.dot(x, y), where y is
         computed by apply(x, y), must be real symmetric/Hermitian and positive
         definite.
+    buckling : Boolean
+        Flag for buckling mode. Ignored if T is not None.
     sigma : float
-        Ignored if T is not None. Otherwise specifies value in the vicinity of
-        which the wanted eigenvalues are situated.
-    which : an integer or tuple of integers
-        Specifies which eigenvalues are wanted. If T is not none, then it is
-        the number of smallest eigenvalues. Otherwise, if it is an integer k,
-        then k eigenvalues nearest to sigma will be computed, and if it is a
-        tuple (k, l), then k neares eigenvalues left from sigma and l nearest
-        eigenvalues right from sigma will be computed.
+        Shift inside the spectrum for the sake of faster convergence. Must be
+        negative if buckling is True. Ignored if T is not None.
+    which : an integer or tuple of two integers
+        Specifies which eigenvalues are wanted.
+        Integer: if T is not none or buckling is True, then it is
+        the number of wanted smallest eigenvalues, otherwise the number of
+        wanted eigenvalues nearest to sigma.
+        Tuple (k, l): k nearest eigenvalues left from sigma and l nearest
+        eigenvalues right from sigma are wanted.
     tol : float
         Eigenvector error tolerance.
     verb : integer
@@ -78,9 +84,16 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
        <0 : fatal error, error message printed if verb is non-negative
     '''
 
+    buckling = buckling and (T is None)
     if B is not None:
-        opB = SparseSymmetricMatrix(B)
+        if buckling:
+            opB = SparseSymmetricMatrix(A)
+        else:
+            opB = SparseSymmetricMatrix(B)
     else:
+        if buckling:
+            raise RuntimeError\
+                  ('stress stiffness matrix missing in buckling mode')
         opB = None
 
     if T is None:
@@ -110,7 +123,7 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
         if verb > -1:
             print('positive eigenvalues: %d' % pos)
             print('negative eigenvalues: %d' % neg)
-        try:
+        if type(which) is tuple:
             l = len(which)
             if l != 2:
                 raise ValueError\
@@ -118,8 +131,12 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
             left = min(which[0], neg)
             right = min(which[1], pos)
             which = (left, right)
-        except:
-            pass
+        else:
+            if buckling:
+                if which < neg:
+                    which = (neg, 0)
+                else:
+                    which = (neg, which - neg)
         eigenvectors = Vectors(n, data_type=dtype)
         if B is None:
             evp = Problem(eigenvectors, opAinv)
@@ -140,6 +157,9 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
         evp_solver = Solver(evp)
         evp_solver.set_preconditioner(opT)
         sigma = None
+        if type(which) is tuple:
+            raise ValueError\
+                  ('which must be integer if preconditioning is used')
         which = (which, 0)
 
     opt = Options()
@@ -153,10 +173,16 @@ def partial_hevp(A, B=None, T=None, sigma=0, which=6, tol=1e-4, verb=0):
     stop = time.time()
     solve_time = stop - start
     if T is None:
-        lmd = sigma + 1./evp_solver.eigenvalues
+        if buckling:
+            lmd = sigma/(1 - 1/evp_solver.eigenvalues)
+        else:
+            lmd = sigma + 1./evp_solver.eigenvalues
     else:
         lmd = evp_solver.eigenvalues
-    ind = numpy.argsort(lmd)
+    if buckling:
+        ind = numpy.argsort(-lmd)
+    else:
+        ind = numpy.argsort(lmd)
     lmd = lmd[ind]
     ne = eigenvectors.nvec()
     if verb > -1:
