@@ -56,7 +56,6 @@ stop = time.time()
 time_tsvd = stop - start
 print('\ntruncated_svd time: %.1e' % time_tsvd)
 print('\n%d singular vectors computed' % sigma.shape[0])
-print(sigma[-10:-1]/sigma[0], sigma[-1]/sigma[0])
 D = A - numpy.dot(sigma*u, vt)
 err = numpy.amax(_norm(D, axis=1))/numpy.amax(_norm(A, axis=1))
 print('\ntruncation error %.1e' % err)
