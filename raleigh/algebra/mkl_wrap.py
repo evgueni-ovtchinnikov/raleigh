@@ -7,9 +7,51 @@
 import ctypes
 import multiprocessing
 import numpy
+import os
+import site
+import sys
 from sys import platform
 
 from . import verbosity
+
+
+if platform == 'win32':
+    mkl_name = 'mkl_rt.dll'
+    ld_path = 'PATH'
+else:
+    mkl_name = 'libmkl_rt.so'
+    ld_path = 'LD_LIBRARY_PATH'
+
+
+def find(name, path):
+    for root, dirs, files in os.walk(path):
+        if name in files:
+            return os.path.join(root, name)
+
+
+def find_mkl():
+    user_base = site.USER_BASE
+    mkl = find(mkl_name, user_base)
+    if mkl is not None:
+        #print('MKL found in USER_BASE')
+        return mkl
+    v = sys.version_info
+    major = repr(v[0])
+    minor = repr(v[1])
+    suff1 = 'ython' + major + minor
+    suff2 = 'ython' + major + '.' + minor
+    for path in sys.path:
+        i = path.find(suff1)
+        if i < 0:
+            i = path.find(suff2)
+            if i < 0:
+                continue
+        i = path.find('-packages')
+        if i < 0:
+            continue
+        #print('searching in %s...' % path)
+        mkl = find(mkl_name, path)
+        return mkl
 
 
 def _array_ptr(array, shift=0):
@@ -24,10 +66,26 @@ def mkl_version(mkl):
     return str_v.tostring().decode('ascii')
 
 
-if platform == 'win32':
-    mkl = ctypes.CDLL('mkl_rt.dll', mode=ctypes.RTLD_GLOBAL)
+mkl_path = find_mkl()
+if mkl_path is not None:
+    if verbosity.level > 1:
+        print('loading %s...' % mkl_path)
+    mkl = ctypes.CDLL(mkl_path, mode=ctypes.RTLD_GLOBAL)
 else:
-    mkl = ctypes.CDLL('libmkl_rt.so', mode=ctypes.RTLD_GLOBAL)
+    if verbosity.level > 1:
+        print('trying to load %s...' % mkl_name)
+    try:
+        mkl = ctypes.CDLL(mkl_name, mode=ctypes.RTLD_GLOBAL)
+    except:
+        if verbosity.level > 0:
+            print('Could not find ' + mkl_name + ' in folders listed in ' \
+                  + ld_path + '.')
+            print('If you have MKL 10.3 or later, make sure the folder ' \
+                  + 'containing ' + mkl_name + ' is listed in ' + ld_path + '.')
+            print('If you do not have MKL, you can install it using')
+            print('    pip install --user mkl')
+            print('(RALEIGH will find it, no need to edit ' + ld_path + ')\n')
+        raise RuntimeError(mkl_name + ' not found')
 if verbosity.level > 1:
     print('Loaded %s' % mkl_version(mkl).strip())
 

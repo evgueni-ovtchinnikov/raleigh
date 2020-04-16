@@ -21,12 +21,12 @@ class Vectors:
     '''
 
     def new_vectors(self, arg=0, dim=None):
-        try:
+        if isinstance(arg, numbers.Number):
             nv = int(arg)
             if dim is None:
                 dim = self.dimension()
             return Vectors(dim, nv, self.data_type()) #, cublas=self.__cublas)
-        except:
+        else:
             return Vectors(arg) #, cublas=self.__cublas)
 
     def clone(self):
@@ -366,7 +366,7 @@ class Vectors:
                 _try_calling(cuda.memcpy(self.all_data_ptr(), arg.data_ptr(), \
                                          size, cuda.memcpyD2D))
         elif isinstance(arg, Matrix):
-            if arg.order() is not 'C_CONTIGUOUS':
+            if arg.order() != 'C_CONTIGUOUS':
                 raise ValueError('Vectors data must be C_CONTIGUOUS')
             m, n = arg.shape()
             dtype = arg.data_type()

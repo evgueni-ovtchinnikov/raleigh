@@ -4,33 +4,17 @@
 """Truncated SVD demo.
 
 Usage:
-  truncated_svd [--help | -h | options] <data>
+  truncated_svd [--help | -h | <data> <rank>]
 
 Arguments:
   data  numpy .npy file containing the matrix.
+  rank  the number of singular values and vectors needed
 
-Options:
-  -a <arch>, --arch=<arch>   architecture [default: cpu]
-  -d <svd> , --svd=<svd>     .npz file contaning singular values and vectors
-                             of the data matrix (if available)
-  -n <rank>, --rank=<rank>   truncated svd rank (negative: unknown a priori, 
-                             thsh > 0 will be used as a criterion,
-                             if thsh == 0, will run in interactive mode)
-                             [default: -1]
-  -s <thsh>, --thres=<thsh>  singular values threshold [default: 0.01]
-  -t <vtol>, --vtol=<vtol>   singular vectors error tolerance [default: 1e-3]
-  -v <verb>, --verb=<verb>   verbosity level [default: 0]
 """
-
-try:
-    from docopt import docopt
-    __version__ = '0.1.0'
-    have_docopt = True
-except:
-    have_docopt = False
 
 import numpy
 import numpy.linalg as nla
+from scipy.sparse.linalg import svds
 import sys
 import time
 
@@ -41,48 +25,19 @@ from raleigh.core.solver import Options
 from raleigh.interfaces.truncated_svd import truncated_svd
 
 
-def norm(a, axis):
+def _norm(a, axis):
     return numpy.apply_along_axis(nla.norm, axis, a)
 
 
-def vec_err(u, v):
-    w = v.copy()
-    q = numpy.dot(u.T, v)
-    w = numpy.dot(u, q) - v
-    s = norm(w, axis = 0)
-    return s
-
-
-if have_docopt:
-    args = docopt(__doc__, version=__version__)
-    filename = args['<data>']
-    A = numpy.load(filename)
-    arch = args['--arch']
-    rank = int(args['--rank'])
-    th = float(args['--thres'])
-    tol = float(args['--vtol'])
-    verb = int(args['--verb'])
-    svd_data = None
-    filename = args['--svd']
-    if filename is not None:
-        svd_data = numpy.load(filename)
-    else:
-        svd_data = None
-else:
-    narg = len(sys.argv)
-    if narg < 2 or sys.argv[1] == '-h' or sys.argv[1] == '--help':
-        print('\nUsage:\n')
-        print('python truncated_svd.py <data>')
-        exit()
-    filename = sys.argv[1]
-    A = numpy.load(filename)
-    arch = 'cpu' if narg < 3 else 'gpu!'
-    print('\n=== docopt not found, using default options...\n')
-    rank = -1
-    th = 0.01
-    tol = 1e-3
-    verb = 0
-    svd_data = None
+narg = len(sys.argv)
+if narg < 3 or sys.argv[1] == '-h' or sys.argv[1] == '--help':
+    print('\nUsage:\n')
+    print('python truncated_svd.py <data> <rank>')
+    exit()
+filename = sys.argv[1]
+A = numpy.load(filename)
+rank = int(sys.argv[2])
+arch = 'cpu' if narg < 4 else 'gpu!'
 
 numpy.random.seed(1) # make results reproducible
 
@@ -96,25 +51,24 @@ dtype = A.dtype.type
 
 print('\n--- solving with truncated_svd...\n')
 start = time.time()
-u, sigma, vt = truncated_svd(A, nsv=rank, tol=th, vtol=tol, arch=arch)
+u, sigma, vt = truncated_svd(A, nsv=rank, arch=arch, verb=1)
 stop = time.time()
 time_tsvd = stop - start
-print('\ntruncated svd time: %.1e' % time_tsvd)
+print('\ntruncated_svd time: %.1e' % time_tsvd)
+print('\n%d singular vectors computed' % sigma.shape[0])
+D = A - numpy.dot(sigma*u, vt)
+err = numpy.amax(_norm(D, axis=1))/numpy.amax(_norm(A, axis=1))
+print('\ntruncation error %.1e' % err)
 
-nsv = sigma.shape[0]
-print('\n%d singular vectors computed' % nsv)
-nsv = numpy.sum(sigma > th)
-print('%d singular values above threshold' % nsv)
-if nsv > 0 and svd_data is not None:
-    sigma0 = svd_data['sigma']
-    v0 = svd_data['right']
-    nsv = min(nsv, sigma0.shape[0])
-    err_vec = vec_err(v0[:,:nsv], vt.transpose()[:,:nsv])
-    err_val = abs(sigma[:nsv] - sigma0[:nsv])/sigma0[0]
-    print('\nmax singular vector error: %.1e' % numpy.amax(err_vec))
-    print('max singular value error: %.1e' % numpy.amax(err_val))
-D = A - numpy.dot(sigma[:nsv]*u[:, :nsv], vt[:nsv, :])
-err = numpy.amax(norm(D, axis=1))/numpy.amax(norm(A, axis=1))
+print('\n--- solving with svds...\n')
+start = time.time()
+u, sigma, vt = svds(A, k=rank)
+stop = time.time()
+time_svds = stop - start
+print('\nsvds time: %.1e' % time_svds)
+print('\n%d singular vectors computed' % sigma.shape[0])
+D = A - numpy.dot(sigma*u, vt)
+err = numpy.amax(_norm(D, axis=1))/numpy.amax(_norm(A, axis=1))
 print('\ntruncation error %.1e' % err)
 
 print('\ndone')

@@ -5,6 +5,7 @@
 
 --------------------------------------------------------------------------------
 Requires MKL 10.3 or later (needs mkl_rt.dll on Windows, libmkl_rt.so on Linux).
+Latest MKL can be installed by pip install --user mkl
 --------------------------------------------------------------------------------
 
 Visit https://sparse.tamu.edu/ to download matrices in Matrix Market format
@@ -31,7 +32,11 @@ import time
 from raleigh.algebra import verbosity
 verbosity.level = 2
 
-from raleigh.interfaces.partial_hevp import partial_hevp
+try:
+    from raleigh.interfaces.partial_hevp import partial_hevp
+except:
+    print('This script requires MKL 10.3 or later, sorry!')
+    exit()
 
 
 narg = len(sys.argv)
