@@ -5,6 +5,7 @@
 
 --------------------------------------------------------------------------------
 Requires MKL 10.3 or later (needs mkl_rt.dll on Windows, libmkl_rt.so on Linux).
+Latest MKL can be installed by pip install --user mkl
 --------------------------------------------------------------------------------
 
 Visit https://sparse.tamu.edu/ to download matrices in Matrix Market format
