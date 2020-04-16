@@ -33,7 +33,7 @@ def find_mkl():
     user_base = site.USER_BASE
     mkl = find(mkl_name, user_base)
     if mkl is not None:
-        print('MKL found in USER_BASE')
+        #print('MKL found in USER_BASE')
         return mkl
     v = sys.version_info
     major = repr(v[0])
@@ -49,7 +49,7 @@ def find_mkl():
         i = path.find('-packages')
         if i < 0:
             continue
-        print('searching in %s...' % path)
+        #print('searching in %s...' % path)
         mkl = find(mkl_name, path)
         return mkl
 
