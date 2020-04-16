@@ -9,3 +9,4 @@ dist/
 *.npy
 *.npz
 *.mtx
+*.backup

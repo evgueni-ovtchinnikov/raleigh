@@ -14,24 +14,24 @@ RALEIGH is a Python implementation of the block Jacobi-conjugated gradients algo
 	- nearest to a given real value
 * If the number of eigenvalues needed is not known in advance (as is normally the case with PCA), the computation will continue until user-specified stopping criteria are satisfied (e.g. PCA approximation to the data is satisfactory).
 * PCA capabilities include quick update of principal components after arrival of new data and incremental computation of principal components, dealing with one chunk of data at a time.
-* For sparse matrices of large size (~10<sup>5</sup> or larger), RALEIGH's `partial_hevp` eigensolver is much faster than `eigsh` from SciPy. Similarly, for large data (~10<sup>4</sup> samples with ~10<sup>4</sup> features or larger) that has large amount of redundancy, RALEIGH's `pca` function is considerably faster than `fit_ransform` method of scikit-learn and, in addition, uses much less memory.
+* For sparse matrices of large size (~10<sup>5</sup> or larger), RALEIGH's `partial_hevp` eigensolver is much faster than `eigsh` from SciPy. Similarly, for large data (~10<sup>4</sup> samples with ~10<sup>4</sup> features or larger) that has large amount of redundancy, RALEIGH's `pca` function is considerably faster than `fit_ransform` method of scikit-learn and, in addition, uses less memory.
 * The core solver is written in terms of abstract vectors, owing to which it will work on any architecture verbatim, provided that basic linear algebra operations on vectors are implemented. Currently, MKL and CUBLAS implementations are provided with the package, in the absence of these libraries NumPy algebra being used.
 
 ### Dependencies
 
-For best performance, install MKL 10.3 or later. On Linux, the latest MKL can be installed by `pip install --user mkl`. On Windows, one can alternatively install numpy+mkl. On Linux, the folder containing libmkl\_rt.so must be listed in LD\_LIBRARY\_PATH. On Windows, the one containing mkl\_rt.dll must be listed in PATH. Large sparse problems can only be solved if MKL is available, PCA and other dense problems can be tackled without it.
+For best performance, install MKL 10.3 or later. On Linux, the latest MKL can be installed by `pip install --user mkl`. On Windows, one can alternatively install numpy+mkl. If MKL is installed in any other way, make sure that, on Linux, the folder containing `libmkl_rt.so` is listed in `LD_LIBRARY_PATH`, and, on Windows, the one containing `mkl_rt.dll` is listed in `PATH`. Large sparse problems can only be solved if MKL is available, PCA and other dense problems can be tackled without it.
 
-To use GPU (which must be CUDA-enabled), NVIDIA GPU Computing Toolkit needs to be installed. On Linux, the folder containing libcudart.so must be listed in LD\_LIBRARY\_PATH. At present, GPU can only be used for dense (SVD-related) problems.
+To use GPU (which must be CUDA-enabled), NVIDIA GPU Computing Toolkit needs to be installed. On Linux, the folder containing `libcudart.so` must be listed in `LD_LIBRARY_PATH`. At present, GPU can only be used for dense (SVD-related) problems.
 
 ### Package structure
 
 #### Basic use subpackages
 
-Subpackage _interfaces_ contains user-friendly SciPy-like interfaces to core solver working in terms of NumPy and SciPy data objects. Subpackage _examples_ contains scripts illustrating their use, as well as a script illustrating basic capabilities of the core solver.
+Subpackage `interfaces` contains user-friendly SciPy-like interfaces to core solver working in terms of NumPy and SciPy data objects. Subpackage `examples` contains scripts illustrating their use, as well as a script illustrating basic capabilities of the core solver.
 
 #### Advanced use subpackages
 
-Subpackage _algebra_ contains NumPy, MKL and CUBLAS implementations of abstract vectors algebra. These can be used as templates for user's own implementations. Subpackage _core_ contains the core solver implementation and related data objects definitions.
+Subpackage `algebra` contains NumPy, MKL and CUBLAS implementations of abstract vectors algebra. These can be used as templates for user's own implementations. Subpackage `core` contains the core solver implementation and related data objects definitions.
 
 ### Basic usage
 
@@ -79,7 +79,7 @@ mean, trans, comps = pca(A, tol=0.05, batch_size=1000)
 
 ### Documentation
 
-Basic usage of the package is briefly described in the docstrings of modules in _interfaces_ and _examples_. Advanced users will find the description of basic principles of RALEIGH's design in _core_ module _solver_.
+Documenting RALEIGH is still _work in progress_ at the moment due to the large size of the package and other commitments of the author. Basic usage of the package is briefly described in the docstrings of modules in `interfaces` and `examples`. Advanced users will find the description of basic principles of RALEIGH's design in `core` module `solver`.
 
 The mathematical and numerical aspects of the algorithm implemented by RALEIGH are described in the papers by E. E. Ovtchinnikov in J. Comput. Phys. 227:9477-9497 and SIAM Numer. Anal. 46:2567-2619.
 

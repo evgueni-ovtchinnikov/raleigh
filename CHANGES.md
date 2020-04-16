@@ -2,7 +2,8 @@
 
 ## v1.3
 
-Added buckling mode to `partial_hevp` interface and buckling demo to examples.
+- Added buckling mode to `partial_hevp` interface and buckling demo to examples.
+- Added MKL installation instructions and automatic search for pip-installed MKL.
 
 ## v1.2
 
