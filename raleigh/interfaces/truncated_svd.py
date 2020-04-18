@@ -21,7 +21,7 @@ except NameError:
     pass
 
 
-def truncated_svd(matrix, opt=Options(), nsv=-1, tol=-1, norm='s', msv=-1, \
+def truncated_svd(matrix, opt=Options(), nsv=-1, tol=0, norm='s', msv=-1, \
                   vtol=1e-3, arch='cpu', verb=0):
     '''Computes truncated Singular Value Decomposition of a dense matrix A.
     
