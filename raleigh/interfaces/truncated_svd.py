@@ -21,8 +21,8 @@ except NameError:
     pass
 
 
-def truncated_svd(matrix, opt=Options(), nsv=-1, tol=0, norm='s', msv=-1, \
-                  vtol=1e-3, arch='cpu', verb=0):
+def truncated_svd(A, opt=Options(), nsv=-1, tol=0, norm='s', msv=-1, \
+                  vtol=0, arch='cpu', verb=0):
     '''Computes truncated Singular Value Decomposition of a dense matrix A.
     
     For a given m by n matrix A computes m by k matrix U, k by k diagonal
@@ -35,7 +35,7 @@ def truncated_svd(matrix, opt=Options(), nsv=-1, tol=0, norm='s', msv=-1, \
 
     Parameters
     ----------
-    matrix : 2D numpy array
+    A : 2D numpy array
         Matrix A.
     opt : an object of class raleigh.solver.Options
         Solver options (see raleigh.solver).
@@ -86,7 +86,7 @@ def truncated_svd(matrix, opt=Options(), nsv=-1, tol=0, norm='s', msv=-1, \
     worth to try it first in interactive mode (nsv < 0, tol = 0), and if the
     computation is too slow, use scipy.linalg.svd instead.
     '''
-    matrix = AMatrix(matrix, arch=arch)
+    matrix = AMatrix(A, arch=arch)
     psvd = PartialSVD(matrix)
 
     user_bs = opt.block_size
@@ -94,6 +94,8 @@ def truncated_svd(matrix, opt=Options(), nsv=-1, tol=0, norm='s', msv=-1, \
         opt.block_size = 128
     if opt.convergence_criteria is None:
         no_cc = True
+        if vtol <= 0:
+            vtol = math.sqrt(numpy.finfo(A.dtype).eps)
         opt.convergence_criteria = _DefaultSVDConvergenceCriteria(vtol)
     else:
         no_cc = False
