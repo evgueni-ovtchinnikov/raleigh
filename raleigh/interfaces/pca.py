@@ -166,8 +166,7 @@ def pca_error(data, mean, trans, comps):
     data_s = data - numpy.dot(ones, mean)
     err = numpy.dot(trans, comps) - data_s
     em = numpy.amax(_norm(err, axis=1))/numpy.amax(_norm(data_s, axis=1))
-    ef = numpy.amax(nla.norm(err, ord='fro')) \
-        /numpy.amax(nla.norm(data_s, ord='fro'))
+    ef = nla.norm(err, ord='fro')/nla.norm(data_s, ord='fro')
     return em, ef
 
 
