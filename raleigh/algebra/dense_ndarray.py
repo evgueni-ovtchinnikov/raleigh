@@ -127,6 +127,13 @@ class NDArrayMatrix:
         self.__data = data
         self.__shape = data.shape
         self.__dtype = data.dtype.type
+        if data.flags['C_CONTIGUOUS']:
+            self.__order = 'C_CONTIGUOUS'
+        elif data.flags['F_CONTIGUOUS']:
+            self.__order = 'F_CONTIGUOUS'
+        else:
+            msg = 'Matrix data must be either C- or F-contiguous'
+            raise ValueError(msg)
 
     def data(self):
         return self.__data
@@ -139,6 +146,9 @@ class NDArrayMatrix:
 
     def is_complex(self):
         return (self.__data.dtype.kind == 'c')
+
+    def order(self):
+        return self.__order
 
 
 def _fill_ndarray_with_orthogonal_vectors(a):

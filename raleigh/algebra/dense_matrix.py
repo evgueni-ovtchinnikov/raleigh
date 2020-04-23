@@ -57,5 +57,8 @@ class AMatrix:
     def shape(self):
         return self.__op.shape()
 
+    def order(self):
+        return self.__op.order()
+
     def scale(self):
         return self.__scale

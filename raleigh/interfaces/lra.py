@@ -43,13 +43,13 @@ class LowerRankApproximation:
         self.ortho = True
         self.iterations = -1
         
-    def compute(self, data_matrix, opt=Options(), rank=-1, tol=0, norm='f',
+    def compute(self, matrix, opt=Options(), rank=-1, tol=0, norm='f',
                 max_rank=-1, svtol=1e-3, shift=False, verb=0):
         '''
-        For a given m by n data matrix A (m data samples n features each)
-        computes m by k matrix L and k by n matrix R such that k <= min(m, n),
-        and the product L R approximates A if shift is False or else A - e a,
-        where e = numpy.ones((m, 1)) and a = numpy.mean(A, axis=0).
+        For a given m by n dense matrix A computes m by k matrix L and k by n
+        matrix R such that k <= min(m, n), and the product L R approximates A
+        if shift is False or else A - e a, where e = numpy.ones((m, 1)) and
+        a = numpy.mean(A, axis=0).
 
         The rows of R are orhonormal, the columns of L are in the descending
         order of their norms.
@@ -58,8 +58,8 @@ class LowerRankApproximation:
 
         Parameters
         ----------
-        data_matrix : AMatrix
-            Data matrix A.
+        matrix : AMatrix
+            AMatrix representation of A. Must be C-contiguous.
         opt : an object of class raleigh.solver.Options
             Solver options (see raleigh.solver).
         rank : int
@@ -105,8 +105,11 @@ class LowerRankApproximation:
         Jacobi-Conjugated Gradient algorithm to A_.T A_ or A_ A_.T, whichever
         is smaller in size.
         '''
-        psvd = PartialSVD(data_matrix, shift)
-        m, n = data_matrix.shape()
+        if matrix.order() != 'C_CONTIGUOUS':
+            raise ValueError('matrix must be C_CONTIGUOUS')
+
+        psvd = PartialSVD(matrix, shift)
+        m, n = matrix.shape()
 
         user_bs = opt.block_size
         if user_bs < 1 and (rank < 0 or rank > 100):
@@ -119,14 +122,14 @@ class LowerRankApproximation:
         if opt.stopping_criteria is None and rank < 0:
             no_sc = True
             opt.stopping_criteria = \
-                DefaultStoppingCriteria(data_matrix, tol, norm, max_rank, verb)
+                DefaultStoppingCriteria(matrix, tol, norm, max_rank, verb)
             v = psvd.vectors()
             opSVD = psvd.op_svd()
             opt.stopping_criteria.err_calc.set_up(opSVD, v, shift)
         else:
             no_sc = False
 
-        psvd.compute(data_matrix, opt=opt, nsv=(0, rank), \
+        psvd.compute(matrix, opt=opt, nsv=(0, rank), \
             refine=self.ortho)
         self.__left_v = psvd.left_v()
         self.__left_v.scale(psvd.sigma, multiply=True)
@@ -137,8 +140,8 @@ class LowerRankApproximation:
         self.__tol = tol
         self.__svtol = svtol
         self.__norm = norm
-        self.__arch = data_matrix.arch()
-        self.__dtype = data_matrix.data_type()
+        self.__arch = matrix.arch()
+        self.__dtype = matrix.data_type()
         if max_rank > 0 and self.__left_v.nvec() > max_rank:
             self.__left_v.select(max_rank)
             self.__right_v.select(max_rank)
@@ -151,12 +154,12 @@ class LowerRankApproximation:
         if no_sc:
             opt.stopping_criteria = None
 
-    def update(self, data_matrix, opt=None, rank=-1, max_rank=-1, \
+    def update(self, matrix, opt=None, rank=-1, max_rank=-1, \
             tol=None, norm=None, svtol=None, verb=0):
         '''
-        Updates previously computed Lower Rank Approximation of a data matrix
-        data_matrix0, i.e. computes Lower Rank Approximation of 
-        numpy.concatenate((data_matrix0, data_matrix))
+        Updates previously computed Lower Rank Approximation of a matrix
+        matrix0, i.e. computes Lower Rank Approximation of 
+        numpy.concatenate((matrix0, matrix))
 
         Parameters have the same meaning as for compute().
         '''
@@ -175,7 +178,7 @@ class LowerRankApproximation:
         if norm not in ['f', 'm', 's']:
             msg = 'norm %s is not supported' % repr(norm)
             raise ValueError(msg)
-        v = data_matrix.as_vectors()
+        v = matrix.as_vectors()
         s = abs(v.dots(v))
         fnorm = math.sqrt(numpy.sum(s))
         maxl2norm = numpy.amax(numpy.sqrt(s))
@@ -194,10 +197,10 @@ class LowerRankApproximation:
                 self.__mean_v = v.new_vectors(self.__mean)
             else:
                 self.__mean_v = None
-            self.__arch = data_matrix.arch()
+            self.__arch = matrix.arch()
         else:
-            if self.__arch != data_matrix.arch() or \
-                dtype != data_matrix.data_type():
+            if self.__arch != matrix.arch() or \
+                dtype != matrix.data_type():
                 raise ValueError('incompatible matrix type passed to update')
         left0 = self.__left_v
         right0 = self.__right_v
@@ -265,13 +268,13 @@ class LowerRankApproximation:
             else:
                 update_tol = -tol*sigma0
             urank = max_rank*n1//(n0 + n1)
-            lra.compute(data_matrix, opt, tol=update_tol, norm=norm, \
+            lra.compute(matrix, opt, tol=update_tol, norm=norm, \
                 max_rank=urank, verb=verb)
         else:
             urank = rank*n1//(n0 + n1)
             if verb > 0:
                 print('computing new %d components...' % urank)
-            lra.compute(data_matrix, opt, rank=urank, verb=verb)
+            lra.compute(matrix, opt, rank=urank, verb=verb)
 
         left11 = lra.left_v()
         right10 = lra.right_v()
@@ -368,39 +371,39 @@ class LowerRankApproximation:
         self.__tol = tol
         self.__svtol = svtol
         self.__norm = norm
-        self.__arch = data_matrix.arch()
-        self.__dtype = data_matrix.data_type()
+        self.__arch = matrix.arch()
+        self.__dtype = matrix.data_type()
         if max_rank > 0 and self.__left_v.nvec() > max_rank:
             self.__left_v.select(max_rank)
             self.__right_v.select(max_rank)
         self.iterations += lra.iterations
 
-    def icompute(self, data_matrix, batch_size, opt=Options(), rank=-1, \
+    def icompute(self, matrix, batch_size, opt=Options(), rank=-1, \
                  tol=0, norm='f', max_rank=-1, svtol=1e-3, shift=False, \
                  arch='cpu', verb=0):
         '''
         Computes Lower Rank Approximation of data_matix incrementally:
-            - computes LRA for the block data_matrix[:batch_size, :]
-            - in a loop updates LRA using subsequent blocks of data_matrix
+            - computes LRA for the block matrix[:batch_size, :]
+            - in a loop updates LRA using subsequent blocks of matrix
               batch_size rows high (or less, for the last block)
 
         Parameters
         ----------
-        data_matrix : 2D numpy array
+        matrix : 2D numpy array
             Data matrix A.
         batch_size : int
             The batch size.
 
         Remaining parameters have the same meaning as for compute().
         '''
-        data_size = data_matrix.shape[0]
+        data_size = matrix.shape[0]
         batch_size = min(batch_size, data_size)
         batch = 0
         if self.__rank == 0:
             if verb > 0:
                 print('processing batch %d of size %d' % (batch, batch_size))
-            matrix = AMatrix(data_matrix[:batch_size, :], arch=arch)
-            self.compute(matrix, opt=opt, rank=rank, \
+            matrix_batch = AMatrix(matrix[:batch_size, :], arch=arch)
+            self.compute(matrix_batch, opt=opt, rank=rank, \
                          tol=tol, norm=norm, max_rank=max_rank, svtol=svtol, \
                          shift=shift, verb=verb)
             first = batch_size
@@ -411,9 +414,9 @@ class LowerRankApproximation:
             next_ = min(data_size, first + batch_size)
             if verb > 0:
                 print('processing batch %d of size %d' % (batch, next_ - first))
-            matrix = AMatrix(data_matrix[first : next_, :], arch=arch, \
+            matrix_batch = AMatrix(matrix[first : next_, :], arch=arch, \
                              copy_data=True)
-            self.update(matrix, opt=opt, rank=rank, tol=tol, norm=norm, \
+            self.update(matrix_batch, opt=opt, rank=rank, tol=tol, norm=norm, \
                         max_rank=max_rank, svtol=svtol, verb=verb)
             first = next_
             batch += 1
