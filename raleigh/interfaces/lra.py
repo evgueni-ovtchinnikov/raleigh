@@ -59,7 +59,8 @@ class LowerRankApproximation:
         Parameters
         ----------
         matrix : AMatrix
-            AMatrix representation of A. Must be C-contiguous.
+            AMatrix representation (architecture-aware wrap) of A.
+            WARNING: A data must be C-contiguous.
         opt : an object of class raleigh.solver.Options
             Solver options (see raleigh.solver).
         rank : int
