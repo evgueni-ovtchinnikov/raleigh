@@ -14,7 +14,27 @@ RALEIGH is a Python implementation of the block Jacobi-conjugated gradients algo
 	- nearest to a given real value
 * If the number of eigenvalues needed is not known in advance (as is normally the case with PCA), the computation will continue until user-specified stopping criteria are satisfied (e.g. PCA approximation to the data is satisfactory).
 * PCA capabilities include quick update of principal components after arrival of new data and incremental computation of principal components, dealing with one chunk of data at a time.
-* For sparse matrices of large size (~10<sup>5</sup> or larger), RALEIGH's `partial_hevp` eigensolver is much faster than `eigsh` from SciPy. Similarly, for large data (~10<sup>4</sup> samples with ~10<sup>4</sup> features or larger) that has large amount of redundancy, RALEIGH's `pca` function is considerably faster than `fit_ransform` method of scikit-learn and, in addition, uses less memory.
+* For sparse matrices of large size (~10<sup>5</sup> or larger), RALEIGH's `partial_hevp` eigensolver is much faster than `eigsh` from SciPy. On Windows 10 desktop with Intel(R) Xeon(R) CPU E3-1220 v3 @ 3.10GHz (4 cores) the computation times in seconds are as follows:
+
+| matrix | size | eigsh | partial_hevp |
+| - | - | - | - |
+| shipsec1 | 140874 | 240 | 6.9 |
+| shipsec5 | 179860 | 318 | 5.3 |
+| x104 | 108384 | 225 | 5.2 |
+| panel_buckle_d | 74383 | 26 | 1.4 |
+| panel_buckle_e | 144823 | 85 | 2.5 |
+| panel_buckle_f | 224522 | 135 | 3.8 |
+| panel_buckle_g | 394962 | 321 | 7.2 |
+
+Similarly, for large data (~10<sup>4</sup> samples with ~10<sup>4</sup> features or larger) that has large amount of redundancy, RALEIGH's `pca` function is considerably faster than `fit_ransform` method of scikit-learn. The computational times for 13233 images from Labeled Faces in the Wild are:
+
+| components | scikit-learn pca | raleigh pca |
+| - | - | - |
+| 1000 | 128 | 53 |
+| 2000 | 180 | 101 |
+| 3000 | 288 | 165 |
+
+In addition, RALEIGH's pca uses less memory.
 * The core solver is written in terms of abstract vectors, owing to which it will work on any architecture verbatim, provided that basic linear algebra operations on vectors are implemented. Currently, MKL and CUBLAS implementations are provided with the package, in the absence of these libraries NumPy algebra being used.
 
 ### Dependencies
