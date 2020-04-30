@@ -26,7 +26,7 @@ RALEIGH is a Python implementation of the block Jacobi-conjugated gradients algo
   | panel_buckle_f | 224522 | 135 | 3.8 |
   | panel_buckle_g | 394962 | 321 | 7.2 |
 
-* Similarly, for large data (~10<sup>4</sup> samples with ~10<sup>4</sup> features or larger) that has large amount of redundancy, RALEIGH's `pca` function is considerably faster than `fit_ransform` method of scikit-learn and uses less memory. The computational times for PCA of 13233 images from Labeled Faces in the Wild (the link to LFW website can be found in `raleigh/examples/eigenimages/convert_lfw.py`) are:
+* Similarly, for large data (~10<sup>4</sup> samples with ~10<sup>4</sup> features or larger) that has large amount of redundancy, RALEIGH's `pca` function is considerably faster than `fit_ransform` method of scikit-learn and uses less memory. The computation times for PCA of 13233 images from Labeled Faces in the Wild (the link to LFW website can be found in `raleigh/examples/eigenimages/convert_lfw.py`) on the same CPU are:
 
   | components | scikit-learn pca | raleigh pca |
   | - | - | - |

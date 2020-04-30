@@ -12,11 +12,11 @@ buckling_evp:
 core_solver.py:
     Basic core solver usage demo.
 
+laplace:
+    Generates discretized Laplace operator in 1, 2 and 3 dimensions.
+
 sparse_evp.py:
     Computes several eigenvalues and eigenvectors of a real symmetric matrix.
-
-sparse_evp_all_options.py:
-    Same as sparse_evp.py but with more options.
 
 truncated_svd.py:
     Computes truncated SVD.
