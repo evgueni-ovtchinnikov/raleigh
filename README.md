@@ -7,34 +7,33 @@ RALEIGH is a Python implementation of the block Jacobi-conjugated gradients algo
 * Can be applied to both standard eigenvalue problem for a real symmetric or Hermitian matrix A and generalized eigenvalue problems for matrix pencils A - &lambda; B or A B - &lambda; I with positive definite real symmetric or Hermitian B.
 * Can employ either of the two known convergence improvement techniques for large sparse problems: shift-and-invert and preconditioning.
 * Can also compute singular values and vectors, and is actually an especially efficient tool for Principal Component Analysis (PCA) of dense data of large size, owing to the high efficiency of matrix multiplications on modern multicore and GPU architectures.
-* The user can specify the number of wanted eigenvalues
+* The core solver allows user to specify the number of wanted eigenvalues
 	- on either margin of the spectrum (e.g. 5 on the left, 10 on the right)
 	- of largest magnitude
 	- on either side of a given real value
 	- nearest to a given real value
 * If the number of eigenvalues needed is not known in advance (as is normally the case with PCA), the computation will continue until user-specified stopping criteria are satisfied (e.g. PCA approximation to the data is satisfactory).
 * PCA capabilities include quick update of principal components after arrival of new data and incremental computation of principal components, dealing with one chunk of data at a time.
-* For sparse matrices of large size (~10<sup>5</sup> or larger), RALEIGH's `partial_hevp` eigensolver is much faster than `eigsh` from SciPy. On Windows 10 desktop with Intel(R) Xeon(R) CPU E3-1220 v3 @ 3.10GHz (4 cores) the computation times in seconds are as follows:
+* For sparse matrices of large size (~10<sup>5</sup> or larger), RALEIGH's `partial_hevp` eigensolver is much faster than `eigsh` from SciPy. The table below shows the computation times in seconds for computing the smallest eigenvalue of 3 matrices from DNVS group of Suitesparse Matrix Collection and the smallest buckling load factor of 4 buckling problems on Intel(R) Xeon(R) CPU E3-1220 v3 @ 3.10GHz (the links to matrices' repositories can be found in `sparse_evp.py` and `buckling_evp.py` in subfolder `raleigh/examples`).
 
-| matrix | size | eigsh | partial_hevp |
-| - | - | - | - |
-| shipsec1 | 140874 | 240 | 6.9 |
-| shipsec5 | 179860 | 318 | 5.3 |
-| x104 | 108384 | 225 | 5.2 |
-| panel_buckle_d | 74383 | 26 | 1.4 |
-| panel_buckle_e | 144823 | 85 | 2.5 |
-| panel_buckle_f | 224522 | 135 | 3.8 |
-| panel_buckle_g | 394962 | 321 | 7.2 |
+  | matrix | size | eigsh | partial_hevp |
+  | - | - | - | - |
+  | shipsec1 | 140874 | 240 | 6.9 |
+  | shipsec5 | 179860 | 318 | 5.3 |
+  | x104 | 108384 | 225 | 5.2 |
+  | panel_buckle_d | 74383 | 26 | 1.4 |
+  | panel_buckle_e | 144823 | 85 | 2.5 |
+  | panel_buckle_f | 224522 | 135 | 3.8 |
+  | panel_buckle_g | 394962 | 321 | 7.2 |
 
-Similarly, for large data (~10<sup>4</sup> samples with ~10<sup>4</sup> features or larger) that has large amount of redundancy, RALEIGH's `pca` function is considerably faster than `fit_ransform` method of scikit-learn. The computational times for 13233 images from Labeled Faces in the Wild are:
+* Similarly, for large data (~10<sup>4</sup> samples with ~10<sup>4</sup> features or larger) that has large amount of redundancy, RALEIGH's `pca` function is considerably faster than `fit_ransform` method of scikit-learn and uses less memory. The computational times for PCA of 13233 images from Labeled Faces in the Wild (the link to LFW website can be found in `raleigh/examples/eigenimages/convert_lfw.py`) are:
 
-| components | scikit-learn pca | raleigh pca |
-| - | - | - |
-| 1000 | 128 | 53 |
-| 2000 | 180 | 101 |
-| 3000 | 288 | 165 |
+  | components | scikit-learn pca | raleigh pca |
+  | - | - | - |
+  | 1000 | 128 | 53 |
+  | 2000 | 180 | 101 |
+  | 3000 | 288 | 165 |
 
-In addition, RALEIGH's pca uses less memory.
 * The core solver is written in terms of abstract vectors, owing to which it will work on any architecture verbatim, provided that basic linear algebra operations on vectors are implemented. Currently, MKL and CUBLAS implementations are provided with the package, in the absence of these libraries NumPy algebra being used.
 
 ### Dependencies
@@ -101,9 +100,9 @@ mean, trans, comps = pca(A, tol=0.05, batch_size=1000)
 
 Documenting RALEIGH is still _work in progress_ at the moment due to the large size of the package and other commitments of the author. Basic usage of the package is briefly described in the docstrings of modules in `interfaces` and `examples`. Advanced users will find the description of basic principles of RALEIGH's design in `core` module `solver`.
 
-The mathematical and numerical aspects of the algorithm implemented by RALEIGH are described in the papers by E. E. Ovtchinnikov in J. Comput. Phys. 227:9477-9497 and SIAM Numer. Anal. 46:2567-2619.
+The mathematical and numerical aspects of the algorithm implemented by RALEIGH are described in the papers by E. E. Ovtchinnikov in **J. Comput. Phys. 227:9477-9497** and **SIAM Numer. Anal. 46:2567-2619**. A Fortran90 implementation of this algorithm was used in a paper on Topology Optimization by P.D. Dunning, E. Ovtchinnikov, J. Scott and H.A. Kim in **International Journal for Numerical Methods in Engineering 107 (12), 1029-1053** (the four buckling problems mentioned above were used for the performance testing and comparisons with ARPACK). A pre-release version of RALEIGH was used in a paper by A. Liptak, G. Burca, J. Kelleher, E. Ovtchinnikov, J. Maresca and A. Horner in **Journal of Physics Communications 3 (11), 113002**.
 
-### Issues
+### Feedback
 
 Please use [GitHub issue tracker](https://github.com/evgueni-ovtchinnikov/raleigh/issues) or send an e-mail to Evgueni to report bugs and request features.
 
