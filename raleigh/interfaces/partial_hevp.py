@@ -19,7 +19,7 @@ from ..core.solver import Problem, Solver, Options, DefaultConvergenceCriteria
 
 
 def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
-                 verb=0):
+                 verb=0, opt=Options()):
     '''Computes several eigenpairs of sparse real symmetric/Hermitian eigenvalue
     problems using either shift-invert or preconditioning technique.
     Requires MKL 10.3 or later (needs mkl_rt.dll on Windows, libmkl_rt.so on
@@ -67,6 +67,8 @@ def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
           1 : + number of iteration and converged eigenvalues printed
           2 : + current eigenvalue iterates, residuals and error estimates
               printed
+    opt : an object of class raleigh.solver.Options
+        Solver options (see raleigh.solver).
 
     Returns
     -------
@@ -162,11 +164,9 @@ def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
                   ('which must be integer if preconditioning is used')
         which = (which, 0)
 
-    opt = Options()
     opt.convergence_criteria = DefaultConvergenceCriteria()
     opt.convergence_criteria.set_error_tolerance('k eigenvector error', tol)
     opt.sigma = sigma
-    opt.verbosity = verb
 
     start = time.time()
     status = evp_solver.solve(eigenvectors, opt, which=which)
