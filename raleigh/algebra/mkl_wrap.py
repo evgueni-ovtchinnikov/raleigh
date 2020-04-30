@@ -82,13 +82,17 @@ else:
         mkl = ctypes.CDLL(mkl_name, mode=ctypes.RTLD_GLOBAL)
     except:
         if verbosity.level > 0:
-            print('Could not find ' + mkl_name + ' in folders listed in ' \
+            print('\nCould not find ' + mkl_name + ' in folders listed in ' \
                   + ld_path + '.')
-            print('If you have MKL 10.3 or later, make sure the folder ' \
-                  + 'containing ' + mkl_name + ' is listed in ' + ld_path + '.')
-            print('If you do not have MKL, you can install it using')
+            print('\nIf you have MKL 10.3 or later, make sure the folder ' + \
+                  'containing ' + mkl_name + ' is listed in ' + ld_path + \
+                  ', or else do')
+            print('    from raleigh.algebra import env')
+            print('and assign' + \
+                  ' the path to that folder to env.mkl_path.')
+            print('\nIf you do not have MKL, you can install it using')
             print('    pip install --user mkl')
-            print('(RALEIGH will find it, no need to edit ' + ld_path + ')\n')
+            print('(RALEIGH will find it, no need to edit ' + ld_path + ').\n')
         raise RuntimeError(mkl_name + ' not found')
 if verbosity.level > 1:
     print('Loaded %s' % mkl_version(mkl).strip())
