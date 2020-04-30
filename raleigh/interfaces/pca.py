@@ -29,7 +29,7 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
 
     Parameters: basic
     -----------------
-    A : 2D numpy array
+    A : 2D numpy array, must be C-contiguous
         Data matrix.
     npc : int
         Required number of principal components if known.
