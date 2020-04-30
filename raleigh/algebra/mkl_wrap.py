@@ -30,6 +30,10 @@ def find(name, path):
 
 
 def find_mkl():
+    from . import env
+    mkl_path = env.mkl_path
+    if mkl_path is not None:
+        return os.path.join(mkl_path, mkl_name)
     user_base = site.USER_BASE
     mkl = find(mkl_name, user_base)
     if mkl is not None:

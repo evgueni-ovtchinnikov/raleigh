@@ -38,7 +38,7 @@ RALEIGH is a Python implementation of the block Jacobi-conjugated gradients algo
 
 ### Dependencies
 
-For best performance, install MKL 10.3 or later. On Linux, the latest MKL can be installed by `pip install --user mkl`. On Windows, one can alternatively install numpy+mkl. If MKL is installed in any other way, make sure that, on Linux, the folder containing `libmkl_rt.so` is listed in `LD_LIBRARY_PATH`, and, on Windows, the one containing `mkl_rt.dll` is listed in `PATH`. Large sparse problems can only be solved if MKL is available, PCA and other dense problems can be tackled without it.
+For best performance, install MKL 10.3 or later. On Linux, the latest MKL can be installed by `pip install --user mkl`. On Windows, one can alternatively install numpy+mkl. If MKL is installed in any other way, make sure that, on Linux, the folder containing `libmkl_rt.so` is listed in `LD_LIBRARY_PATH`, and, on Windows, the one containing `mkl_rt.dll` is listed in `PATH`. If you do not know how to do it, then put `from raleigh.algebra import env` in your script and set `env.mkl_path` to that folder. Large sparse problems can only be solved if MKL is available, PCA and other dense problems can be tackled without it.
 
 To use GPU (which must be CUDA-enabled), NVIDIA GPU Computing Toolkit needs to be installed. On Linux, the folder containing `libcudart.so` must be listed in `LD_LIBRARY_PATH`. At present, GPU can only be used for dense (SVD-related) problems.
 
