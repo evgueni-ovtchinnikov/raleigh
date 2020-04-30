@@ -6,7 +6,7 @@ RALEIGH is a Python implementation of the block Jacobi-conjugated gradients algo
 
 * Can be applied to both standard eigenvalue problem for a real symmetric or Hermitian matrix A and generalized eigenvalue problems for matrix pencils A - &lambda; B or A B - &lambda; I with positive definite real symmetric or Hermitian B.
 * Can employ either of the two known convergence improvement techniques for large sparse problems: shift-and-invert and preconditioning.
-* Can also compute singular values and vectors, and is actually an especially efficient tool for Principal Component Analysis (PCA) of dense data of large size, owing to the high efficiency of matrix multiplications on modern multicore and GPU architectures.
+* Can also compute singular values and vectors, and is actually an efficient tool for Principal Component Analysis (PCA) of dense data of large size, owing to the high efficiency of matrix multiplications on modern multicore and GPU architectures.
 * The core solver allows user to specify the number of wanted eigenvalues
 	- on either margin of the spectrum (e.g. 5 on the left, 10 on the right)
 	- of largest magnitude
