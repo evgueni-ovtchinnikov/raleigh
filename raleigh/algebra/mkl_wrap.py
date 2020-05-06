@@ -422,7 +422,7 @@ class ParDiSo:
                     ctypes.byref(step), ctypes.byref(n), ptr_a, ptr_ia, ptr_ja, \
                     ptr_perm, ctypes.byref(m), ptr_iparm, ctypes.byref(verb), \
                     self.__ptr, self.__ptr, ctypes.byref(err))
-        if err.value != 0: print(err.value)
+        return err.value
 
     def factorize(self):
         step = ctypes.c_int(22)
@@ -443,7 +443,7 @@ class ParDiSo:
                     ctypes.byref(step), ctypes.byref(n), ptr_a, ptr_ia, ptr_ja, \
                     ptr_perm, ctypes.byref(m), ptr_iparm, ctypes.byref(verb), \
                     self.__ptr, self.__ptr, ctypes.byref(err))
-        if err.value != 0: print(err.value)
+        return err.value
 
     def solve(self, b, x, part = None):
         if len(b.shape) > 1:
@@ -477,7 +477,7 @@ class ParDiSo:
                     ctypes.byref(step), ctypes.byref(n), ptr_a, ptr_ia, ptr_ja, \
                     ptr_perm, ctypes.byref(m), ptr_iparm, ctypes.byref(verb), \
                     ptr_b, ptr_x, ctypes.byref(err))
-        if err.value != 0: print(err.value)
+        return err.value
 
     def diag(self):
         rows = self.__ia.shape[0] - 1

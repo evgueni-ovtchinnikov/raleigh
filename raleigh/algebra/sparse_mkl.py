@@ -67,12 +67,24 @@ class SparseSymmetricSolver:
         ia = a_s.indptr + 1
         ja = a_s.indices + 1
         data = a_s.data
-        self.__solver.analyse(data, ia, ja)
-        self.__n = ia.shape[0] - 1
-        self.__sigma = sigma
+        try:
+            status = self.__solver.analyse(data, ia, ja)
+            if status < 0:
+                msg = 'sparse factorization returned error %d' % status
+                raise RuntimeError(msg)
+            self.__n = ia.shape[0] - 1
+            self.__sigma = sigma
+        except:
+            raise RuntimeError('factorization failed on analysis stage')
 
     def factorize(self):
-        self.__solver.factorize()
+        try:
+            status = self.__solver.factorize()
+            if status < 0:
+                msg = 'sparse factorization returned error %d' % status
+                raise RuntimeError(msg)
+        except:
+            raise RuntimeError('factorization failed (near singular matrix?)')
 
     def solve(self, b, x):
         try:
@@ -80,7 +92,13 @@ class SparseSymmetricSolver:
             x = x.data()
         except:
             pass
-        self.__solver.solve(b, x)
+        try:
+            status = self.__solver.solve(b, x)
+            if status < 0:
+                msg = 'sparse solver returned error %d' % status
+                raise RuntimeError(msg)
+        except:
+            raise RuntimeError('solution failed (near singular matrix?)')
 
     def apply(self, b, x):
         self.solve(b, x)

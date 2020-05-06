@@ -76,20 +76,29 @@ else: # the file contains the matrix in Matrix Market format
 numpy.random.seed(1) # makes the results reproducible
 
 print('\n---solving with raleigh partial_hevp...')
-start = time.time()
-vals, vecs, status = partial_hevp(A, sigma=sigma, which=nev, tol=tol, verb=-1)
-stop = time.time()
-raleigh_time = stop - start
-if status != 0:
-    print('partial_hevp execution status: %d' % status)
-print('converged eigenvalues are:')
-print(vals)
-print('raleigh time: %.2e' % raleigh_time)
+try:
+    start = time.time()
+    vals, vecs, status = partial_hevp(A, sigma=sigma, which=nev, tol=tol, \
+                                      verb=0)
+    stop = time.time()
+    raleigh_time = stop - start
+    if status != 0:
+        print('partial_hevp execution status: %d' % status)
+    else:
+        print('converged eigenvalues are:')
+        print(vals)
+        print('raleigh time: %.2e' % raleigh_time)
+except RuntimeError as err:
+    print(err)
 
 print('\n---solving with scipy eigsh...')
-start = time.time()
-vals, vecs = scs.linalg.eigsh(A, nev, sigma=sigma, which='LM', tol=tol)
-stop = time.time()
-eigsh_time = stop - start
-print(vals)
-print('eigsh time: %.2e' % eigsh_time)
+A = A.tocsc()
+try:
+    start = time.time()
+    vals, vecs = scs.linalg.eigsh(A, nev, sigma=sigma, which='LM', tol=tol)
+    stop = time.time()
+    eigsh_time = stop - start
+    print(vals)
+    print('eigsh time: %.2e' % eigsh_time)
+except RuntimeError as err:
+    print(err)

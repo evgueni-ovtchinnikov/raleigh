@@ -98,14 +98,18 @@ def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
                   ('stress stiffness matrix missing in buckling mode')
         opB = None
 
-    if T is None:
-        try:
+    if T is None: # use sparse factorization
+
+        if isinstance(A, SparseSymmetricSolver): # already have factors
+
             n = A.size()
             dtype = A.data_type()
             sigma = A.sigma()
             neg, pos = A.inertia()
             solver = A
-        except:
+
+        else: # factorize
+
             m, n = A.shape
             if m != n:
                 raise ValueError('the matrix must be square')
@@ -116,10 +120,52 @@ def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
             start = time.time()
             solver.analyse(A, sigma, B)
             solver.factorize()
+
+            # estimate factorization error
+
+            A = SparseSymmetricMatrix(A)
+            b = Vectors(n, 3, data_type=dtype)
+            x = Vectors(n, 3, data_type=dtype)
+            y = Vectors(n, 3, data_type=dtype)
+            x.fill_orthogonal()
+            A.apply(x, b)
+            if B is not None:
+                opB_ = SparseSymmetricMatrix(B)
+            else:
+                opB_ = None
+            if opB_ is not None:
+                opB_.apply(x, y)
+                z = y
+            else:
+                z = x
+            s = x.dots(z)
+            if sigma != 0:
+                b.add(z, -sigma)
+            solver.solve(b, y)
+            y.add(x, -1)
+            if opB_ is not None:
+                opB_.apply(y, b)
+                z = b
+            else:
+                z = y
+            t = y.dots(z)
+            err = numpy.sqrt(abs(t/s))
+            err = numpy.amax(err)
+            if err > 0.01:
+                msg = 'factorization too inaccurate: relative error > %.1e, ' \
+                      + 'consider moving shift slightly'
+                print( msg % err)
+                return None, None, -1
+            elif verb > -1:
+                print('estimated factorization error: %.1e' % err)
+
             stop = time.time()
             setup_time = stop - start
             if verb > -1:
                 print('setup time: %.2e' % setup_time)
+
+        # set up the eigenvalue problem
+
         opAinv = solver
         neg, pos = solver.inertia()
         if verb > -1:
@@ -145,7 +191,9 @@ def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
         else:
             evp = Problem(eigenvectors, opAinv, opB, 'pro')
         evp_solver = Solver(evp)
-    else:
+
+    else: # use preconditioning
+
         A = SparseSymmetricMatrix(A)
         n = A.size()
         dtype = A.data_type()
@@ -163,6 +211,8 @@ def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
             raise ValueError\
                   ('which must be integer if preconditioning is used')
         which = (which, 0)
+
+    # solve the eigenvalue problem
 
     opt.convergence_criteria = DefaultConvergenceCriteria()
     opt.convergence_criteria.set_error_tolerance('k eigenvector error', tol)
