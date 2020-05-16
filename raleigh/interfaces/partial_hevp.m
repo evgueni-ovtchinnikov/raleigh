@@ -1,6 +1,6 @@
 function [lambda, x] = partial_hevp(matrixA, nep, varargin)
 
-import py.raleigh.interfaces.matlab.partial_hevp
+import py.raleigh.interfaces.matlab.part_hevp
 
 rowB = [];
 colB = [];
@@ -19,6 +19,6 @@ end
 msize = size(matrixA);
 n = msize(1);
 [rowA, colA, valA] = find(matrixA);
-rval = partial_hevp(n, rowA, colA, valA, nep, sigma, rowB, colB, valB, opts);
+rval = part_hevp(n, rowA, colA, valA, nep, sigma, rowB, colB, valB, opts);
 lambda = double(rval{1});
 x = double(rval{2});

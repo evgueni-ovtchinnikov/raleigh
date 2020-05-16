@@ -12,7 +12,7 @@ def _isempty(x):
     except:
         return False
 
-def partial_hevp(n, rowA, colA, valA, nep, sigma, rowB, colB, valB, opts):
+def part_hevp(n, rowA, colA, valA, nep, sigma, rowB, colB, valB, opts):
     tol = 1e-4
     verb = 0
     buckling = False
