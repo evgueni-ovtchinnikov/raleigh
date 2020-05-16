@@ -4,6 +4,8 @@ from scipy.sparse import csr_matrix
 from ..algebra import verbosity
 verbosity.level = 2
 from .partial_hevp import partial_hevp as evp
+from .pca import pca
+
 
 def _isempty(x):
     try:
@@ -40,3 +42,19 @@ def part_hevp(n, rowA, colA, valA, nep, sigma, rowB, colB, valB, opts):
     if buckling:
         vals = -vals
     return vals, vecs, status
+
+def py_pca(data, opts):
+    npc = -1
+    tol = 0.01
+    NORMS = ['s', 'f', 'm']
+    inorm = 0
+    if ~_isempty(opts):
+        if 'tolerance' in opts:
+            tol = opts['tolerance']
+        if 'num_pc' in opts:
+            npc = opts['num_pc']
+        if 'norm_err' in opts:
+            inorm = opts['norm_err']
+    data = numpy.asarray(data)
+    mean, trans, comps = pca(data.T, npc=npc, tol=tol, norm=NORMS[inorm])
+    return mean, trans, comps
