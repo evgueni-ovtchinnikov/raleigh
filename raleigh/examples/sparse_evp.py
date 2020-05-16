@@ -32,11 +32,7 @@ import time
 from raleigh.algebra import verbosity
 verbosity.level = 2
 
-try:
-    from raleigh.interfaces.partial_hevp import partial_hevp
-except:
-    print('This script requires MKL 10.3 or later, sorry!')
-    exit()
+from raleigh.interfaces.partial_hevp import partial_hevp
 
 
 narg = len(sys.argv)

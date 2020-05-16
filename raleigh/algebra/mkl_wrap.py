@@ -56,6 +56,7 @@ def find_mkl():
         #print('searching in %s...' % path)
         mkl = find(mkl_name, path)
         return mkl
+    return None
 
 
 def _array_ptr(array, shift=0):
