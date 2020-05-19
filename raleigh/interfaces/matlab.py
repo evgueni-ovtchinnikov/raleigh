@@ -46,15 +46,15 @@ def part_hevp(n, rowA, colA, valA, nep, sigma, rowB, colB, valB, opts):
 def py_pca(data, opts):
     npc = -1
     tol = 0.01
-    NORMS = ['s', 'f', 'm']
+    NORMS = ['f', 's', 'm']
     inorm = 0
     if ~_isempty(opts):
         if 'tolerance' in opts:
             tol = opts['tolerance']
         if 'num_pc' in opts:
-            npc = opts['num_pc']
+            npc = int(opts['num_pc'])
         if 'norm_err' in opts:
-            inorm = opts['norm_err']
+            inorm = int(opts['norm_err'])
     data = numpy.asarray(data)
     mean, trans, comps = pca(data.T, npc=npc, tol=tol, norm=NORMS[inorm])
     return mean, trans, comps
