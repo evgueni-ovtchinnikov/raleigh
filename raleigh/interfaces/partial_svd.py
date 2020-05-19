@@ -60,7 +60,12 @@ class PartialSVD:
         problem = Problem(v, opSVD)
         solver = Solver(problem)
 
-        solver.solve(v, options=opt, which=nsv)
+        status = solver.solve(v, options=opt, which=nsv)
+        if status < 0:
+            self.__mean_v = None
+            self.__left_v = None
+            self.__right_v = None
+            return
         if opt.verbosity > 0:
             print('operator application time: %.2e' % opSVD.time)
 

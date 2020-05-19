@@ -220,6 +220,8 @@ def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
 
     start = time.time()
     status = evp_solver.solve(eigenvectors, opt, which=which)
+    if status < 0:
+        return None, None, status
     stop = time.time()
     solve_time = stop - start
     if T is None:
