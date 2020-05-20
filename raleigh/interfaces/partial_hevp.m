@@ -24,11 +24,15 @@ end
 msize = size(matrixA);
 n = msize(1);
 [rowA, colA, valA] = find(matrixA);
-rval = part_hevp(n, rowA, colA, valA, nep, sigma, rowB, colB, valB, opts);
-for i = 1 : nargout
-    if i < 3
-        varargout{i} = double(rval{i});
-    else
-        varargout{i} = int64(rval{i});
-    end
-end
+rval = part_hevp(n, rowA', colA', valA', nep, sigma, rowB', colB', valB', opts);
+varargout{1} = double(py.array.array('d', rval{1}));
+nep = size(varargout{1}, 2);
+varargout{2} = reshape(double(py.array.array('d', rval{2})), n, nep);
+varargout{3} = int64(rval{i});
+% for i = 1 : nargout
+%     if i < 3
+%         varargout{i} = double(rval{i});
+%     else
+%         varargout{i} = int64(rval{i});
+%     end
+% end

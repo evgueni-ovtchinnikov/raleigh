@@ -47,7 +47,9 @@ def part_hevp(n, rowA, colA, valA, nep, sigma, rowB, colB, valB, opts):
                              tol=tol, verb=verb, buckling=buckling)
     if buckling:
         vals = -vals
-    return vals, vecs, status
+    k = vals.shape[0]
+    return vals, vecs.T.reshape((k*n,)), status
+#    return vals, vecs, status
 
 def py_pca(data, opts):
     npc = -1
