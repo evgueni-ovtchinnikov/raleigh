@@ -37,7 +37,7 @@ def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
         eigenvectors of A are computed, otherwise those of the generalized
         problem A x = lambda B x.
     T : a Python object
-        If T is not None, then A must be positive definite.
+        If T is not None, then A and B must be positive definite.
         Preconditioner (roughly, approximate inverse of A). Must have method
         apply(x, y) that, for a given equally shaped 2D ndarrays x and y with
         the second dimension equal to the problem size, applies preconditioning
@@ -47,7 +47,7 @@ def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
         computed by apply(x, y), must be real symmetric/Hermitian and positive
         definite.
     buckling : Boolean
-        Flag for buckling mode. Ignored if T is not None.
+        Flag for buckling mode.
     sigma : float
         Shift inside the spectrum for the sake of faster convergence. Must be
         negative if buckling is True. Ignored if T is not None.
@@ -83,10 +83,12 @@ def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
         2 : no search directions left (bad problem data or preconditioner)
         3 : some of the requested left eigenvalues may not exist
         4 : some of the requested right eigenvalues may not exist
-       <0 : fatal error, error message printed if verb is non-negative
+       <0 : error found, error message printed if verb is non-negative
     '''
 
-    buckling = buckling and (T is None)
+    if buckling and sigma >= 0:
+        raise ValueError('sigma must be negative in buckling mode')
+
     if B is not None:
         if buckling:
             opB = SparseSymmetricMatrix(A)
@@ -127,7 +129,7 @@ def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
             b = Vectors(n, 3, data_type=dtype)
             x = Vectors(n, 3, data_type=dtype)
             y = Vectors(n, 3, data_type=dtype)
-            x.fill_orthogonal()
+            x.fill_random()
             A.apply(x, b)
             if B is not None:
                 opB_ = SparseSymmetricMatrix(B)
@@ -138,7 +140,7 @@ def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
                 z = y
             else:
                 z = x
-            s = x.dots(z)
+            s = x.dots(x)
             if sigma != 0:
                 b.add(z, -sigma)
             solver.solve(b, y)
@@ -148,13 +150,13 @@ def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
                 z = b
             else:
                 z = y
-            t = y.dots(z)
-            err = numpy.sqrt(abs(t/s))
-            err = numpy.amax(err)
+            t = y.dots(y)
+            err = numpy.amax(numpy.sqrt(abs(t/s)))
             if err > 0.01:
                 msg = 'factorization too inaccurate: relative error > %.1e, ' \
                       + 'consider moving shift slightly'
-                print( msg % err)
+                if verb > -1:
+                    print( msg % err)
                 return None, None, -1
             elif verb > -1:
                 print('estimated factorization error: %.1e' % err)
@@ -193,6 +195,10 @@ def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
         evp_solver = Solver(evp)
 
     else: # use preconditioning
+
+        if buckling:
+            msg = 'preconditioning for buckling problem not supported'
+            raise ValueError(msg)
 
         A = SparseSymmetricMatrix(A)
         n = A.size()
