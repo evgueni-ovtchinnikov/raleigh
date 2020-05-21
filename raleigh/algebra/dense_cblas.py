@@ -6,6 +6,7 @@
 
 import ctypes
 import numpy
+import scipy
 
 from .mkl_wrap import Cblas
 from .dense_ndarray import NDArrayVectors, NDArrayMatrix
@@ -253,6 +254,10 @@ class Vectors(NDArrayVectors):
         return q
 
     def svd(self):
+        q, sigma, w = scipy.linalg.svd(self.data(), full_matrices=False)
+        self.fill(_conjugate(w))
+        return sigma, q
+        # the code below produced wrong results in some cases
         m = self.nvec()
         n = self.dimension()
         c_n = ctypes.c_int(n)

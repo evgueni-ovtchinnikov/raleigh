@@ -90,22 +90,9 @@ class PartialSVD:
                     s = v.dot(e)
                     u.add(w, -1, s)
             if refine:
-                Av = u.new_vectors(nv)
-                u.copy(Av)
-                w = u.new_vectors(nv)
-                u.copy(w)
                 sigma, q = u.svd()
-                t = w.dots(w)
-                s = numpy.dot(numpy.diag(sigma), q)
-                w.add(u, -1, s)
-                s = numpy.amax(numpy.sqrt(abs(w.dots(w)/t)))
-                #print('svd error: %.1e' % s)
-                if s > math.sqrt(numpy.finfo(dt).eps): # cover mkl svd failure
-                    q, sigma, w = scipy.linalg.svd(Av.data(), full_matrices=False)
-                    u.fill(_conj(w))
-                    q = _conj(q.T)
                 w = v.new_vectors(nv)
-                v.multiply(_conj(q.T), w)
+                v.multiply(q, w)
                 w.copy(v)
             else:
                 sigma = numpy.sqrt(abs(u.dots(u)))
