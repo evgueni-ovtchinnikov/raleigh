@@ -50,7 +50,7 @@ def test_lra_ortho(u, v, wu, wv):
     print('transfom via svd for R...')
     u.copy(wu)
     s, q = wu.svd() # u == wu*s*q, wu: orthonormal set, s: diag, q: unitary
-    v.multiply(_conj(q.T), wv) 
+    v.multiply(_conj(q), wv)
     wv.scale(s, multiply=True) # vw = v*q.H*s
     # theory: wv*wu.H = v*q.H*s*wu.H = v*(wu*s*q.H) = v*u.H
     # let us check numerically by measuring D = wv*wu.H - v*u.H
@@ -66,7 +66,7 @@ def test_lra_ortho(u, v, wu, wv):
     print('transfom via svd for L...')
     wv.copy(v) # use v as a workspace
     s, q = v.svd() # wv == v*s*q
-    wu.multiply(_conj(q.T), u) # u' = wu*q.H: orthonormal because q is unitary
+    wu.multiply(_conj(q), u) # u' = wu*q.H: orthonormal because q is unitary
     v.scale(s, multiply=True) # v' = v*s
     # theory: v'*u'.H = v*s*(wu*q.H).H = v*s*q*wu.H = wv*wu.H
     # let us check numerically by measuring D = wv*wu.H - v'*u'.H
@@ -386,7 +386,7 @@ def test1(u, v):
     stop = time.time()
     elapsed = stop - start
     w_numpy.scale(sigma, multiply=True)
-    w_numpy.multiply(q, v_numpy)
+    w_numpy.multiply(q.T, v_numpy)
     u_numpy.add(v_numpy, -1.0)
     t = nla.norm(u_numpy.data())/s
     print('error: %e, time: %.2e' % (t, elapsed))
@@ -400,7 +400,7 @@ def test1(u, v):
         stop = time.time()
         elapsed = stop - start
         w_cblas.scale(sigma, multiply=True)
-        w_cblas.multiply(q, v_cblas)
+        w_cblas.multiply(q.T, v_cblas)
         u_cblas.add(v_cblas, -1.0)
         t = nla.norm(u_cblas.data())/s
         print('error: %e, time: %.2e' % (t, elapsed))
@@ -417,7 +417,7 @@ def test1(u, v):
 #        print(q.shape, q.dtype)
 #        print(sigma.shape, sigma.dtype)
         w_cublas.scale(sigma, multiply=True)
-        w_cublas.multiply(q, v_cublas)
+        w_cublas.multiply(q.T, v_cublas)
         u_cublas.add(v_cublas, -1.0)
         t = nla.norm(u_cublas.data())/s
         print('error: %e, time: %.2e' % (t, elapsed))

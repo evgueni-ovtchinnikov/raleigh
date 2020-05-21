@@ -255,9 +255,9 @@ class Vectors(NDArrayVectors):
 
     def svd(self):
         q, sigma, w = scipy.linalg.svd(self.data(), full_matrices=False)
-        self.fill(_conjugate(w))
+        self.fill(w)
         return sigma, q
-        # the code below produced wrong results in some cases
+        # the code below produces wrong results in some cases
         m = self.nvec()
         n = self.dimension()
         c_n = ctypes.c_int(n)

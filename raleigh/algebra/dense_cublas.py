@@ -7,6 +7,7 @@
 import ctypes
 import numbers
 import numpy
+import scipy
 
 from . import cuda_wrap as cuda
 from . import cublas_handle as cublas
@@ -534,16 +535,9 @@ class Vectors:
         return q
 
     def svd(self):
-        try:
-            from .dense_cblas import Vectors as cpuVectors
-            #print('using mkl cblas...')
-        except:
-            #print('mkl cblas not found, using numpy...')
-            from .dense_numpy import Vectors as cpuVectors
-        u = cpuVectors(self.data())
-        sigma, vt = u.svd()
-        self.fill(u.data())
-        return sigma, vt
+        q, sigma, w = scipy.linalg.svd(self.data(), full_matrices=False)
+        self.fill(w)
+        return sigma, q
 #        m = self.nvec()
 #        n = self.dimension()
 #        c_n = ctypes.c_int(n)
@@ -608,8 +602,13 @@ class Vectors:
         dtype = data.dtype.type
         if dtype != self.__dtype:
             raise ValueError('mismatching data types in fill()')
+        if data.flags['C_CONTIGUOUS']:
+            the_data = data
+        else:
+            the_data = numpy.ndarray((m, n), dtype=dtype)
+            the_data[:,:] = data
         size = m * self.__dsize * self.__vdim
-        ptr = ctypes.c_void_p(data.ctypes.data)
+        ptr = ctypes.c_void_p(the_data.ctypes.data)
         _try_calling(cuda.memcpy(self.all_data_ptr(), ptr, size, cuda.memcpyH2D))
 
     def data(self):
