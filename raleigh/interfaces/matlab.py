@@ -5,6 +5,7 @@
 '''
 
 import numpy
+import numpy.linalg as nla
 from scipy.sparse import csr_matrix
 
 from ..algebra import verbosity
@@ -19,6 +20,22 @@ def _isempty(x):
         return info[1] < 1
     except:
         return False
+
+
+def pca_error(data, mean, trans, comps):
+    m, n = data.shape
+    ones = numpy.ones((data.shape[0], 1), dtype=data.dtype)
+    mean = numpy.reshape(mean, (1, comps.shape[1]))
+    data_s = data - numpy.dot(ones, mean)
+    err = numpy.dot(trans, comps) - data_s
+    em = numpy.amax(_norm(err, axis=1))/numpy.amax(_norm(data_s, axis=1))
+    ef = nla.norm(err, ord='fro')/nla.norm(data_s, ord='fro')
+    return em, ef
+
+
+def _norm(a, axis):
+    return numpy.apply_along_axis(nla.norm, axis, a)
+
 
 def part_hevp(n, rowA, colA, valA, nep, sigma, rowB, colB, valB, opts):
     tol = 1e-4
@@ -51,7 +68,9 @@ def part_hevp(n, rowA, colA, valA, nep, sigma, rowB, colB, valB, opts):
     return vals, vecs.T.reshape((k*n,)), status
 #    return vals, vecs, status
 
-def py_pca(data, opts):
+def py_pca(data, m, n, opts): # n samples m features each
+    m = int(m)
+    n = int(n)
     npc = -1
     tol = 0.01
     NORMS = ['f', 's', 'm']
@@ -63,6 +82,13 @@ def py_pca(data, opts):
             npc = int(opts['num_pc'])
         if 'norm_err' in opts:
             inorm = int(opts['norm_err'])
-    data = numpy.asarray(data)
-    mean, trans, comps = pca(data.T, npc=npc, tol=tol, norm=NORMS[inorm])
-    return mean, trans, comps
+    data = numpy.asarray(data).reshape((n, m))
+    mean, trans, comps = pca(data, npc=npc, tol=tol, norm=NORMS[inorm])
+#    mean, trans, comps = pca(data.T, npc=npc, tol=tol, norm=NORMS[inorm])
+#    em, ef = pca_error(data, mean, trans, comps)
+#    print(em, ef)
+    mean = numpy.reshape(mean, (m,))
+    npc = comps.shape[0]
+    trans = numpy.reshape(trans, (n*npc,))
+    comps = numpy.reshape(comps, (m*npc,))
+    return mean, npc, comps, trans

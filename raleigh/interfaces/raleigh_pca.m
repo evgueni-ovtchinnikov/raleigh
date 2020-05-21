@@ -1,4 +1,4 @@
-function [mean, trans, comps] = raleigh_pca(data, opts)
+function [mean, comps, trans] = raleigh_pca(data, opts)
 % Interface to Python's pca
 
 % Copyright 2019 United Kingdom Research and Innovation
@@ -6,7 +6,9 @@ function [mean, trans, comps] = raleigh_pca(data, opts)
 
 import py.raleigh.interfaces.matlab.py_pca
 
-pca = py_pca(data, opts);
-mean = single(pca{1});
-trans = single(pca{2});
-comps = single(pca{3});
+[m, n] = size(data);
+pca = py_pca(data(:)', m, n, opts);
+mean = reshape(single(py.array.array('f', pca{1})), m, 1);
+npc = int64(pca{2});
+comps = reshape(single(py.array.array('f', pca{3})), m, npc);
+trans = reshape(single(py.array.array('f', pca{4})), npc, n);
