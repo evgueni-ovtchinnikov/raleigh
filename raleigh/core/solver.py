@@ -869,13 +869,60 @@ class Solver:
             if gen:
                 s = numpy.sqrt(abs(X.dots(X)))
                 delta_R /= s
-            rv_err = numpy.amax(abs(new_lmd - lmdx))
+            rv_err = numpy.amax(abs(new_lmd - lmdx))/numpy.amax(abs(lmdx))
+            rv_no = numpy.amax(abs(XBX - numpy.eye(nx)))
             if verb > 2:
                 print('Ritz values error: %.1e' % rv_err)
-                print('Ritz vectors non-orthonormality: %.1e' % \
-                      numpy.amax(abs(XBX - numpy.eye(nx))))
+                print('Ritz vectors non-orthonormality: %.1e' % rv_no)
+            if max(rv_err, rv_no) > math.sqrt(epsilon):
+                if verb > 0:
+                    if verb < 3:
+                        print('Ritz values error: %.1e' % rv_err)
+                        print('Ritz vectors non-orthonormality: %.1e' % rv_no)
+                    print('restarting...')
+                rec = 0
+                nz = 0
+                sigma, Q = X.svd()
+                if std:
+                    XBX = X.dot(X)
+                else:
+                    B(X, BX)
+                    XBX = BX.dot(X)
+                if pro:
+                    A(BX, AX)
+                    XAX = AX.dot(BX)
+                else:
+                    A(X, AX)
+                    XAX = AX.dot(X)
+                #rv_no = numpy.amax(abs(XBX - numpy.eye(nx)))
+                #print('Ritz vectors non-orthonormality: %.1e' % rv_no)
+                lmdx, Q = sla.eigh(XAX, XBX, turbo=False)
+                W.select(nx)
+                X.multiply(Q, W)
+                W.copy(X)
+                AX.multiply(Q, W)
+                W.copy(AX)
+                if not std:
+                    BX.multiply(Q, W)
+                    W.copy(BX)
+                if pro:
+                    XAX = AX.dot(BX)
+                else:
+                    XAX = AX.dot(X)
+                if std:
+                    XBX = X.dot(X)
+                else:
+                    XBX = BX.dot(X)
+                rv_no = numpy.amax(abs(XBX - numpy.eye(nx)))
+                #print('Ritz vectors non-orthonormality: %.1e' % rv_no)
+                da = XAX.diagonal()
+                db = XBX.diagonal()
+                new_lmd = _real(da/db)
 
-            if self.iteration > 0:
+            for i in range(nx):
+                iterations[ix + i] += 1
+#            if self.iteration > 0:
+            if rec > 0:
                 # compute eigenvalue decrements
                 for i in range(nx):
                     if iterations[ix + i]:
@@ -884,7 +931,7 @@ class Solver:
                         eps *= max(abs(lmd[ix + i]), abs(new_lmd[i]))
                         if abs(delta) > eps:
                             dlmd[ix + i, rec - 1] = delta
-                    iterations[ix + i] += 1
+#                    iterations[ix + i] += 1
                 if verb > 3:
                     print('eigenvalues shifts history:')
                     print(numpy.array_str(dlmd[ix : ix + nx, :rec].T, \
@@ -1355,7 +1402,7 @@ class Solver:
             U = GB
             ny = Y.nvec()
             if single:
-                eps = 1e-4
+                eps = 1e-3
             else:
                 eps = 1e-8
             ind, dropped = _piv_chol(U, nx, eps)
