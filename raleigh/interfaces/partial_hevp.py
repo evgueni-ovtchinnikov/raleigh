@@ -187,11 +187,11 @@ def partial_hevp(A, B=None, T=None, buckling=False, sigma=0, which=6, tol=1e-4,\
                     which = (neg, 0)
                 else:
                     which = (neg, which - neg)
-##            else:
-##                if neg < 1:
-##                    which = (0, which)
-##                elif pos < 1:
-##                    which = (which, 0)
+            else:
+                if neg < 1:
+                    which = (0, which)
+                elif pos < 1:
+                    which = (which, 0)
         eigenvectors = Vectors(n, data_type=dtype)
         if B is None:
             evp = Problem(eigenvectors, opAinv)
