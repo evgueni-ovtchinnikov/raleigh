@@ -11,6 +11,7 @@ class AMatrix:
 
     def __init__(self, a, arch='cpu', copy_data=False):
         self.__arch = arch
+        self.__gpu = None
         if arch[:3] == 'gpu':
             try:
                 from . import cuda_wrap as cuda
@@ -20,9 +21,8 @@ class AMatrix:
             except:
                 if len(arch) > 3 and arch[3] == '!':
                     raise RuntimeError('cannot use GPU')
-        else:
+        if self.__gpu is None:
             from .dense_cpu import Matrix, Vectors
-#            from .dense_numpy import Matrix, Vectors
             if copy_data:
                 self.__op = Matrix(a.copy())
             else:

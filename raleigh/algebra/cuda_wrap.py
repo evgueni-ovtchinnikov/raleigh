@@ -41,19 +41,18 @@ def _find_cuda_path(path):
 try:
     if platform == 'win32':
         cuda_path = _find_cuda_path(os.environ['PATH'])
+        if cuda_path is None:
+            raise RuntimeError('CUDA Toolkit not found')
         cudart_dll = glob.glob(cuda_path + '/cudart64*')[0]
         cuda = ctypes.CDLL(cudart_dll, mode=ctypes.RTLD_GLOBAL)
     else:
         cuda = ctypes.CDLL('libcudart.so', mode=ctypes.RTLD_GLOBAL)
-
     v = ctypes.c_int()
     cuda.cudaRuntimeGetVersion(ctypes.byref(v))
     version = v.value
     if verbosity.level > 0:
         print('CUDA version: %d' % version)
 except:
-    if verbosity.level > 0:
-        print('CUDA Toolkit not found, switching to cpu...')
     raise RuntimeError('CUDA Toolkit not found')
 
 
