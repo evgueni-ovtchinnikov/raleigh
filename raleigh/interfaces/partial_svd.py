@@ -144,6 +144,57 @@ class PartialSVD:
     def right_v(self):
         return self.__right_v
 
+    def _finalize_svd(v, Av):
+        '''Given right singular vectors v of A and Av, compute left singular vectors
+           u and singular values sigma, and adjust v so that A v = u sigma.
+           Try to do it fast if possible, otherwise do SVD of Av.
+        '''
+        nsv = v.nvec()
+        Gram = Av.dot(Av)
+        diag = numpy.diag(Gram)
+        if numpy.amin(diag) == 0.0:
+            icond = 0.0
+        else:
+            Diag = numpy.diag(diag)
+            lmd, _ = sla.eigh(Gram, Diag)
+            icond = lmd[0]/lmd[-1]
+        eps = 100*numpy.finfo(diag.dtype).eps
+        if icond < eps: # Av is too ill-conditioned, use SVD of Av
+            sigma, q = Av.svd()
+            u = Av
+            w = v.new_vectors(nsv)
+            v.multiply(q, w)
+            w.copy(v)
+            return u, sigma, v
+        # Av not too bad, try faster route
+        w = Av.new_vectors(nsv)
+        U = _conj(nla.cholesky(Gram).T) # Gram = L L.H = U.H U
+        Ui = sla.inv(U)
+        Av.multiply(Ui, w) # A v = w U
+        p, sigma, qt = sla.svd(U) # A v = w p sigma qt = u sigma q.H
+        q = _conj(qt.T) # q = qt.H
+        u = Av # Av no longer needed, let us recycle it as u
+        w.multiply(p, u)
+        Gram = u.dot(u)
+        no_max = nla.norm(Gram - numpy.eye(u.nvec()))
+        maxit = 2
+        it = 0
+        while no_max > eps and it < maxit:
+            U = _conj(nla.cholesky(Gram).T) # Gram = L L.H = U.H U
+            Ui = sla.inv(U)
+            u.multiply(Ui, w) # A v = u sigma q.H = w U sigma q.H
+            p, sigma, qh = sla.svd(U*sigma)
+            # A v = w p sigma gh q.H = w p sigma (q qh.H).H = u sigma q.H
+            q = numpy.dot(q, _conj(qt.T))
+            w.multiply(p, u)
+            Gram = u.dot(u)
+            no_max = nla.norm(Gram - numpy.eye(u.nvec()))
+            it += 1
+        w = v.new_vectors(v.nvec())
+        v.multiply(q, w)
+        w.copy(v)
+        return u, sigma, v
+
 
 class _OperatorSVD:
     def __init__(self, matrix, v, transp=False, shift=False):
