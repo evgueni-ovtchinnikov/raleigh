@@ -143,6 +143,11 @@ def pca(A, npc=-1, tol=0, have=None, batch_size=None, verb=0, arch='cpu', \
     if batch_size is None:
         if have is None:
             data_matrix = AMatrix(A, arch=arch)
+            m, n = A.shape
+            if m < n:
+                lra.ortho = svtol
+            else:
+                lra.ortho = 0
             lra.compute(data_matrix, opt=opt, rank=npc, tol=tol, norm=norm, \
                         max_rank=mpc, svtol=svtol, shift=True, verb=verb)
         else:

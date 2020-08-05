@@ -40,7 +40,7 @@ class LowerRankApproximation:
         self.__svtol = 1e-3
         self.__norm = None
         self.__arch = None
-        self.ortho = True
+        self.ortho = 1.0
         self.iterations = -1
         
     def compute(self, matrix, opt=Options(), rank=-1, tol=0, norm='f',
@@ -205,13 +205,12 @@ class LowerRankApproximation:
                 raise ValueError('incompatible matrix type passed to update')
         left0 = self.__left_v
         right0 = self.__right_v
-        if self.ortho is False:
+        if self.ortho < 1.0:
             wl = left0.new_vectors(left0.nvec())
             wr = right0.new_vectors(right0.nvec())
             H = right0.dot(right0)
             mu, x = sla.eigh(H)
             q = mu[0]/mu[-1]
-            print(mu[0], mu[-1])
             if q < 0.5:
                 _lra_ortho(left0, right0, wl, wr)
             else:

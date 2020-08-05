@@ -248,7 +248,8 @@ class DefaultStoppingCriteria:
 #            err_rel = err_abs/self.max_norm
         elif self.norm == 'f':
             self.f -= numpy.sum(sigma*sigma)
-            err_abs = math.sqrt(abs(self.f))
+            err_abs = math.sqrt(max(0, self.f))
+#            err_abs = math.sqrt(abs(self.f))
             err_rel = err_abs/scale_f
 #            err_rel = err_abs/self.f_norm
         else:
