@@ -203,8 +203,9 @@ vmax = numpy.amax(images)
 vmin = numpy.amin(images)
 print('pixel values range: %f to %f' % (vmin, vmax))
 
-if asymm < 1.0:
+if asymm != 1.0:
     a = numpy.zeros(ni)
+    aa = numpy.zeros(ni)
     ia = numpy.zeros(ni, dtype=numpy.int32)
 mask = _mask(nx, ny)
 n = nx*ny
@@ -217,18 +218,20 @@ for i in range(nimg):
     if face:
         image[mask > 0] = vmin + qb*(vmax - vmin)
         images[j,:,:] = image
-    if asymm < 1.0:
+    if asymm != 1.0:
         img = numpy.reshape(image, (n,))
         gmi = numpy.reshape(image[:, ::-1], (n,))
-        a[j] = numpy.linalg.norm(img - gmi)/numpy.linalg.norm(img)
+        aa[j] = numpy.linalg.norm(img - gmi)
+        a[j] = aa[j]/numpy.linalg.norm(img)
         ia[j] = j
     if dble:
         images[j + 1, :, :] = image[:, ::-1]
-        if asymm < 1.0:
+        if asymm != 1.0:
             a[j + 1] = a[j]
+            aa[j + 1] = aa[j]
             ia[j + 1] = j + 1
 
-if asymm < 1.0:
+if asymm != 1.0:
     ind = numpy.argsort(a)
     pylab.figure()
     pylab.plot(numpy.arange(1, ni + 1, 1), a[ind])
@@ -237,19 +240,24 @@ if asymm < 1.0:
     max_asymm = numpy.amax(a)
     mean_asymm = numpy.mean(a)
     print('asymmetry: max %f, mean %f' % (max_asymm, mean_asymm))
-    if asymm > 0:
-        th = max_asymm*asymm
+    if asymm > 1:
+        k = int(asymm)
     else:
-        th = mean_asymm*(-asymm)
-    k = sum(a <= th)
+        if asymm > 0:
+            th = max_asymm*asymm
+        else:
+            th = mean_asymm*(-asymm)
+        k = sum(a <= th)
+    print('%d passport-photo style images selected' % k)
     iind = numpy.sort(ia[ind[:k]])
     photos = images[iind,:,:]
-    print(photos.shape)
     while True:
         i = int(input('photo-image: '))
         if i < 0 or i >= k:
             break
         image = photos[i,:,:]
+        j = iind[i]
+        print('asymmetry: abs %f, rel %f' % (aa[j], a[j]))
         pylab.title('%s' % names[iind[i]].replace('_', ' '))
         pylab.imshow(image, cmap='gray', vmin=vmin, vmax=vmax)
         pylab.show()
@@ -269,6 +277,7 @@ while view:
     if i < 0 or i >= images.shape[0]:
         break
     image = images[i,:,:]
+    print('asymmetry: abs %f, rel %f' % (aa[i], a[i]))
     pylab.figure()
     pylab.title('%s' % names[i].replace('_', ' '))
     pylab.imshow(image, cmap='gray', vmin=vmin, vmax=vmax)
