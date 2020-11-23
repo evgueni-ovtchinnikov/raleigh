@@ -474,9 +474,9 @@ def _lra_ortho(v, u, wv, wu):
 
     u.copy(wu)
     s, q = wu.svd()
-    v.multiply(_conj(q.T), wv)
+    v.multiply(q, wv)
     wv.scale(s, multiply=True)
     wv.copy(v)
     s, q = v.svd()
-    wu.multiply(_conj(q.T), u)
+    wu.multiply(q, u)
     v.scale(s, multiply=True)

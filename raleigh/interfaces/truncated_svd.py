@@ -371,7 +371,7 @@ class UserStoppingCriteria:
                 u.add(self.__mean, -1, s)
         sigma, q = u.svd()
         w = v.new_vectors(new)
-        v.multiply(_conj(q.T), w)
+        v.multiply(q, w)
         self.sigma = numpy.concatenate((self.sigma, sigma))
         if self.transpose:
             self.left.append(w)
