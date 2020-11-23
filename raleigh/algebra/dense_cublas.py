@@ -537,7 +537,7 @@ class Vectors:
     def svd(self):
         q, sigma, w = scipy.linalg.svd(self.data(), full_matrices=False)
         self.fill(w)
-        return sigma, q
+        return sigma, _conjugate(q)
 #        m = self.nvec()
 #        n = self.dimension()
 #        c_n = ctypes.c_int(n)

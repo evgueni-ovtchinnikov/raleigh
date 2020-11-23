@@ -50,7 +50,7 @@ def test_lra_ortho(u, v, wu, wv):
     print('transfom via svd for R...')
     u.copy(wu)
     s, q = wu.svd() # u == wu*s*q, wu: orthonormal set, s: diag, q: unitary
-    v.multiply(_conj(q), wv)
+    v.multiply(q, wv)
     wv.scale(s, multiply=True) # vw = v*q.H*s
     # theory: wv*wu.H = v*q.H*s*wu.H = v*(wu*s*q.H) = v*u.H
     # let us check numerically by measuring D = wv*wu.H - v*u.H
@@ -66,7 +66,7 @@ def test_lra_ortho(u, v, wu, wv):
     print('transfom via svd for L...')
     wv.copy(v) # use v as a workspace
     s, q = v.svd() # wv == v*s*q
-    wu.multiply(_conj(q), u) # u' = wu*q.H: orthonormal because q is unitary
+    wu.multiply(q, u) # u' = wu*q.H: orthonormal because q is unitary
     v.scale(s, multiply=True) # v' = v*s
     # theory: v'*u'.H = v*s*(wu*q.H).H = v*s*q*wu.H = wv*wu.H
     # let us check numerically by measuring D = wv*wu.H - v'*u'.H

@@ -125,7 +125,7 @@ class Vectors(NDArrayVectors):
     def svd(self):
         v, sigma, self.data()[:,:] = \
             numpy.linalg.svd(self.data(), full_matrices=False)
-        return sigma, v
+        return sigma, _conjugate(v)
 
     def apply(self, A, output, transp=False):
         a = A.data()
@@ -182,3 +182,10 @@ class Matrix(NDArrayMatrix):
         if dim is None:
             dim = self.shape()[1]
         return Vectors(dim, nv, self.data_type())
+
+
+def _conjugate(a):
+    if a.dtype.kind == 'c':
+        return a.conj()
+    else:
+        return a
