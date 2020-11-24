@@ -75,22 +75,10 @@ class PartialSVD:
         u = v.new_vectors(nv, m)
         if nv > 0:
             eps = float(refine) # for backward compatibility
+            if nv < 2:
+                eps = 0
+            start = time.time()
             op.apply(v, u, transp)
-            if eps > 1.0:
-                GramU = u.dot(u)
-                GramV = v.dot(v)
-                #no_max = numpy.amax(GramV - numpy.eye(nv))
-                #print('v non-orthonormality: %.1e' % no_max)
-                lmd, Q = sla.eigh(GramU, GramV)
-                w = u.new_vectors(nv)
-                u.multiply(Q, w)
-                w.copy(u)
-                w = v.new_vectors(nv)
-                v.multiply(Q, w)
-                w.copy(v)
-                GramV = v.dot(v)
-                #no_max = numpy.amax(GramV - numpy.eye(nv))
-                #print('v non-orthonormality: %.1e' % no_max)
             if shift:
                 m, n = op.shape()
                 dt = op.data_type()
@@ -106,20 +94,22 @@ class PartialSVD:
                 else:
                     s = v.dot(e)
                     u.add(w, -1, s)
+            stop = time.time()
+            print('SVD operator multiplication time: %.1e' % (stop - start))
             sigma = numpy.sqrt(abs(u.dots(u)))
             if eps > 0 or numpy.amin(sigma) == 0.0:
                 start = time.time()
-                if eps >= 1.0:
-                    #print('orthonormalizing u by SVD...')
+                if eps == 1.0:
+                    print('orthonormalizing u by SVD of Av...')
                     sigma, q = u.svd()
                     w = v.new_vectors(nv)
                     v.multiply(q, w)
                     w.copy(v)
                 else:
-                    #print('orthonormalizing u by iterated Cholesky...')
+                    print('orthonormalizing u by iterated Cholesky...')
                     u, sigma, v = self._finalize_svd(v, u, eps)
                 stop = time.time()
-                #print('Partial SVD post-processing time: %.1e' % (stop - start))
+                print('Partial SVD post-processing time: %.1e' % (stop - start))
             else:
                 u.scale(sigma)
                 w = u.new_vectors(nv)
@@ -178,14 +168,16 @@ class PartialSVD:
         '''
         nsv = v.nvec()
         Gram = Av.dot(Av)
+
+        # estimate the inverse of the condition number of Gram
         diag = numpy.diag(Gram)
-        if numpy.amin(diag) == 0.0:
+        if numpy.amin(diag) <= 0.0:
             icond = 0.0
         else:
             Diag = numpy.diag(diag)
             lmd, _ = sla.eigh(Gram, Diag)
             icond = lmd[0]/lmd[-1]
-        #print('Gram(u) condition inverse: %.1e' % icond)
+        print('Gram(u) condition inverse: %.1e' % icond)
         delta = 100*numpy.finfo(diag.dtype).eps
         if icond < delta: # Av is too ill-conditioned, use SVD of Av
             sigma, q = Av.svd()
@@ -194,18 +186,35 @@ class PartialSVD:
             v.multiply(q, w)
             w.copy(v)
             return u, sigma, v
+
         # Av not too bad, try faster route
         w = Av.new_vectors(nsv)
         U = _conj(nla.cholesky(Gram).T) # Gram = L L.H = U.H U
-        Ui = sla.inv(U)
-        Av.multiply(Ui, w) # A v = w U
         p, sigma, qh = sla.svd(U) # A v = w p sigma qh = u sigma q.H
         q = _conj(qh.T) # q = qh.H
+        Ui = sla.inv(U)
+        Av.multiply(numpy.dot(Ui, p), w) # Av = w p.H U = w sigma qh 
         u = Av # Av no longer needed, let us recycle it as u
-        w.multiply(p, u)
+        w.copy(u)
+
+        w = u.reference()
+        nv = min(32, nsv/2)
+        w.select(nv, nsv - nv)
+        G = w.dot(w)
+        no = abs(G - numpy.eye(nv, dtype=Gram.dtype))
+        no_max = numpy.amax(no)
+        print('u non-orthonormality estimate: %.1e' % no_max)
+        if no_max < eps:
+            w = v.new_vectors(nsv)
+            v.multiply(q, w)
+            w.copy(v)
+            return u, sigma, v
+
         Gram = u.dot(u)
-        no_max = numpy.amax(Gram - numpy.eye(nsv))
-        #print('u non-orthonormality: %.1e' % no_max)
+        no = abs(Gram - numpy.eye(nsv, dtype=Gram.dtype))
+        no_max = numpy.amax(no)
+        print('u non-orthonormality: %.1e' % no_max)
+
         maxit = 2
         it = 0
         while no_max > eps and it < maxit:
@@ -218,7 +227,7 @@ class PartialSVD:
             w.multiply(p, u)
             Gram = u.dot(u)
             no_max = numpy.amax(Gram - numpy.eye(nsv))
-            #print('u non-orthonormality: %.1e' % no_max)
+            print('u non-orthonormality: %.1e' % no_max)
             it += 1
         w = v.new_vectors(nsv)
         v.multiply(q, w)
