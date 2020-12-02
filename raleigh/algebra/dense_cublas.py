@@ -595,7 +595,8 @@ class Vectors:
 
     def fill(self, data):
         m, n = data.shape
-        if m != self.__nvec or n != self.__vdim:
+#        if m != self.__nvec or n != self.__vdim:
+        if m != self.nvec() or n != self.__vdim:
             raise ValueError('mismatching dimensions in fill()')
         if m < 1:
             return
@@ -609,7 +610,8 @@ class Vectors:
             the_data[:,:] = data
         size = m * self.__dsize * self.__vdim
         ptr = ctypes.c_void_p(the_data.ctypes.data)
-        _try_calling(cuda.memcpy(self.all_data_ptr(), ptr, size, cuda.memcpyH2D))
+        _try_calling(cuda.memcpy(self.data_ptr(), ptr, size, cuda.memcpyH2D))
+#        _try_calling(cuda.memcpy(self.all_data_ptr(), ptr, size, cuda.memcpyH2D))
 
     def data(self):
         m = self.nvec()
