@@ -42,6 +42,6 @@ mean, trans, comps = pca(data, opt=opt, arch=arch)
 ncomp = comps.shape[0]
 print('%d principal components computed' % ncomp)
 em, ef = pca_error(data, mean, trans, comps)
-print('PCA error: max 2-norm %.0e, Frobenius norm %.0e' % (em, ef))
+print('PCA error: max 2-norm %.1e, Frobenius norm %.1e' % (em, ef))
 
 print('done')
