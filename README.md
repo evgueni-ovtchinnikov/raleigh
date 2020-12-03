@@ -5,9 +5,13 @@ RALEIGH is a Python implementation of the block Jacobi-conjugated gradients algo
 ### Key features
 
 * Can be applied to both standard eigenvalue problem for a real symmetric or Hermitian matrix A and generalized eigenvalue problems for matrix pencils A - &lambda; B or A B - &lambda; I with positive definite real symmetric or Hermitian B.
+
 * Can employ either of the two known convergence improvement techniques for large sparse problems: shift-and-invert and preconditioning.
+
 * Can also compute singular values and vectors, and is actually an efficient tool for Principal Component Analysis (PCA) of dense data of large size, owing to the high efficiency of matrix multiplications on modern multicore and GPU architectures.
+
 * PCA capabilities include quick update of principal components after arrival of new data and incremental computation of principal components, dealing with one chunk of data at a time.
+
 * For sparse matrices of large size (~100K or larger), RALEIGH's `partial_hevp` eigensolver is much faster than `eigsh` from SciPy. The table below shows the computation times in seconds for computing the smallest eigenvalue of 3 matrices from DNVS group of Suitesparse Matrix Collection and the smallest buckling load factor of 4 buckling problems on Intel(R) Xeon(R) CPU E3-1220 v3 @ 3.10GHz (the links to matrices' repositories can be found in `sparse_evp.py` and `buckling_evp.py` in subfolder `raleigh/examples`).
 
   | matrix | size | eigsh | partial_hevp |
@@ -20,20 +24,22 @@ RALEIGH is a Python implementation of the block Jacobi-conjugated gradients algo
   | panel_buckle_f | 224522 | 135 | 3.8 |
   | panel_buckle_g | 394962 | 321 | 7.2 |
 
-* Similarly, for large data (~10K samples with ~10K features or larger) that has large amount of redundancy, RALEIGH's `pca` function is considerably faster than `fit_ransform` method of scikit-learn and uses less memory. The computation times for PCA of 13233 images from Labeled Faces in the Wild (the link to LFW website can be found in `raleigh/examples/eigenimages/convert_lfw.py`) on the same CPU are:
+* Similarly, for large data (~10K samples with ~10K features or larger) that has large amount of redundancy, RALEIGH's `pca` function is considerably faster than `fit_ransform` method of scikit-learn and uses less memory. The next table shows the computation times for PCA of images obtained by processing images from Labeled Faces in the Wild (background outside face area erased, mirror images added etc. - see `raleigh/examples/eigenimages/convert_lfw.py` for the link to Labeled Faces in the Wild images and to Dropbox folder containing the file `lfwdf_wmi_175x225_fa_12K.npy` with 12K processed images used in the reported comparison).
 
-  | components | scikit-learn pca | raleigh pca |
-  | - | - | - |
-  | 1000 | 128 | 53 |
-  | 2000 | 180 | 101 |
-  | 3000 | 288 | 165 |
+  | components | scikit-learn | raleigh (CPU) | raleigh (GPU) |
+  | - | - | - | - |
+  | 800 | 59 | 23 | 10 |
+  | 900 | 65 | 25 | 11 |
+  | 1000 | 68 | 27 | 12 |
+  | 1100 | 76 | 29 | 13 |
 
+* If the number of eigenvalues needed is not known in advance (as is normally the case with PCA), the computation will continue until user-specified stopping criteria are satisfied (e.g. PCA approximation to the data is satisfactory).
 * The core solver allows user to specify the number of wanted eigenvalues
 	- on either margin of the spectrum (e.g. 5 on the left, 10 on the right)
 	- of largest magnitude
 	- on either side of a given real value
 	- nearest to a given real value
-* If the number of eigenvalues needed is not known in advance (as is normally the case with PCA), the computation will continue until user-specified stopping criteria are satisfied (e.g. PCA approximation to the data is satisfactory).
+
 * The core solver is written in terms of abstract vectors, owing to which it will work on any architecture verbatim, as long as basic linear algebra operations on vectors are implemented. Currently, MKL and CUBLAS implementations are provided with the package, in the absence of these libraries NumPy algebra being used.
 
 ### Dependencies
