@@ -386,7 +386,7 @@ def test1(u, v):
     stop = time.time()
     elapsed = stop - start
     w_numpy.scale(sigma, multiply=True)
-    w_numpy.multiply(q.T, v_numpy)
+    w_numpy.multiply(_conj(q).T, v_numpy)
     u_numpy.add(v_numpy, -1.0)
     t = nla.norm(u_numpy.data())/s
     print('error: %e, time: %.2e' % (t, elapsed))
@@ -400,7 +400,7 @@ def test1(u, v):
         stop = time.time()
         elapsed = stop - start
         w_cblas.scale(sigma, multiply=True)
-        w_cblas.multiply(q.T, v_cblas)
+        w_cblas.multiply(_conj(q).T, v_cblas)
         u_cblas.add(v_cblas, -1.0)
         t = nla.norm(u_cblas.data())/s
         print('error: %e, time: %.2e' % (t, elapsed))
@@ -417,7 +417,7 @@ def test1(u, v):
 #        print(q.shape, q.dtype)
 #        print(sigma.shape, sigma.dtype)
         w_cublas.scale(sigma, multiply=True)
-        w_cublas.multiply(q.T, v_cublas)
+        w_cublas.multiply(_conj(q).T, v_cublas)
         u_cublas.add(v_cublas, -1.0)
         t = nla.norm(u_cublas.data())/s
         print('error: %e, time: %.2e' % (t, elapsed))
