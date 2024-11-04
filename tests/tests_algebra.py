@@ -51,6 +51,7 @@ def test_lra_ortho(u, v, wu, wv):
     u.copy(wu)
     s, q = wu.svd() # u == wu*s*q, wu: orthonormal set, s: diag, q: unitary
     v.multiply(q, wv)
+#    v.multiply(_conj(q.T), wv) 
     wv.scale(s, multiply=True) # vw = v*q.H*s
     # theory: wv*wu.H = v*q.H*s*wu.H = v*(wu*s*q.H) = v*u.H
     # let us check numerically by measuring D = wv*wu.H - v*u.H
@@ -66,7 +67,8 @@ def test_lra_ortho(u, v, wu, wv):
     print('transfom via svd for L...')
     wv.copy(v) # use v as a workspace
     s, q = v.svd() # wv == v*s*q
-    wu.multiply(q, u) # u' = wu*q.H: orthonormal because q is unitary
+    wu.multiply(q, u)
+#    wu.multiply(_conj(q.T), u) # u' = wu*q.H: orthonormal because q is unitary
     v.scale(s, multiply=True) # v' = v*s
     # theory: v'*u'.H = v*s*(wu*q.H).H = v*s*q*wu.H = wv*wu.H
     # let us check numerically by measuring D = wv*wu.H - v'*u'.H
@@ -327,57 +329,6 @@ def test1(u, v):
         t = nla.norm(v_cublas.data())/s
         print('error: %e, time: %.2e' % (t, elapsed))
 
-    print('----\n testing numpy vector reference...')
-    nv = u_numpy.nvec()//2
-    z_numpy = u_numpy.reference()
-    z_numpy.select(nv, nv)
-    q = u_numpy.dots(u_numpy)
-    print(nla.norm(q))
-    z_numpy.zero()
-    q = u_numpy.dots(u_numpy)
-    print(nla.norm(q))
-    # save and delete u_numpy
-    u_numpy.copy(w_numpy)
-    del u_numpy
-    # reference still there
-    q = z_numpy.dots(z_numpy)
-    print(nla.norm(q))
-    # restore u_numpy
-    z_numpy.select_all()
-    u_numpy = z_numpy
-
-    if have_cblas:
-        print('----\n testing cblas vector reference...')
-        z_cblas = u_cblas.reference()
-        z_cblas.select(nv, nv)
-        q = u_cblas.dots(u_cblas)
-        print(nla.norm(q))
-        z_cblas.zero()
-        q = u_cblas.dots(u_cblas)
-        print(nla.norm(q))
-        u_cblas.copy(w_cblas)
-        del u_cblas
-        q = z_cblas.dots(z_cblas)
-        print(nla.norm(q))
-        z_cblas.select_all()
-        u_cblas = z_cblas
-
-    if have_cublas:
-        print('----\n testing cublas vector reference...')
-        z_cublas = u_cublas.reference()
-        z_cublas.select(nv, nv)
-        q = u_cublas.dots(u_cublas)
-        print(nla.norm(q))
-        z_cublas.zero()
-        q = u_cublas.dots(u_cublas)
-        print(nla.norm(q))
-        u_cublas.copy(w_cublas)
-        del u_cublas
-        q = z_cublas.dots(z_cublas)
-        print(nla.norm(q))
-        z_cublas.select_all()
-        u_cublas = z_cublas
-
     print('----\n testing numpy svd...')
     w_numpy.copy(u_numpy)
     s = nla.norm(u_numpy.data())
@@ -386,7 +337,7 @@ def test1(u, v):
     stop = time.time()
     elapsed = stop - start
     w_numpy.scale(sigma, multiply=True)
-    w_numpy.multiply(q.T, v_numpy)
+    w_numpy.multiply(_conj(q).T, v_numpy)
     u_numpy.add(v_numpy, -1.0)
     t = nla.norm(u_numpy.data())/s
     print('error: %e, time: %.2e' % (t, elapsed))
@@ -400,7 +351,7 @@ def test1(u, v):
         stop = time.time()
         elapsed = stop - start
         w_cblas.scale(sigma, multiply=True)
-        w_cblas.multiply(q.T, v_cblas)
+        w_cblas.multiply(_conj(q).T, v_cblas)
         u_cblas.add(v_cblas, -1.0)
         t = nla.norm(u_cblas.data())/s
         print('error: %e, time: %.2e' % (t, elapsed))
@@ -413,11 +364,8 @@ def test1(u, v):
         sigma, q = w_cublas.svd()
         stop = time.time()
         elapsed = stop - start
-#        print(sigma)
-#        print(q.shape, q.dtype)
-#        print(sigma.shape, sigma.dtype)
         w_cublas.scale(sigma, multiply=True)
-        w_cublas.multiply(q.T, v_cublas)
+        w_cublas.multiply(_conj(q).T, v_cublas)
         u_cublas.add(v_cublas, -1.0)
         t = nla.norm(u_cublas.data())/s
         print('error: %e, time: %.2e' % (t, elapsed))
@@ -449,6 +397,39 @@ def test1(u, v):
         q_cublas = x_cublas.orthogonalize(w_cublas)
         q = w_cublas.dot(x_cublas)
         print('error: %e' % (nla.norm(q)/nla.norm(q0)))
+
+    print('----\n testing numpy vector reference...')
+    w_numpy.copy(u_numpy)
+    nv = u_numpy.nvec()//2
+    z_numpy = u_numpy.reference()
+    z_numpy.select(nv, nv)
+    q = u_numpy.dots(u_numpy)
+    print(nla.norm(q))
+    z_numpy.zero()
+    q = u_numpy.dots(u_numpy)
+    print(nla.norm(q))
+
+    if have_cblas:
+        print('----\n testing cblas vector reference...')
+        w_cblas.copy(u_cblas)
+        z_cblas = u_cblas.reference()
+        z_cblas.select(nv, nv)
+        q = u_cblas.dots(u_cblas)
+        print(nla.norm(q))
+        z_cblas.zero()
+        q = u_cblas.dots(u_cblas)
+        print(nla.norm(q))
+
+    if have_cublas:
+        print('----\n testing cublas vector reference...')
+        w_cublas.copy(u_cublas)
+        z_cublas = u_cublas.reference()
+        z_cublas.select(nv, nv)
+        q = u_cublas.dots(u_cublas)
+        print(nla.norm(q))
+        z_cublas.zero()
+        q = u_cublas.dots(u_cublas)
+        print(nla.norm(q))
 
     print('----\n testing numpy append axis=1...')
     w_numpy.copy(x_numpy)
