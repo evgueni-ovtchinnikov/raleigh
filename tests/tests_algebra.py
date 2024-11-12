@@ -25,12 +25,13 @@ try:
     have_cblas = True
 except:
     have_cblas = False
-try:
-    import raleigh.algebra.cuda_wrap as cuda
-    from raleigh.algebra.dense_cublas import Vectors as cublasVectors
-    have_cublas = True
-except:
-    have_cublas = False
+#try:
+#    import raleigh.algebra.cuda_wrap as cuda
+#    from raleigh.algebra.dense_cublas import Vectors as cublasVectors
+#    have_cublas = True
+#except:
+#    have_cublas = False
+have_cublas = False
 
 
 def _conj(a):

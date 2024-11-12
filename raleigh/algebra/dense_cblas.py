@@ -254,9 +254,9 @@ class Vectors(NDArrayVectors):
         return q
 
     def svd(self):
-        q, sigma, w = scipy.linalg.svd(self.data(), full_matrices=False)
-        self.fill(w)
-        return sigma, _conjugate(q)
+        #q, sigma, w = scipy.linalg.svd(self.data(), full_matrices=False)
+        #self.fill(w)
+        #return sigma, _conjugate(q)
         # the code below produces wrong results in some cases
         m = self.nvec()
         n = self.dimension()
@@ -278,7 +278,7 @@ class Vectors(NDArrayVectors):
         jobv = self.__cblas.small
         self.__cblas.svd(Cblas.ColMajor, jobu, jobv, c_n, c_m, \
             ptr_u, c_n, ptr_s, ptr_u, c_n, ptr_v, c_m, ptr_sd)
-        return sigma, v.T
+        return sigma, v.T # _conjugate(v.T)
 
     def apply(self, A, output, transp=False):
         a = A.data()
