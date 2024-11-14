@@ -278,7 +278,8 @@ class Vectors(NDArrayVectors):
         jobv = self.__cblas.small
         self.__cblas.svd(Cblas.ColMajor, jobu, jobv, c_n, c_m, \
             ptr_u, c_n, ptr_s, ptr_u, c_n, ptr_v, c_m, ptr_sd)
-        return sigma, v.T # _conjugate(v.T)
+        return sigma, _conjugate(v)
+#        return sigma, v # v.T # _conjugate(v.T)
 
     def apply(self, A, output, transp=False):
         a = A.data()
