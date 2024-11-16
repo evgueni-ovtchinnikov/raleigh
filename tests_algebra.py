@@ -41,7 +41,7 @@ def _conj(a):
         return a
 
 
-def test_lra_ortho(u, v, wu, wv):
+def test_lra_ortho(u, v, wu, wv, nmp=False):
 
     # have: vector sets u = [u_1, ..., u_k] and v = [v_1, .., v_k]
     # want: orthonormal vector set u' and orthogonal vector set v' such that
@@ -51,8 +51,13 @@ def test_lra_ortho(u, v, wu, wv):
     print('transfom via svd for R...')
     u.copy(wu)
     s, q = wu.svd() # u == wu*s*q, wu: orthonormal set, s: diag, q: unitary
-    v.multiply(q, wv)
-#    v.multiply(_conj(q.T), wv) 
+    if nmp:
+        v.multiply(q, wv)
+    else:
+        v.multiply(q, wv) 
+#        v.multiply(_conj(q), wv) 
+#        v.multiply(q.T, wv) 
+#        v.multiply(_conj(q.T), wv) 
     wv.scale(s, multiply=True) # vw = v*q.H*s
     # theory: wv*wu.H = v*q.H*s*wu.H = v*(wu*s*q.H) = v*u.H
     # let us check numerically by measuring D = wv*wu.H - v*u.H
@@ -68,8 +73,12 @@ def test_lra_ortho(u, v, wu, wv):
     print('transfom via svd for L...')
     wv.copy(v) # use v as a workspace
     s, q = v.svd() # wv == v*s*q
-    wu.multiply(q, u)
-#    wu.multiply(_conj(q.T), u) # u' = wu*q.H: orthonormal because q is unitary
+    if nmp:
+        wu.multiply(q, u)
+    else:
+        wu.multiply(q, u)
+#        wu.multiply(_conj(q), u) # u' = wu*q.H: orthonormal because q is unitary
+#        wu.multiply(_conj(q.T), u) # u' = wu*q.H: orthonormal because q is unitary
     v.scale(s, multiply=True) # v' = v*s
     # theory: v'*u'.H = v*s*(wu*q.H).H = v*s*q*wu.H = wv*wu.H
     # let us check numerically by measuring D = wv*wu.H - v'*u'.H
@@ -337,6 +346,9 @@ def test1(u, v):
     sigma, q = w_numpy.svd()
     stop = time.time()
     elapsed = stop - start
+#    print(sigma)
+#    print(q)
+#    print(w_numpy.data())
     w_numpy.scale(sigma, multiply=True)
     w_numpy.multiply(_conj(q).T, v_numpy)
     u_numpy.add(v_numpy, -1.0)
@@ -351,8 +363,14 @@ def test1(u, v):
         sigma, q = w_cblas.svd()
         stop = time.time()
         elapsed = stop - start
+#        print(sigma)
+#        print(q)
+#        print(w_cblas.data())
         w_cblas.scale(sigma, multiply=True)
+#        w_cblas.multiply(q, v_cblas)
         w_cblas.multiply(_conj(q).T, v_cblas)
+#        w_cblas.multiply(_conj(q), v_cblas)
+#        w_cblas.multiply(q.T, v_cblas)
         u_cblas.add(v_cblas, -1.0)
         t = nla.norm(u_cblas.data())/s
         print('error: %e, time: %.2e' % (t, elapsed))
@@ -366,7 +384,8 @@ def test1(u, v):
         stop = time.time()
         elapsed = stop - start
         w_cublas.scale(sigma, multiply=True)
-        w_cublas.multiply(_conj(q).T, v_cublas)
+        w_cublas.multiply(q, v_cublas)
+#        w_cublas.multiply(_conj(q).T, v_cublas)
         u_cublas.add(v_cublas, -1.0)
         t = nla.norm(u_cublas.data())/s
         print('error: %e, time: %.2e' % (t, elapsed))
@@ -489,7 +508,7 @@ def test2(u, v):
     w_numpy = numpyVectors(v.copy())
     x_numpy = numpyVectors(v.copy())
     print('----\n numpy...')
-    test_lra_ortho(u_numpy, v_numpy, w_numpy, x_numpy)
+    test_lra_ortho(u_numpy, v_numpy, w_numpy, x_numpy, nmp=True)
 
     if have_cblas:
         u_cblas = cblasVectors(u.copy())
