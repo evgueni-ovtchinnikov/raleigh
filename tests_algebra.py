@@ -25,13 +25,13 @@ try:
     have_cblas = True
 except:
     have_cblas = False
-#try:
-#    import raleigh.algebra.cuda_wrap as cuda
-#    from raleigh.algebra.dense_cublas import Vectors as cublasVectors
-#    have_cublas = True
-#except:
-#    have_cublas = False
-have_cublas = False
+try:
+    import raleigh.algebra.cuda_wrap as cuda
+    from raleigh.algebra.dense_cublas import Vectors as cublasVectors
+    have_cublas = True
+except:
+    have_cublas = False
+#have_cublas = False
 
 
 def _conj(a):
@@ -384,8 +384,8 @@ def test1(u, v):
         stop = time.time()
         elapsed = stop - start
         w_cublas.scale(sigma, multiply=True)
-        w_cublas.multiply(q, v_cublas)
-#        w_cublas.multiply(_conj(q).T, v_cublas)
+#        w_cublas.multiply(q, v_cublas)
+        w_cublas.multiply(_conj(q).T, v_cublas)
         u_cublas.add(v_cublas, -1.0)
         t = nla.norm(u_cublas.data())/s
         print('error: %e, time: %.2e' % (t, elapsed))
