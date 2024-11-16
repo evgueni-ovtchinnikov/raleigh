@@ -24,9 +24,17 @@ else:
 
 
 def find(name, path):
+    lname = len(name)
     for root, dirs, files in os.walk(path):
-        if name in files:
-            return os.path.join(root, name)
+        nfiles = len(files)
+        for i in range(nfiles):
+            fname = files[i]
+            if fname[:lname] == name:
+                print('Found ' + fname)
+                return os.path.join(root, fname)
+#        if name in files:
+#            return os.path.join(root, name)
+    return None
 
 
 def find_mkl():
