@@ -381,6 +381,8 @@ def test1(u, v):
         s = nla.norm(u_cublas.data())
         start = time.time()
         sigma, q = w_cublas.svd()
+#        print(sigma)
+#        print(q)
         stop = time.time()
         elapsed = stop - start
         w_cublas.scale(sigma, multiply=True)

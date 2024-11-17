@@ -535,9 +535,9 @@ class Vectors:
         return q
 
     def svd(self):
-        q, sigma, w = scipy.linalg.svd(self.data(), full_matrices=False)
-        self.fill(w)
-        return sigma, _conjugate(q)
+#        q, sigma, w = scipy.linalg.svd(self.data(), full_matrices=False)
+#        self.fill(w)
+#        return sigma, _conjugate(q)
         m = self.nvec()
         n = self.dimension()
         c_n = ctypes.c_int(n)
@@ -558,6 +558,7 @@ class Vectors:
         _try_calling(cuda.malloc(ctypes.byref(dptr_w), lw*dsize))
         v = numpy.ndarray((m, m), dtype=dtype)
         _try_calling(cuda.malloc(ctypes.byref(dptr_v), m*m*dsize))
+        vsize = dsize
         if dtype == numpy.complex64:
             dtype = numpy.float32
             dsize = 4
@@ -571,16 +572,17 @@ class Vectors:
         jobu = self.__cublas.ovwrt
         jobv = self.__cublas.all
         err = self.__cublas.svd(self.__cublas.cusolver_handle, jobu, jobv, \
-            n, m, dptr_u, n, dptr_s, dptr_u, n, dptr_v, m, \
-            dptr_w, lw, dptr_r, dptr_i)
-#            c_n, c_m, dptr_u, c_n, dptr_s, dptr_u, c_n, dptr_v, c_m, \
-#            dptr_w, c_lw, dptr_r, dptr_i)
+#            n, m, dptr_u, n, dptr_s, dptr_u, n, dptr_v, m, \
+#            dptr_w, lw, dptr_r, dptr_i)
+            c_n, c_m, dptr_u, c_n, dptr_s, dptr_u, c_n, dptr_v, c_m, \
+            dptr_w, c_lw, dptr_r, dptr_i)
         hptr_s = ctypes.c_void_p(sigma.ctypes.data)
         _try_calling(cuda.memcpy(hptr_s, dptr_s, m*dsize, cuda.memcpyD2H))
         hptr_v = ctypes.c_void_p(v.ctypes.data)
-        _try_calling(cuda.memcpy(hptr_v, dptr_v, m*m*dsize, cuda.memcpyD2H))
+        _try_calling(cuda.memcpy(hptr_v, dptr_v, m*m*vsize, cuda.memcpyD2H))
         i = ctypes.c_int()
         _try_calling(cuda.memcpy(ctypes.byref(i), dptr_i, 4, cuda.memcpyD2H))
+        print(f'cusolver svd i: {i}') 
         _try_calling(cuda.free(dptr_r))
         _try_calling(cuda.free(dptr_s))
         _try_calling(cuda.free(dptr_v))
