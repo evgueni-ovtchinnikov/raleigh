@@ -546,7 +546,7 @@ class Vectors:
         err = self.__cublas.svd_buff_size(self.__cublas.cusolver_handle, \
             c_n, c_m, ctypes.byref(c_lw))
         lw = c_lw.value
-        print('buffer size: %d' % lw)
+#        print('buffer size: %d' % lw)
         dptr_r = Cublas.CtypesPtr()
         dptr_s = Cublas.CtypesPtr()
         dptr_u = self.data_ptr()
@@ -582,14 +582,13 @@ class Vectors:
         _try_calling(cuda.memcpy(hptr_v, dptr_v, m*m*vsize, cuda.memcpyD2H))
         i = ctypes.c_int()
         _try_calling(cuda.memcpy(ctypes.byref(i), dptr_i, 4, cuda.memcpyD2H))
-        print(f'cusolver svd i: {i}') 
+#        print(f'cusolver svd i: {i}') 
         _try_calling(cuda.free(dptr_r))
         _try_calling(cuda.free(dptr_s))
         _try_calling(cuda.free(dptr_v))
         _try_calling(cuda.free(dptr_w))
         _try_calling(cuda.free(dptr_i))
         return sigma, _conjugate(v)
-#        return sigma, v.T
 
     def zero(self):
         m = self.nvec()
