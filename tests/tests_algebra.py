@@ -25,13 +25,12 @@ try:
     have_cblas = True
 except:
     have_cblas = False
-#try:
-#    import raleigh.algebra.cuda_wrap as cuda
-#    from raleigh.algebra.dense_cublas import Vectors as cublasVectors
-#    have_cublas = True
-#except:
-#    have_cublas = False
-have_cublas = False
+try:
+    import raleigh.algebra.cuda_wrap as cuda
+    from raleigh.algebra.dense_cublas import Vectors as cublasVectors
+    have_cublas = True
+except:
+    have_cublas = False
 
 
 def _conj(a):
@@ -52,7 +51,6 @@ def test_lra_ortho(u, v, wu, wv):
     u.copy(wu)
     s, q = wu.svd() # u == wu*s*q, wu: orthonormal set, s: diag, q: unitary
     v.multiply(q, wv)
-#    v.multiply(_conj(q.T), wv) 
     wv.scale(s, multiply=True) # vw = v*q.H*s
     # theory: wv*wu.H = v*q.H*s*wu.H = v*(wu*s*q.H) = v*u.H
     # let us check numerically by measuring D = wv*wu.H - v*u.H
@@ -69,7 +67,6 @@ def test_lra_ortho(u, v, wu, wv):
     wv.copy(v) # use v as a workspace
     s, q = v.svd() # wv == v*s*q
     wu.multiply(q, u)
-#    wu.multiply(_conj(q.T), u) # u' = wu*q.H: orthonormal because q is unitary
     v.scale(s, multiply=True) # v' = v*s
     # theory: v'*u'.H = v*s*(wu*q.H).H = v*s*q*wu.H = wv*wu.H
     # let us check numerically by measuring D = wv*wu.H - v'*u'.H
