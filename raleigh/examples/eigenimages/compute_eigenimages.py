@@ -34,7 +34,6 @@ If you do not have docopt:
 
 try:
     from docopt import docopt
-    __version__ = '0.1.0'
     have_docopt = True
 except:
     have_docopt = False
@@ -65,6 +64,7 @@ else:
     narg = len(sys.argv)
     if narg < 3:
         print('Usage: compute_eigenimages <images> <err_tol> [gpu]')
+        exit()
     file = sys.argv[1]
     err_tol = float(sys.argv[2])
     arch = 'cpu' if narg < 4 else 'gpu!'

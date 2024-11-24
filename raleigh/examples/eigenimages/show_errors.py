@@ -14,7 +14,6 @@ Arguments:
 
 try:
     from docopt import docopt
-    __version__ = '0.1.0'
     have_docopt = True
 except:
     have_docopt = False
@@ -44,6 +43,7 @@ else:
     narg = len(sys.argv)
     if narg < 3:
         print('Usage: show_errors <images_file> <eigenimages_file>')
+        exit()
     img_file = sys.argv[1]
     eigim_file = sys.argv[2]
 
